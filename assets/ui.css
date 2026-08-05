@@ -1,0 +1,312 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   assets/ui.css — 全站設計 token 與共用元件(S2)
+
+   ── 載入順序的約定(重要)────────────────────────────────────────────
+   每一頁都是 <link ui.css> 在前、頁面自己的 <style> 在後。
+   所以**任何衝突都由頁面自己贏**。這是刻意的:S2 只把「五頁完全一樣的東西」
+   收進來,各頁專屬的版面留在原地,等 S4–S6 各自重寫時再逐步搬過來。
+
+   ── 為什麼有些看起來很像的元件不在這裡 ──────────────────────────
+   `.card` 與 `.panel` 在 /plan/ 與 /timing/ 是**同名不同物**:
+     /plan/   .panel = 大區塊外框、.card = 小數字卡
+     /timing/ .card  = 大區塊外框、.panel = 小內嵌盒
+   在這裡定義任何一個都會弄壞其中一頁。兩頁的版面統一是 S5/S6 的工作,
+   那時才有機會把它們改成同一套命名。**不要在這裡「順手」補上。**
+
+   ── 顏色語彙(docs/IA.md §4.3,由 /timing/ 定義,全站沿用)──────────
+     --up / --down        只給「價格方向」(收盤、日漲跌)。維持台股紅漲綠跌。不得他用。
+     --warn / --warn-ink  風險與危險數值(回撤、深度虧損)。
+     --core               系統事件與規則水位(−25%、加碼線)—— 中性規則,不是損益。
+     --good / --bad       是非判斷(達成 / 未達成)。
+   舊版把 --fire 與 --up 設成同一個 hex,結果**同一個紅在同一屏內同時說「好」「壞」
+   「這只是規則」**。--good/--bad 今天的 hex 雖然與 --down/--up 相同,但它們是
+   不同的 token —— 之後要分家時改這裡一行就好,不必翻 160 個使用點。
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root{
+  /* 品牌與中性色 */
+  --navy:#16255c; --navy2:#1f3272; --gold:#f7c948;
+  --ink:#1b2333; --muted:#5b6478; --line:#d9dee8;
+  --card:#fff; --bg:#e9ecf2; --panel:#f6f7fa;
+
+  /* 語意色(見上面的語彙表) */
+  --up:#c62828; --down:#1b7f3b;
+  --warn:#e2711d;      /* 邊框／填色用 */
+  --warn-ink:#a4500d;  /* 文字用(#e2711d 在白底只有 3:1,不到 AA) */
+  --core:#1b4b8f;      /* 系統規則水位 */
+  --res:#c9922b;       /* 準備金／支出流 */
+  --good:#1b7f3b; --bad:#c62828;
+  --mk-tw:#1b4b8f; --mk-spx:#2f7f6f;
+
+  /* 舊變數名 → 新語彙的對照,避免一次改 160 處(/plan/ 沿用中) */
+  --panel2:var(--panel); --txt:var(--ink); --mut:var(--muted); --acc:var(--core);
+  --ok:var(--good);
+
+  /* 版面 */
+  --wrap:880px;        /* 各頁在自己的 <style> 覆寫:plan 1100 / timing 1560 / report 860 / start 640 */
+  --radius:10px;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei","Heiti TC","Segoe UI",system-ui,sans-serif;
+  font-size:15px; line-height:1.6; -webkit-text-size-adjust:100%;
+}
+.wrap{max-width:var(--wrap); margin:0 auto; padding:14px 16px 48px}
+:focus-visible{outline:2px solid var(--core); outline-offset:2px}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition:none!important; animation:none!important}
+  html{scroll-behavior:auto}
+}
+
+/* ══ ① 頂部導覽 ═════════════════════════════════════════════════════
+   原本四頁各自維護一份幾乎相同的 .sitenav,註解互相要求「改動請同步另外三頁」。
+   現在由 assets/shell.js 產生 markup,樣式只寫這一份。 */
+.sitenav{display:flex; gap:4px; align-items:center; flex-wrap:wrap; font-size:13.5px;
+  margin:0 0 14px; padding:6px 0; border-bottom:1px solid var(--line)}
+.sitenav a{color:var(--muted); text-decoration:none; padding:4px 10px; border-radius:999px;
+  border:1px solid transparent; white-space:nowrap}
+.sitenav a:hover{color:var(--navy); background:var(--panel); border-color:var(--line)}
+.sitenav a.here{color:var(--navy); font-weight:700; background:#fff; border-color:var(--line)}
+.sitenav .sep{color:var(--line)}
+/* 進階頁(自己調參數／看時機)在導覽上要看得出來是「另一層」,不是主線的下一步 */
+.sitenav a.adv-link{font-size:12.5px}
+.sitenav .grow{flex:1}
+
+/* ══ ② 進度指示 ═════════════════════════════════════════════════════
+   取代首頁的 #journey 明細。只回答一件事:你走到哪了、下一步是什麼。 */
+.ap-steps{display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:12.5px;
+  color:var(--muted); margin:0 0 12px}
+.ap-steps .s{display:inline-flex; align-items:center; gap:5px; padding:3px 10px;
+  border:1px solid var(--line); border-radius:999px; background:#fff; white-space:nowrap}
+.ap-steps .s.done{color:var(--good); border-color:#bfe0cc; background:#f2f9f4}
+.ap-steps .s.now{color:var(--navy); font-weight:700; border-color:var(--core)}
+.ap-steps .arrow{color:var(--line)}
+
+/* ══ ③ 進階展開器 ═══════════════════════════════════════════════════
+   docs/IA.md §3.4:收合狀態下 <summary> 是唯一可見的文字。
+   若它只是個標籤(「詳細說明」),收合就等於把內容刪掉了。寫成**結論句**之後,
+   收合 = 壓縮成一句、展開 = 完整證據。
+   三種固定語彙:▸為什麼是這個數字?(證據)／▸這條的反面證據(反證)／▸怎麼算的?(方法論)
+
+   details.x  = 行內的漸進揭露(細線,不搶版面)
+   details.adv = 整段進階區塊(虛線外框,收合狀態由 shell.js 記進 ap_state_v2.ui) */
+details.x{background:transparent; border:0; border-left:3px solid var(--line); border-radius:0;
+  padding:0; margin:8px 0 8px 2px}
+details.x > summary{cursor:pointer; list-style:none; position:relative;
+  padding:5px 0 5px 22px; font-size:13.5px; font-weight:700; color:var(--muted); user-select:none}
+details.x > summary::-webkit-details-marker{display:none}
+details.x > summary::before{content:"▸"; position:absolute; left:7px; top:5px;
+  transition:transform .15s ease; display:inline-block}
+details.x[open] > summary::before{transform:rotate(90deg)}
+details.x[open] > summary, details.x > summary:hover{color:var(--navy)}
+details.x > summary:focus-visible{outline:2px solid var(--core); outline-offset:2px; border-radius:4px}
+details.x .body{padding:2px 0 10px 22px; font-size:13px; line-height:1.75; color:#4a5468}
+details.x .body > :first-child{margin-top:0}
+details.x .body > :last-child{margin-bottom:0}
+details.x.risky{border-left-color:#e7a3a3}
+details.x.risky > summary{color:#8f1d1d}
+details.x.risky[open] > summary{color:#7a1515}
+details.x.how > summary{font-size:12.5px; font-weight:600}
+
+details.adv{background:transparent; border:1px dashed var(--line); border-radius:var(--radius);
+  padding:0; margin:0 0 10px}
+details.adv > summary{cursor:pointer; list-style:none; position:relative;
+  padding:11px 14px 11px 30px; font-size:14.5px; font-weight:700; color:var(--core); user-select:none}
+details.adv > summary::-webkit-details-marker{display:none}
+details.adv > summary::before{content:"▸"; position:absolute; left:14px; top:11px;
+  transition:transform .15s ease; display:inline-block}
+details.adv[open] > summary::before{transform:rotate(90deg)}
+details.adv[open] > summary{border-bottom:1px dashed var(--line)}
+details.adv > summary:focus-visible{outline:2px solid var(--core); outline-offset:-2px; border-radius:var(--radius)}
+details.adv > .body{padding:12px 14px 14px}
+details.adv > .body > :first-child{margin-top:0}
+details.adv > .body > :last-child{margin-bottom:0}
+/* 深連結(/plan-result/ 的「看細節」跳進 /plan/#leverage)落點要看得出來,
+   否則點過去只看到一行剛展開的標題,那正是「不像同一個網站」的感覺來源。 */
+details.adv:target, details.x:target{border-left-color:var(--core)}
+details.adv:target > summary{background:#eef4ff}
+
+/* ══ ④ 名詞小氣泡 + 頁尾辭典 ════════════════════════════════════════
+   單一資料來源在 assets/shell.js(合併 /plan/ 32 條 + /timing/ 60 條 → 75 條)。
+   氣泡用 position:fixed 由 JS 定位 —— 術語會出現在 overflow-x:auto 的表格裡,
+   absolute 版本會被裁掉。 */
+.term{border-bottom:1px dashed var(--muted); cursor:help; font-style:normal;
+  background:none; border-width:0 0 1px; padding:0; font:inherit; color:inherit}
+.term:hover{border-bottom-color:var(--core); color:var(--core)}
+.term:focus-visible{outline:2px solid var(--core); outline-offset:2px; border-radius:3px}
+.term::after{content:"?"; font-size:.62em; font-weight:800; color:var(--muted);
+  vertical-align:super; margin-left:1px}
+.term:hover::after{color:var(--core)}
+#gpop{position:fixed; z-index:60; display:none; max-width:min(330px,86vw);
+  background:#16255c; color:#fff; border-radius:8px; padding:9px 12px;
+  font-size:13px; font-weight:500; line-height:1.7; box-shadow:0 6px 22px rgba(10,20,50,.34)}
+#gpop.show{display:block}
+#gpop b{color:var(--gold); display:block; margin-bottom:2px; font-size:13.5px}
+/* 深底區塊(頁尾)裡的名詞要換淺色,否則灰虛線＋灰問號等於隱形 */
+footer .term{border-bottom-color:#93a2cc}
+footer .term::after{color:#93a2cc}
+footer .term:hover{border-bottom-color:var(--gold); color:var(--gold)}
+footer .term:hover::after{color:var(--gold)}
+
+/* 「虛線字可以點」的提示 —— 使用者測試顯示:沒有人自己發現虛線＋問號代表可點。
+   拿掉這一塊,整份辭典等於白做。**重構中不要順手刪掉它。** */
+.termhint{margin-top:8px; padding:7px 10px; background:#fffbe9; border:1px solid #ecd79a;
+  border-radius:7px; font-size:12.5px; line-height:1.7; color:#6b5410; font-weight:600}
+.fakedot{border-bottom:1px dashed #6b5410}
+.fakedot::after{content:"?"; font-size:.62em; font-weight:800; vertical-align:super; margin-left:1px}
+
+#glossList{display:grid; grid-template-columns:repeat(auto-fill,minmax(268px,1fr)); gap:8px 16px}
+#glossList > div{border-bottom:1px dashed var(--line); padding-bottom:6px}
+#glossList .gt{color:var(--navy); font-weight:800; font-size:13px}
+#glossList .gd{color:#4a5468; font-size:12.5px; line-height:1.7; margin-top:1px}
+.glosshunt{width:100%; max-width:280px; margin-bottom:9px; padding:6px 10px; font:inherit;
+  font-size:13px; border:1px solid var(--line); border-radius:7px; background:#fff; color:var(--ink)}
+.glosshunt:focus-visible{outline:2px solid var(--core); outline-offset:1px}
+
+/* ══ ⑤ 出處標籤 ═════════════════════════════════════════════════════
+   新手分不出「這個數字是今天抓的」與「這個數字是三年前跑回測跑出來的」。
+   凡是靜態值一律掛標籤。**這是本站誠實度的具體實現,最容易在重構中被順手弄丟。**
+     live=每日更新 / fixed=假設值或回測值 / weak=來源待補、只能當參考 */
+.src{display:inline-block; font-size:11px; font-weight:700; padding:1px 7px;
+  border-radius:9px; vertical-align:middle; margin-left:5px; white-space:nowrap}
+.src.live{background:#e3f0e8; color:#1b5c3b}
+.src.fixed{background:#eef1f6; color:#54607a}
+.src.weak{background:#fdf0e3; color:#8a4a06}
+
+/* ══ ⑥ 風險揭露橫幅 ═════════════════════════════════════════════════
+   docs/IA.md §3.3:風險揭露即使不是「動作」,也不准折疊。
+   本站的核心價值是「不保證你會賺錢,只幫你看清楚最壞會有多壞」——
+   把 −80% 收進「看細節 ⌄」,等於把誠實揭露刪掉了。
+   (刻意不叫 .banner:那個名字在 /plan/ 與 /timing/ 已經是兩個不同的東西。) */
+.ap-risk{background:#fff1f1; border:1px solid #e7a3a3; border-left:5px solid var(--bad);
+  color:#5c2020; border-radius:var(--radius); padding:11px 14px; font-size:13px; line-height:1.7;
+  margin:16px 0}
+.ap-risk b{color:#8f1d1d}
+.ap-risk.soft{background:#fffaf2; border-color:#f0d5b4; border-left-color:var(--warn); color:var(--warn-ink)}
+.ap-risk.soft b{color:#8a4108}
+
+/* ══ 按鈕(全站一種語彙:海軍藍藥丸)═════════════════════════════════
+   改版前 /plan/ 用「--core 藍 + radius 8」,其餘四頁用「--navy + radius 999」。
+   同一個站台兩種按鈕,是「每切一頁就重新學一次介面」的來源之一。 */
+.btn{display:inline-block; background:var(--navy); color:#fff; border:0; text-decoration:none;
+  font:inherit; font-weight:700; font-size:14.5px; padding:9px 20px; border-radius:999px;
+  cursor:pointer; text-align:center}
+.btn:hover{background:var(--navy2)}
+.btn:focus-visible{outline:2px solid var(--core); outline-offset:2px}
+.btn:disabled{background:#b9c0d0; cursor:default; opacity:.75}
+.btn.ghost{background:#fff; color:var(--navy); border:1px solid var(--line)}
+.btn.ghost:hover{border-color:var(--core); color:var(--core); background:var(--panel)}
+.btn.big{font-size:16px; padding:13px 32px}
+
+/* ══ 白話為主、術語為輔 ══════════════════════════════════════════════
+   docs/IA.md §7.1:先寫「大盤動 1 元你動 1.4 元」,術語「淨曝險」縮成灰色小字跟在後面。
+   .jargon 一律不加粗、不上色 —— 它是註腳,不是重點。 */
+.jargon{font-size:.82em; font-weight:600; color:var(--muted); white-space:nowrap}
+.plainlead{font-size:14px; line-height:1.85; margin:0 0 10px}
+
+/* ══ 文字小工具 ═════════════════════════════════════════════════════ */
+.mut{color:var(--muted)}
+.tblnote{margin-top:8px; font-size:12.5px; color:var(--muted); font-weight:600}
+
+/* ══ ⑦ S11 新手可讀性元件層 ══════════════════════════════════════════
+   目標:把「數字包在長句裡」換成「大數字+白話標籤+圖形比例」的顯示語言。
+   全部用 ap- 前綴,與各頁頁內樣式(.card/.panel/.note/.big…)互不相撞;
+   ①~⑥ 的既有規則一行未動 —— 新舊可以共存,各頁分期遷移。
+
+   ── 斷點約定(S11 起全站遵守)──────────────────────────────────
+   基準樣式 = 手機(390px 起可用),用 @media (min-width:640px) 疊加中屏;
+   只有 /plan/ 與 /timing/ 需要 (min-width:960px) 大屏多欄。
+   舊頁內樣式改版時在各自的 <style> 轉成 mobile-first,不在這裡動。
+
+   ── 色彩 ────────────────────────────────────────────────────
+   不新增任何 hue。回撤/風險 = --warn 系;規則水位 = --core;
+   是非判斷 = --good/--bad(§4.3 語彙)。ASSET_COLOR 經驗證器複驗:
+   9/10 通過,CASH 灰 (#8b95a6) 低彩度為刻意語意(現金=中性),
+   其救濟條款 = 甜甜圈旁永遠有帶文字的圖例表格。 */
+
+:root{
+  --copy:34em;        /* 中文段落理想行長(約 28~34 字) */
+  --fs-stat:22px;     /* .ap-stat 主數字 */
+  --fs-hero:30px;     /* .ap-hero 主數字(640px 以上 34px) */
+}
+
+/* native radio/checkbox:視覺隱藏但保留焦點與讀屏可及性 */
+.ap-visuallyhidden{position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+  overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0}
+
+/* 段落行長上限 —— 整屏寬的中文長句是「文字牆」體感的第一來源 */
+.ap-measure{max-width:var(--copy)}
+
+/* ── 答案卡:一頁最重要的那一個數字 ──────────────────────────────
+   .k 白話標籤在上、.v 主數字、.sub 一句限定(誠實條款放這,不放大字裡)。 */
+.ap-hero{background:linear-gradient(135deg,var(--navy),var(--navy2)); color:#fff;
+  border-radius:var(--radius); padding:18px 16px; margin:0 0 14px}
+.ap-hero .k{font-size:13px; font-weight:700; color:var(--gold); letter-spacing:.04em}
+.ap-hero .v{font-size:var(--fs-hero); font-weight:900; line-height:1.25;
+  font-variant-numeric:tabular-nums; margin:2px 0 0}
+.ap-hero .sub{font-size:13px; line-height:1.7; color:rgba(255,255,255,.86); margin:6px 0 0}
+.ap-hero .sub b{color:#fff}
+@media (min-width:640px){ .ap-hero{padding:22px 22px} .ap-hero .v{font-size:34px} }
+
+/* ── 數字原子:大數字 + 白話標籤 + 補充行 ─────────────────────────
+   規則:.v 裡禁放 glossary 名詞(.term 的上標問號在大數字裡是視覺災難);
+   風險數值用 .warn(--warn-ink),是非判斷才用 .good/.bad。 */
+.ap-stat{display:block}
+.ap-stat .v{font-size:var(--fs-stat); font-weight:800; line-height:1.3;
+  font-variant-numeric:tabular-nums; color:var(--ink)}
+.ap-stat .v small{font-size:.62em; font-weight:700}
+.ap-stat .k{display:block; font-size:12.5px; font-weight:700; color:var(--muted)}
+.ap-stat .sub{display:block; font-size:12px; line-height:1.55; color:var(--muted); margin-top:1px}
+.ap-stat.lg .v{font-size:28px}
+.ap-stat.warn .v{color:var(--warn-ink)}
+.ap-stat.bad .v{color:var(--bad)}
+.ap-stat.good .v{color:var(--good)}
+
+/* ── 行動條:2~3 格「你只要記得這幾件事」──────────────────────────
+   格子可以是 <a>(兼頁內目錄,.k 後面帶 ↓);手機自動折行。 */
+.ap-statrow{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:8px; margin:12px 0}
+.ap-statrow>*{display:block; background:#fff; border:1px solid var(--line);
+  border-radius:var(--radius); padding:10px 12px; text-decoration:none; color:inherit}
+.ap-statrow>a:hover{border-color:var(--core)}
+.ap-statrow>a .k::after{content:" ↓"; color:var(--core); font-weight:800}
+
+/* ── 比例條:「佔多少」的圖形。純 HTML/CSS —— 可列印、可讀屏、零 DPR 成本。
+   多段之間留 2px 縫。.keep=你的錢(navy)、.loss=一度少掉(warn)。 */
+.ap-bar{display:flex; gap:2px; height:10px; border-radius:999px; overflow:hidden;
+  background:var(--panel); border:1px solid var(--line)}
+.ap-bar>i{display:block; height:100%; background:var(--navy); min-width:2px}
+.ap-bar>i.loss{background:var(--warn)}
+.ap-bar>i.good{background:var(--good)}
+.ap-bar.thin{height:7px}
+
+/* 列版比例條:標籤 | 條 | 數字(Q9 迷你階梯與「最壞會有多壞」共用骨架) */
+.ap-barrow{display:grid; grid-template-columns:auto 1fr auto; gap:4px 10px; align-items:center}
+.ap-barrow .lbl{font-size:13px; font-weight:700; white-space:nowrap}
+.ap-barrow .num{font-size:13px; font-variant-numeric:tabular-nums; white-space:nowrap}
+
+/* ── 選項卡(native radio 版)────────────────────────────────────
+   取代 label+click 的 .opt:方向鍵可選、讀屏可讀。
+   選取態走 :has(),不支援的舊瀏覽器由 JS 補 .sel 雙保險。 */
+.ap-opt{display:block; background:#fff; border:1.5px solid var(--line); border-radius:9px;
+  padding:10px 12px; margin:0 0 8px; cursor:pointer}
+.ap-opt .t{font-size:14.5px; font-weight:700}
+.ap-opt .d{font-size:12.5px; color:var(--muted); line-height:1.6; margin-top:1px}
+.ap-opt:hover{border-color:var(--core)}
+.ap-opt.sel,.ap-opt:has(input:checked){border-color:var(--navy); background:#f4f7ff}
+.ap-opt:has(input:focus-visible){outline:2px solid var(--core); outline-offset:2px}
+
+/* ── 行內確認(取代 window.confirm)──────────────────────────────
+   插在觸發元素旁,不擋全頁、不卡瀏覽器;Esc 或「先不要」關閉。 */
+.ap-confirm{border:1.5px solid var(--warn); background:#fffaf2; border-radius:9px;
+  padding:10px 12px; margin:8px 0; font-size:13px; line-height:1.7}
+.ap-confirm .acts{display:flex; gap:8px; margin-top:8px; flex-wrap:wrap}
+
+/* ── 圖表容器 + 讀數列 ─────────────────────────────────────────── */
+.ap-chart{position:relative; margin:10px 0 2px}
+.ap-chart canvas{display:block; width:100%}
+.ap-probe{min-height:1.5em; font-size:12.5px; color:var(--muted);
+  font-variant-numeric:tabular-nums; margin-top:2px}

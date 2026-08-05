@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>資產規劃指南 — 看清最壞會有多壞</title>
+<meta name="description" content="給台灣投資人的資產規劃站台:回答九個白話問題,就得到一份可以照著做的計畫。純前端離線運算,財務數字不外傳。">
+<!-- 設計 token 與共用元件(導覽/展開器/名詞氣泡/出處標籤)。頁面自己的 <style> 一律排在後面,
+     所以任何衝突都由本頁勝出 —— 見 assets/ui.css 開頭的載入順序約定。 -->
+<link rel="stylesheet" href="assets/ui.css">
+<style>
+/* 本頁專屬版面。:root token、body、.wrap、.sitenav、.btn 全部來自 assets/ui.css。
+
+   ── 為什麼這一頁這麼空(docs/IA.md §5.1)────────────────────────────
+   改版前這裡同時給「快速開始」和「① 配資金 / ② 挑時機」三個入口,外加地基自測 4 項
+   與一條旅程狀態列。第一次來的人不知道該點哪一個 —— 而他其實只有一個選擇:開始。
+   所以首頁縮成「一句話 + 一顆按鈕」,進階頁靠導覽列(永遠在)進入。 */
+:root{ --wrap:720px }
+
+.hero{margin:34px 0 0}
+.hero h1{line-height:1.25; margin:0 0 12px; color:var(--navy); letter-spacing:-.5px}
+.hero h1 .g{border-bottom:5px solid var(--gold); padding-bottom:1px}
+.hero p{margin:0; color:var(--muted); max-width:52ch; font-size:15.5px; line-height:1.8}
+
+.cta{margin:28px 0 0; display:flex; flex-direction:column; align-items:flex-start; gap:14px}
+.cta .btn{font-size:17px; padding:15px 38px}
+.cta .again{font-size:14px; color:var(--core); text-decoration:none; border-bottom:1px solid #c3d2ea}
+.cta .again:hover{border-bottom-color:var(--core)}
+.cta .again b{font-weight:700}
+
+.how{margin:30px 0 0; font-size:13.5px; color:var(--muted); line-height:1.9}
+.how b{color:var(--navy)}
+
+.ap-risk.soft{margin:28px 0 0; font-size:13.5px}
+
+footer{margin-top:26px; padding-top:16px; border-top:1px solid var(--line); font-size:12.5px; color:var(--muted)}
+footer a{color:var(--core)}
+
+/* S11:mobile-first(基準=手機,560px 起放大) */
+.wrap{padding:12px 13px 40px}
+.hero{margin-top:20px}
+.hero h1{font-size:25px}
+.cta .btn{width:100%; padding:15px 20px}
+@media (min-width:560px){
+  .wrap{padding:14px 16px 48px}
+  .hero{margin-top:34px}
+  .hero h1{font-size:32px}
+  .cta .btn{width:auto; padding:15px 38px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <nav id="apNav"></nav>
+  <div id="apSteps"></div>
+
+  <div class="hero">
+    <h1>這裡幫你看清<span class="g">最壞會有多壞</span></h1>
+    <p>不保證你會賺錢,只幫你看清楚最壞會有多壞、以及你扛不扛得住。<br>
+       所有運算都在你自己的瀏覽器裡跑,<b>財務數字不會傳出去</b>,也沒有帳號。</p>
+  </div>
+
+  <div class="cta">
+    <a class="btn" href="start/">開始(約 3 分鐘)　→</a>
+    <!-- 只在真的有計畫時才出現;沒有的話不要放一顆點下去看到空白的按鈕。 -->
+    <a class="again" href="plan-result/" id="againLink" style="display:none">已經有計畫了?<b>→ 看我的計畫</b></a>
+  </div>
+
+  <p class="how ap-measure">回答九個白話問題,你會拿到:<b>錢怎麼分</b>、<b>每個月做什麼</b>、<b>跌到哪裡加碼</b>、
+    以及<b>最壞會有多壞</b>。不需要任何理財知識,每個數字之後都能自己改。</p>
+
+  <!-- 有名詞氣泡的頁面就要有這個提示。使用者測試顯示:沒有人會自己發現
+       虛線＋問號代表可以點,少了它整份辭典等於白做(docs/IA.md §4.4)。 -->
+  <div class="termhint">💡 這頁凡是<span class="fakedot">有虛線的字</span>都可以點開看白話解釋,不懂的名詞先點一下再往下讀。</div>
+
+  <div class="ap-risk soft">
+    ⚠️ <b>先把話說在前面</b><br>
+    這裡所有的報酬數字都是<b>前瞻假設,不是預測</b>,更不是保證。回測用的歷史區間是人類史上最好的一段多頭,
+    天生偏樂觀。槓桿 ETF 在 2008 式崩盤會讓帳面<b>只剩不到兩成</b>,而且可能要好幾年才回得來。
+    本站僅供教育與試算用途,<b>非投資建議</b>,請依自身狀況審慎評估。
+  </div>
+
+  <footer>
+    資料來源:台灣證券交易所、Yahoo Finance、Damodaran (NYU Stern) 1928–2024 美股與美債年報酬。
+    方法論詳見 <a href="plan/README.md">配資金 README</a> 與 <a href="timing/README.md">挑時機 README</a>。<br>
+    純靜態、無後端、無帳號;設定只存在你自己的瀏覽器裡。
+  </footer>
+
+</div>
+
+<script src="assets/state.js"></script>
+<script src="assets/shell.js"></script>
+<script>
+(function(){
+  'use strict';
+  APShell.init({page:'home'});
+
+  /* 「已經有計畫了?」只在真的有東西可看時出現(docs/IA.md §5.1)。
+     不能只看 input.net —— defaults() 的 net 預設就是 50,第一次造訪的人也會 >0。
+     判準:localStorage 裡真的有存檔,而且有結果或填過可投資資產。 */
+  try{
+    var st = APState.load();
+    var stored = false;
+    try { stored = !!(localStorage.getItem(APState.KEY) || localStorage.getItem(APState.LEGACY_KEYS.plan)); } catch(e){}
+    var hasPlan = !!st.result || (stored && Number(st.input && st.input.net) > 0);
+    if (hasPlan) document.getElementById('againLink').style.display = '';
+  }catch(e){}
+})();
+</script>
+</body>
+</html>

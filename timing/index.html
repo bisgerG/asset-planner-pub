@@ -1,0 +1,2697 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>台股槓桿配置儀表板</title>
+<meta name="description" content="以「準備金回補」策略為核心的長期槓桿部位管理儀表板，每日自動更新。">
+<link rel="stylesheet" href="../assets/ui.css">
+<style>
+/* 本頁專屬版面。:root 的顏色語彙(--up/--down 只給價格方向、風險走 --warn、
+   規則水位走 --core)已經升格成全站 token,定義在 assets/ui.css。
+   .sitenav、.term/#gpop、.termhint、.src、details.x、.jargon、#glossList 同樣搬過去了。 */
+:root{ --wrap:1560px }
+body{ line-height:1.5 }
+.wrap{ padding:14px; overflow-x:clip }
+
+.banner{display:none; margin-bottom:12px; padding:10px 14px; border-radius:8px; font-weight:700; border:2px solid transparent}
+.banner.show{display:block}
+.banner.warn{background:#fff8e1; border-color:#f0b429; color:#7a4c00}
+.banner.err{background:#fdecea; border-color:#d64545; color:#8a1c1c}
+.banner small{display:block; font-weight:400; margin-top:3px}
+
+header{
+  background:linear-gradient(105deg,var(--navy) 0%,var(--navy2) 55%,var(--navy) 100%);
+  color:#fff; border-radius:10px; padding:14px 20px; margin-bottom:12px;
+  display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+}
+header h1{margin:0; font-size:clamp(20px,2.3vw,31px); font-weight:800; letter-spacing:.5px}
+header h1 .ver{font-size:.72em; opacity:.85}
+header .sub{margin-top:4px; color:var(--gold); font-weight:700; font-size:clamp(12px,1.15vw,15px)}
+header .meta{background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.22);
+  border-radius:8px; padding:8px 12px; font-size:12.5px; line-height:1.75; white-space:nowrap}
+header .meta b{color:var(--gold); font-weight:700}
+
+/* 「目前建議配置」是全頁唯一的行動指令，舊版卻把它放在最窄的 .84fr 欄，
+   兩側夾著 35px 紅數字與整張回撤圖 —— 版面預算與重要性倒置。 */
+/* S6：第三欄（回撤圖）搬進進階層，這裡只剩「市場在哪」與「觸發階梯」兩張卡。 */
+.grid-top{display:grid; grid-template-columns:.9fr 1.1fr; gap:12px; margin-bottom:12px}
+/* min-width:0 是必要的：grid/flex 子項預設 min-width:auto，
+   會被內部寬表格撐開，導致整頁出現水平捲軸而非讓表格自己捲。 */
+.card{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px;
+  display:flex; flex-direction:column; min-width:0}
+/* 靠左而非置中：儀表板要保留左緣掃描線。標題在窄欄折行時，
+   置中會讓兩種字級產生鋸齒狀左緣，是最傷可讀性的一處。 */
+.card > h2{margin:-12px -12px 10px; padding:8px 12px; font-size:16px; font-weight:800;
+  color:var(--navy); background:#eaeff8; border-bottom:1px solid var(--line);
+  border-radius:9px 9px 0 0;
+  display:flex; align-items:baseline; justify-content:space-between; gap:8px; flex-wrap:wrap}
+.card > h2 .note{font-size:12px; font-weight:600; color:var(--muted); text-align:right}
+
+/* ── 內嵌盒（L2 容器）───────────────────────────────────────
+   .stat / .athbox / .fired / .pace / .accel / .kelly / .rangebox / .thermo
+   本來是同一個元件寫了八遍（panel 底 + 1px 框 + radius 8 + .k/.v/.n 三層文字），
+   只有色調不同。共同骨架收在這裡，各自只留差異。 */
+.panel,.stat,.athbox,.fired,.pace,.accel,.kelly,.rangebox,.thermo{
+  background:var(--panel); border:1px solid var(--line); border-radius:8px}
+.panel .k,.stat .k,.pace .k,.accel .k,.kelly .k,.rangebox .k{font-weight:700}
+.panel .v,.stat .v,.pace .v,.accel .v,.kelly .v,.rangebox .v{font-weight:800}
+.panel .n,.pace .n,.accel .n,.kelly .n,.rangebox .n{margin-top:2px}
+
+/* 市場狀態 */
+.stat2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.stat{padding:10px; text-align:center}
+.stat .k{font-size:13.5px; color:var(--muted)}
+.stat .v{line-height:1.1; margin:6px 0 2px; font-size:clamp(22px,2.5vw,35px)}
+.stat .v small{font-size:.42em; font-weight:700; margin-left:2px}
+.stat .u{font-size:12.5px; color:var(--muted); font-weight:600}
+.stat .chg{margin-top:6px; font-size:13.5px; font-weight:700}
+.athbox{margin-top:10px;
+  padding:9px 12px; font-size:13.5px; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap}
+.athbox b{font-variant-numeric:tabular-nums}
+
+/* ── 首屏 hero：一句結論 + 可執行金額 ─────────────────────────── */
+.hero{border:2px solid var(--core); margin-bottom:12px}
+.heroline{font-size:clamp(19px,2.4vw,30px); font-weight:800; color:var(--core);
+  text-align:center; letter-spacing:.5px; margin:2px 0 10px}
+.heroline small{display:block; font-size:.5em; font-weight:700; color:var(--muted);
+  letter-spacing:0; margin-top:4px}
+.herogrid{display:grid; grid-template-columns:.62fr 1fr; gap:14px; align-items:center}
+.heroexpo{text-align:center}
+.heroexpo .k{font-size:14.5px; font-weight:700; color:var(--muted)}
+.heroexpo .v{font-size:clamp(44px,5.4vw,72px); font-weight:800; color:var(--core); line-height:1.02}
+.heroexpo .n{font-size:13px; font-weight:700; color:var(--muted); margin-top:2px}
+.heroalloc{min-width:0}
+.capbar{display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:8px}
+.capbar label{font-size:13.5px; font-weight:700; color:var(--muted)}
+.capbar input{width:88px; padding:5px 8px; font:inherit; font-weight:800; text-align:right;
+  border:1px solid var(--line); border-radius:6px; background:#fff; color:var(--ink)}
+.capbar input:focus-visible{outline:2px solid var(--core); outline-offset:1px}
+.capbar span{font-size:13.5px; font-weight:700; color:var(--muted)}
+.segs{display:flex; gap:4px; margin-left:auto; flex-wrap:wrap}
+.segs button{font:inherit; font-size:12.5px; font-weight:700; padding:4px 9px; cursor:pointer;
+  border:1px solid var(--line); border-radius:999px; background:#fff; color:var(--muted)}
+.segs button:hover{border-color:var(--core); color:var(--core)}
+.segs button[aria-pressed="true"]{background:var(--core); border-color:var(--core); color:#fff}
+.segs button:focus-visible{outline:2px solid var(--core); outline-offset:2px}
+
+/* ── 兩層之間的分隔標題（S6：8 個 section → 基礎層 ＋ 進階層）──────
+   改版前這個位置是一條 sticky 的 .secnav —— docs/IA.md §1 列的四種導覽模式之一
+   （「每切一頁就重新學一次介面」的來源）。兩層之後不需要它：收合狀態下整頁只剩
+   「基礎層 ＋ 9 行結論句」，那 9 行本身就是目次，而且每一行都比 pill 多講一整句話。
+   樣式與 /plan/ 的 .layerhead 逐字相同 —— 兩個進階頁要長得像同一頁。 */
+.layerhead{font-size:16px; color:var(--navy); margin:26px 0 10px; padding-bottom:6px;
+  border-bottom:2px solid var(--gold); display:flex; align-items:baseline; gap:10px; flex-wrap:wrap}
+.layerhead .small{font-weight:400; font-size:12.5px; color:var(--muted)}
+/* 群組錨點（#learn / #evidence）與展開器錨點都要留捲動餘裕，否則深連結會貼齊視窗上緣 */
+section.advgroup, details.adv{scroll-margin-top:12px}
+html{scroll-behavior:smooth; scroll-padding-top:12px}
+@media (prefers-reduced-motion:reduce){ html{scroll-behavior:auto} }
+footer a{color:var(--gold); font-weight:700}
+.sw{text-decoration:none; display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:5px}
+
+/* ── 觸發階梯（取代 7 欄批次表）─────────────────────────────────
+   舊表把唯一可執行的欄位（「距離觸發」）放在第 7 欄，手機上在捲軸外。 */
+.ladder{display:flex; flex-direction:column; gap:0}
+.lrow{display:flex; align-items:flex-start; gap:9px; padding:5px 0}
+.lrow .node{flex:0 0 12px; width:12px; height:12px; border-radius:50%; margin-top:4px;
+  background:#d5dae4; box-shadow:0 0 0 2px #fff}
+.lrow.on .node{background:var(--core)}
+.lrow.now .node{background:var(--warn); box-shadow:0 0 0 2px #fff,0 0 0 4px #fbe3cf}
+.lrow .body{flex:1; min-width:0; font-size:13.5px; line-height:1.5}
+.lrow .t{font-weight:800}
+.lrow .s{color:var(--muted); font-size:12.5px}
+.lrow .amt{float:right; font-weight:800; font-variant-numeric:tabular-nums}
+.lprog{margin:2px 0 2px 5px; padding-left:15px; border-left:2px dashed #ccd3e0}
+.lprog .bar2{height:9px; border-radius:5px; background:#e4e8f0; overflow:hidden}
+.lprog .bar2 span{display:block; height:100%; background:var(--warn); transition:width .3s}
+.lprog .cap{font-size:12.5px; font-weight:700; color:var(--warn-ink); margin-top:3px}
+
+/* 建議配置（主面板）*/
+.act{border:2px solid var(--core)}
+.act > h2{background:#e8eefa; color:var(--core); border-bottom-color:#c6d5ee}
+.split{display:flex; height:34px; border-radius:7px; overflow:hidden; border:1px solid var(--line)}
+.split span{display:flex; align-items:center; justify-content:center; font-style:normal;
+  font-size:13px; font-weight:800; color:#fff; transition:width .3s}
+.split .c{background:var(--core)} .split .r{background:var(--res)}
+.legend{display:flex; justify-content:center; gap:14px; font-size:12.5px; font-weight:700; color:var(--muted)}
+.legend .sw{display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px}
+.expo{margin:2px 0}
+.expo .k{font-size:14.5px; font-weight:700; color:var(--muted)}
+.expo .v{font-size:clamp(38px,4.6vw,62px); font-weight:800; color:var(--core); line-height:1.05}
+.fired{padding:8px; font-size:14px; font-weight:700}
+.fired b{color:var(--core)}
+/* <u> 當進度點會被螢幕閱讀器唸成「下劃線」語意雜訊，改 span + aria-label。 */
+.dots{display:flex; justify-content:center; gap:6px; margin-top:6px}
+.dots .dot{display:block; width:26px; height:8px; border-radius:4px; background:#d5dae4}
+.dots .dot.on{background:var(--core)}
+
+/* 圖 */
+.chartwrap{position:relative; flex:1; min-height:210px}
+.chartwrap svg{display:block; width:100%; height:auto}
+.chartwrap:focus-visible{outline:2px solid var(--core); outline-offset:2px; border-radius:6px}
+.tip{position:absolute; pointer-events:none; opacity:0; transition:opacity .1s;
+  background:rgba(22,37,92,.95); color:#fff; font-size:12.5px; font-weight:700;
+  padding:5px 9px; border-radius:6px; white-space:nowrap; transform:translate(-50%,-130%)}
+.chartfoot{margin-top:6px; text-align:center; font-size:12px; color:var(--muted)}
+
+/* 表 */
+.scroll{overflow-x:auto; -webkit-overflow-scrolling:touch; min-width:0; max-width:100%}
+table{border-collapse:collapse; width:100%; font-size:14px; min-width:440px}
+th,td{border:1px solid var(--line); padding:6px 8px; text-align:center; white-space:nowrap}
+thead th{background:var(--navy); color:#fff; font-weight:700; font-size:13.5px}
+tbody tr.next{outline:2.5px solid var(--warn); outline-offset:-2px}
+/* 已投入是「策略照計畫運作」，不是壞事 → 藍系，與紅粉色的 .warnrow 區隔。
+   舊版兩者同為 #fdeaea，讀者無法分辨「已完成」與「警告」。*/
+tbody tr.done{background:#eaf0fa}
+tbody tr.rec{background:#e8eefa; font-weight:700}
+.tag{display:inline-block; padding:1px 8px; border-radius:10px; font-size:12px; font-weight:800}
+.tag.done{background:var(--core); color:#fff}
+.tag.wait{background:#e2e6ee; color:var(--muted)}
+.tag.ok{background:#e3f0e8; color:#1b5c3b}
+.num{font-variant-numeric:tabular-nums}
+/* pos/neg 只給「價格方向」（收盤、日漲跌），維持台股紅漲綠跌。 */
+.pos-num{color:var(--up); font-weight:700}
+.neg-num{color:var(--down); font-weight:700}
+/* 風險數值（最大回撤、深度回撤）走橘色。舊版把 −85.6% 上 neg-num 顯示成綠色 ——
+   「最深的回撤」變綠是全頁語意錯得最離譜的一處。 */
+.risk-num{color:var(--warn-ink); font-weight:700}
+/* 規則水位（−25/−35/−45）是中性的規則，不是損益，不上漲跌色。 */
+.rule-num{color:var(--ink); font-weight:700}
+.tblnote{margin-top:8px; font-size:12.5px; color:var(--muted); font-weight:600}
+h3.sec{margin:14px 0 6px; font-size:14.5px; font-weight:800; color:var(--navy)}
+
+/* 五條規則：一條一行，每條 ≤ 25 字的主句 + 一句補充 */
+.rules{list-style:none; margin:0; padding:0; counter-reset:r}
+.rules li{counter-increment:r; position:relative; padding:7px 0 7px 30px;
+  border-bottom:1px dashed var(--line)}
+.rules li:last-child{border-bottom:0}
+.rules li::before{content:counter(r); position:absolute; left:0; top:8px;
+  width:20px; height:20px; border-radius:50%; background:var(--core); color:#fff;
+  font-size:12px; font-weight:800; text-align:center; line-height:20px}
+.rules .rt{font-size:14.5px; line-height:1.6}
+.rules .rs{font-size:12.5px; color:var(--muted); margin-top:2px; line-height:1.6}
+
+/* 估值溫度計 */
+.thermo{padding:10px}
+.thermo .row1{display:flex; align-items:baseline; justify-content:center; gap:10px; flex-wrap:wrap}
+.thermo .pe{font-size:clamp(26px,3vw,40px); font-weight:800; color:#9b1c1c}
+.thermo .pe small{font-size:.4em; margin-left:2px}
+.thermo .pct{font-size:14px; font-weight:700; color:var(--muted)}
+.bar{position:relative; height:16px; border-radius:8px; margin:10px 0 4px;
+  background:linear-gradient(90deg,#2f8f6f 0%,#8bbf46 30%,#e6c229 60%,#e2711d 80%,#c62828 100%)}
+.bar .mark{position:absolute; top:-4px; width:3px; height:24px; background:#16255c; border-radius:2px;
+  box-shadow:0 0 0 2px #fff}
+.barlab{display:flex; justify-content:space-between; font-size:11.5px; color:var(--muted); font-weight:700}
+.pace{margin-top:10px; background:#fdf6e0; border-color:#ecd79a; padding:9px 11px; text-align:center}
+.pace .k{font-size:12.5px; color:#6b5410}
+.pace .v{font-size:clamp(17px,1.8vw,23px); color:#7a5c00; margin-top:2px}
+.pace .n{font-size:12.5px; color:#6b5410}
+
+/* 漸進揭露(details.x)已升格成全站元件 —— 定義搬到 assets/ui.css,
+   連同它的核心規則:<summary> 是「結論句」,不是標籤。 */
+
+/* ── 結構性風險警告框 ──────────────────────────────────────────
+   .help（黃框）在 V2.4 已完全被 details.x 取代 —— 「怎麼用」那 7 條清單、
+   「為什麼只給區間」那 4 條，都改成收合式說明，不再需要一個常駐的黃色大框。 */
+.risk{border:1px solid; border-radius:8px; margin-top:12px}
+.risk h3{margin:0 0 6px; font-size:14.5px; font-weight:800}
+.risk p{font-size:13px; line-height:1.75}
+.risk{background:#fff1f1; border-color:#e7a3a3; border-left:5px solid #c62828; padding:11px 13px}
+.risk h3{color:#8f1d1d}
+.risk p{margin:0 0 7px; color:#5c2020}
+.risk p:last-child{margin-bottom:0}
+.risk table{margin-top:8px; font-size:12.5px}
+.risk th{background:#f7dede; color:#7a1c1c}
+.accel{margin-top:8px; background:#eef4ff; border-color:#b8caea; padding:8px 11px; text-align:center}
+.accel .k{font-size:12.5px; color:#2b4a86}
+.accel .v{font-size:clamp(15px,1.5vw,19px); color:#16255c; margin-top:2px}
+.accel .n{font-size:12px; color:#42598c}
+
+/* 跨市場配置（整寬卡）*/
+.blend{margin-top:12px}
+.blend > h2{background:#eaf3ef; color:#1f5c4d; border-bottom-color:#c2ddd3}
+.lead{margin:0 0 10px; font-size:14px; line-height:1.8}
+.lead b{color:var(--navy)}
+.rangewrap{display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:10px}
+.rangebox{padding:9px 10px; text-align:center; border-top:4px solid var(--line)}
+.rangebox.tw{border-top-color:var(--mk-tw)} .rangebox.spx{border-top-color:var(--mk-spx)}
+.rangebox .k{font-size:13px; font-weight:700; color:var(--muted)}
+.rangebox .v{font-size:clamp(19px,2.1vw,27px); font-weight:800; line-height:1.15; margin-top:3px}
+.rangebox .n{font-size:11.5px; color:var(--muted); font-weight:600; margin-top:2px}
+.split .tw{background:var(--mk-tw)} .split .spx{background:var(--mk-spx)}
+.kelly{margin:10px 0; background:#eef4ff; border-color:#b8caea; padding:10px 12px; text-align:center}
+.kelly .k{font-size:12.5px; font-weight:700; color:#2b4a86}
+.kelly .v{font-size:clamp(17px,1.9vw,24px); font-weight:800; color:#16255c; margin-top:3px}
+.kelly .v s{text-decoration:none; color:var(--warn-ink)}
+.kelly .n{font-size:12.5px; color:#42598c; margin-top:3px}
+.two{display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:start}
+.two > div{min-width:0}
+tbody tr.cur{background:#f2f4f9}
+tbody tr.warnrow{background:#fdeaea}
+
+footer{margin-top:12px; background:var(--navy); color:#c8d2ee; border-radius:10px;
+  padding:10px 16px; font-size:12.5px; line-height:1.8}
+footer b{color:var(--gold)}
+footer .fnote{padding-bottom:6px; border-bottom:1px solid rgba(255,255,255,.15); margin-bottom:4px}
+/* footer 內的 details 走深底配色 */
+footer details.x{border-left-color:rgba(255,255,255,.22)}
+footer details.x > summary{color:#e2e8f8; font-size:13px}
+footer details.x[open] > summary, footer details.x > summary:hover{color:var(--gold)}
+footer details.x.risky{border-left-color:#e08a8a}
+footer details.x.risky > summary{color:#ffd9d9}
+footer details.x.risky[open] > summary{color:#ffb8b8}
+footer details.x .body{color:#c8d2ee; font-size:12.5px}
+footer details.x .body p{margin:0 0 8px}
+footer details.x .body p:last-child{margin-bottom:0}
+footer code{background:rgba(255,255,255,.12); padding:1px 4px; border-radius:3px}
+
+
+/* ══════════════════════════════════════════════════════════════
+   V3.0 新手版新增元件
+   讀者換成「沒買過股票的人」之後，版面多了三種舊版沒有的東西：
+   (1) 教學區塊（先講前提知識，才給操作指令）
+   (2) 名詞註解（術語降級成小字，白話當主標）
+   (3) 金額口徑的兩段式換算（總資金 → 台股這份 → 核心／準備金）
+   ══════════════════════════════════════════════════════════════ */
+
+/* 白話為主術語為輔(.jargon/.plainlead)與名詞小氣泡(.term/#gpop,含頁尾深底的淺色版)
+   已升格成全站元件 —— 定義搬到 assets/ui.css。 */
+
+/* ── 基礎層最上方：三題自我檢核 ────────────────────────────────
+   docs/IA.md §5.6「三個不准動的東西」第 1 條：它是這一頁唯一的
+   「你該不該往下看」判準，**必須留在基礎層最上方**。
+   改版前它是整整一屏（.intro 兩欄 + 一段 4 段落的紅框 + 一顆跳轉鈕）；
+   S6 壓成三行 + 一句結論，紅框那 4 段落搬去頁面下方的「⚠ 最壞會有多壞」。 */
+.qbox{background:var(--panel); border:1px solid var(--line); border-left:5px solid var(--navy);
+  border-radius:0 10px 10px 0; padding:11px 14px; margin-bottom:12px}
+.qbox .k{font-size:13.5px; font-weight:800; color:var(--navy); margin-bottom:5px}
+.qbox .k .note{font-weight:600; color:var(--muted); font-size:12.5px}
+/* 三行：一行一題，不用 <ol> 的縱向留白，讓它真的只佔三行 */
+.qbox ol{margin:0; padding-left:19px; font-size:13.5px; line-height:1.75}
+.qbox ol li{margin:0}
+.qbox .n{margin-top:6px; padding-top:6px; border-top:1px dashed var(--line);
+  font-size:12.5px; color:var(--muted); font-weight:600; line-height:1.7}
+.qbox .termhint{margin-top:7px}
+
+/* ── 基礎層最下方：⚠ 最壞會有多壞（L1，不折疊）──────────────────
+   docs/IA.md §3.3 的例外條款：風險揭露即使不是「動作」也不准折疊。
+   §7.2：凡是風險數字一律同時給金額 —— 所以這裡的 −76.7% 一定跟著
+   「你的 100 萬會一度剩 23 萬」，而且金額跟著使用者填的總資金與選的風格走。 */
+.worst{border:2px solid #c62828; background:#fff1f1; border-radius:10px;
+  padding:12px 15px; margin-bottom:12px; color:#5c2020}
+.worst > h2{margin:-12px -15px 10px; padding:8px 15px; font-size:16px; font-weight:800;
+  color:#8f1d1d; background:#fbe0e0; border-bottom:1px solid #e7a3a3; border-radius:8px 8px 0 0}
+.worst .wline{font-size:clamp(15px,1.8vw,19px); font-weight:800; color:#8f1d1d; line-height:1.6}
+.worst .wline b{font-variant-numeric:tabular-nums}
+.worst p{margin:8px 0 0; font-size:13.5px; line-height:1.8}
+.worst p b{color:#8f1d1d}
+.worst .wgrid{display:grid; grid-template-columns:repeat(3,1fr); gap:9px; margin-top:10px}
+.worst .wcell{background:#fff; border:1px solid #e7c3c3; border-radius:8px; padding:8px 10px}
+.worst .wcell .k{font-size:12px; font-weight:700; color:#8f4a4a}
+.worst .wcell .v{font-size:clamp(17px,2vw,22px); font-weight:800; color:#8f1d1d;
+  line-height:1.15; margin-top:2px; font-variant-numeric:tabular-nums}
+.worst .wcell .n{font-size:11.5px; color:#7a5050; font-weight:600; margin-top:2px; line-height:1.6}
+@media (max-width:820px){ .worst .wgrid{grid-template-columns:1fr} }
+
+/* ── 三個字先搞懂 ─────────────────────────────────────────── */
+.three{display:grid; grid-template-columns:repeat(3,1fr); gap:11px}
+.three > div{min-width:0}
+.lcard{background:var(--panel); border:1px solid var(--line); border-radius:8px;
+  padding:11px 12px; border-top:3px solid var(--core)}
+.lcard .ln{display:inline-block; width:20px; height:20px; border-radius:50%;
+  background:var(--core); color:#fff; font-size:12px; font-weight:800;
+  text-align:center; line-height:20px; margin-right:6px}
+.lcard .lt{display:inline; font-size:15px; font-weight:800; color:var(--navy)}
+.lcard p{margin:7px 0 0; font-size:13px; line-height:1.8; color:#3d4759}
+.lcard .eg{margin-top:7px; padding-top:6px; border-top:1px dashed var(--line);
+  font-size:12.5px; color:var(--muted); font-weight:600; line-height:1.7}
+.lcard .eg b{color:var(--warn-ink)}
+
+/* ── 金額口徑：總資金 → 台股這份 → 核心／準備金 ────────────────
+   舊版的「本金」沒說是哪一筆錢，程式卻直接拿它乘核心比重；
+   而同一頁下方又說上半部只是「台股這一份」（預設 40%）。
+   填「全部的錢」的人會買到 2.5 倍該有的部位 —— 這條流程就是為了修掉它。 */
+.capflow{background:#eef4ff; border:1px solid #b8caea; border-radius:8px;
+  padding:8px 11px; margin-bottom:8px; font-size:13px; line-height:1.7}
+.capflow .step{display:flex; align-items:baseline; gap:7px; flex-wrap:wrap}
+.capflow .arw{color:#7b8db3; font-weight:800}
+.capflow b{color:#16255c; font-variant-numeric:tabular-nums}
+.capflow .hint{margin-top:4px; font-size:12px; color:#42598c; font-weight:600}
+/* flex-wrap 是必要的：兩顆按鈕的文字都很長（「分散風險：台股 40 / 美股 60」），
+   沒有它在 320px 寬會被壓成一團或直接溢出。#stageSeg 用同一個 class，一起受益。 */
+.scopeseg{display:flex; flex-wrap:wrap; gap:4px; margin-left:auto}
+.scopeseg button{font:inherit; font-size:12px; font-weight:700; padding:3px 9px; cursor:pointer;
+  border:1px solid var(--line); border-radius:999px; background:#fff; color:var(--muted)}
+.scopeseg button:hover{border-color:var(--core); color:var(--core)}
+.scopeseg button[aria-pressed="true"]{background:var(--core); border-color:var(--core); color:#fff}
+.scopeseg button:focus-visible{outline:2px solid var(--core); outline-offset:2px}
+
+/* 「虛線字可以點」的提示(.termhint/.fakedot)已升格成全站元件 → assets/ui.css。
+   使用者測試顯示:沒有人自己發現虛線＋問號代表可點。**不要順手刪掉它。** */
+
+/* ── 階段切換與建倉步驟 ─────────────────────────────────────
+   「今天不必做任何事」對已經在跑的人是正確指令，對還沒開戶的人是災難。
+   兩種人要走的路完全不同，所以先分岔再給指令。 */
+.stagebar{display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  padding-bottom:9px; margin-bottom:9px; border-bottom:1px dashed var(--line)}
+.stagebar .k{font-size:13.5px; font-weight:700; color:var(--muted)}
+.stagebar .scopeseg{margin-left:0}
+.buildbox{background:#eef4ff; border:1px solid #b8caea; border-radius:8px;
+  padding:10px 13px; margin:0 0 10px}
+.buildbox .bk{font-size:13px; font-weight:800; color:#2b4a86; margin-bottom:5px}
+.bsteps{margin:0; padding-left:20px; font-size:13.5px; line-height:1.85; color:#22314f}
+.bsteps li{margin-bottom:4px}
+.bsteps li:last-child{margin-bottom:0}
+.bsteps b{color:#16255c}
+.bsteps .amt{background:#fff; border:1px solid #b8caea; border-radius:6px;
+  padding:1px 7px; font-weight:800; font-variant-numeric:tabular-nums}
+
+/* 出處標籤(.src.live / .fixed / .weak)已升格成全站元件 → assets/ui.css。
+   它是本站誠實度的具體實現(新手分不出「今天抓的」與「三年前回測跑出來的」),
+   **重構中最容易被順手弄丟的東西之一。** */
+
+/* ── 風險段落（§8）──────────────────────────────────────────
+   舊版把同一件事拆在「正文紅框」與「頁尾註解」各講一次，共 5+6 塊。
+   合併成一區之後，每一種失效模式只有一張卡。 */
+.rcard{border:1px solid #e7a3a3; border-left:5px solid #c62828; border-radius:8px;
+  background:#fff8f8; padding:11px 13px; margin-bottom:10px}
+.rcard:last-child{margin-bottom:0}
+.rcard .rh{font-size:15px; font-weight:800; color:#8f1d1d; margin-bottom:5px; line-height:1.55}
+.rcard .rp{font-size:13.5px; line-height:1.85; color:#4a3030; margin:0 0 7px}
+.rcard .rp:last-child{margin-bottom:0}
+.rcard .rp b{color:#8f1d1d}
+.rcard .keyn{display:block; background:#fff; border:1px solid #e7c3c3; border-radius:7px;
+  padding:8px 11px; margin:7px 0; font-size:13.5px; font-weight:700; color:#7a1515; line-height:1.75}
+.rcard details.x{border-left-color:#e7c3c3}
+.rcard details.x > summary{color:#8f4a4a}
+.rcard details.x[open] > summary, .rcard details.x > summary:hover{color:#7a1515}
+
+/* ── 名詞小辭典（頁尾）──────────────────────────────────────
+   版面骨架來自 assets/ui.css(#glossList);本頁的頁尾是深藍底,
+   只覆寫顏色。選擇器要用 #glossList 才蓋得過去 —— 用 .gloss 會輸給 ID。 */
+#glossList > div{border-bottom-color:rgba(255,255,255,.16)}
+#glossList .gt{color:var(--gold)}
+#glossList .gd{color:#c8d2ee}
+.glosshunt{border-color:rgba(255,255,255,.28); background:rgba(255,255,255,.10); color:#fff}
+.glosshunt::placeholder{color:#93a2cc}
+.glosshunt:focus-visible{outline-color:var(--gold)}
+
+/* 表頭裡的第二行小字：欄名太短講不清楚時用，例如「實際成本／扣完所有費用」 */
+.th2{display:block; font-weight:600; font-size:.82em; opacity:.72; margin-top:1px}
+/* 四檔正二比較表：本頁選用的那一列要一眼看得出來 */
+#tPick tr.pick{background:#eef4ff}
+#tPick tr.pick td{font-weight:700}
+#tPick td.tk{font-variant-numeric:tabular-nums; white-space:nowrap}
+#tPick .bad{color:var(--warn-ink)}
+/* 「最低」用系統規則色（--core），不用 --up/--down —— 那兩個保留給價格漲跌。 */
+#tPick .best{display:inline-block; font-size:.76em; font-weight:800; padding:0 5px;
+  border-radius:8px; background:var(--core); color:#fff; vertical-align:1px; margin-left:3px}
+#tPick td.bestcell{color:var(--core)}
+
+/* 圖表資料缺漏揭露 */
+.gapnote{margin-top:5px; font-size:11.5px; color:var(--warn-ink); font-weight:600; text-align:center}
+
+@media (max-width:1080px){
+  .three{grid-template-columns:1fr}
+}
+@media (max-width:820px){
+  .scopeseg{margin-left:0; width:100%}
+  .capflow .step{gap:4px}
+  /* 首屏右欄現在多了「資金怎麼切」與兩組切換鈕，.62fr 在手機上會把它擠成一長條。
+     舊版右欄只有一個輸入框，所以一直沒踩到這個問題。 */
+  .herogrid{grid-template-columns:1fr; gap:10px}
+  .heroexpo .v{font-size:clamp(38px,13vw,52px)}
+  .segs{margin-left:0}
+  .capbar{gap:5px}
+  /* 名詞小辭典在窄螢幕改單欄，minmax 的 268px 下限在 320px 裝置會溢出 */
+  .gloss{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition:none !important; animation:none !important}
+}
+/* 820~1080px 原本是死區：兩欄各約 430px，而 table 的 min-width 是 440px
+   → 卡片裡的表格必定橫捲。iPad 直立（834px）與 13" 筆電分割視窗全部落在這一段，
+   所以在 1080px 就先塌成單欄。 */
+@media (max-width:1080px){
+  .two{grid-template-columns:1fr}
+}
+@media (max-width:820px){
+  body{font-size:14px}
+  .wrap{padding:10px}
+  header{flex-direction:column; align-items:flex-start}
+  header .meta{white-space:normal; width:100%}
+  .grid-top{grid-template-columns:1fr}
+  .rangewrap,.two{grid-template-columns:1fr}
+  /* 手機上「今天該持有什麼」必須是第一張卡 —— 舊版塌成單欄後它被推到第二屏。 */
+  .grid-top .act{order:-1}
+  table{min-width:0}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <nav id="apNav"></nav>
+
+  <div id="banner" class="banner"></div>
+
+  <header>
+    <div>
+      <h1>台股槓桿配置儀表板 <span class="ver" id="hVer">—</span></h1>
+      <div class="sub">一套固定規則：平常放著不動，跌深了才分批加碼 —— 對已經發生的價格反應，不預測</div>
+    </div>
+    <div class="meta">
+      <div>指數資料日：<b id="mUpdated">—</b></div>
+      <div>最後抓取：<b id="mFetched">—</b>　加權指數：<b>台灣證券交易所</b></div>
+      <div>估值參考：<b id="mPeSrc">—</b></div>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       S6：8 個 section → 兩層（docs/IA.md §5.6）
+
+       這一頁的讀者已經在跑了，他每次來只問一件事：**今天要不要動手？**
+       改版前那件事被埋在第三段，前面兩段是「這頁是什麼」與「先搞懂三個字」——
+       對第一次來的人是對的，對每週回來的人是每次都要捲過去的兩屏。
+
+       基礎層＝今天該做什麼（原 §3 ＋ §4 的市場狀態與觸發階梯）＋ 三題自我檢核；
+       進階層＝其餘全部，9 個獨立展開器、預設收合、收合狀態記進 ap_state_v2.ui.adv。
+       ═══════════════════════════════════════════════════════════════════ -->
+
+  <!-- ═══ 基礎層 ①：三題自我檢核 ═════════════════════════════════════
+       docs/IA.md §5.6「三個不准動的東西」第 1 條：這是這一頁唯一的
+       「你該不該往下看」判準，**必須留在基礎層最上方**。可以壓縮，不能搬走。
+       改版前它是整整一屏（兩欄的 .intro ＋ 一段四段落的紅框 ＋ 一顆跳轉鈕）；
+       現在是三行 ＋ 一句結論，紅框那四段落搬去下面的「⚠ 最壞會有多壞」（那裡才是
+       它該在的層 —— docs/IA.md §3.3：風險揭露不准折疊，但也不必擋在入口）。 -->
+  <div class="qbox" id="secCheck">
+    <div class="k">往下看之前，先誠實回答自己三題
+      <span class="note">三題都是「是」，這一頁才對你有用</span></div>
+    <ol>
+      <li>這筆錢<b>十年內用不到</b>嗎？（要繳房貸、要結婚、要生小孩的錢都不算。
+        比「🚀 快速開始」第 3 題的<b>五年底線</b>嚴是刻意的：這一頁開槓桿，
+        成本條件變差的回測<b>最久 10 年才回本</b>——依據在下面的「⚠ 最壞會有多壞」）</li>
+      <!-- 金額跟著使用者填的總資金與選的風格走（docs/IA.md §7.2：風險數字一律同時給金額）。
+           改版前寫死「100 萬變成 23 萬」—— 填了 500 萬的人要自己心算。 -->
+      <li id="qCheck2">看到帳上的 <b>100</b> 萬變成 <b>23</b> 萬，你能<b>不賣</b>、繼續照規則做嗎？</li>
+      <li>你願意<b>照規則做</b>，而不是憑感覺加碼或跑掉嗎？</li>
+    </ol>
+    <div class="n">有任何一題猶豫 → 先把錢放在<b>沒有槓桿</b>的地方（例如一般的指數 ETF），
+      那不丟臉，而且長期不見得輸。<br>
+      這一頁是一套<b>寫死的規則</b>：不猜高點、不猜低點、不看新聞，
+      只看<b>大盤從最高點跌下來多少</b>。跌得夠深就把預留的現金投進去，等以後創新高再補回來。
+      <a href="#adv-rules">整套規則就五條 →</a></div>
+    <div class="termhint">💡 這頁凡是<span class="fakedot">有虛線的字</span>都可以
+      <b>點一下</b>看白話解釋；最下面還有一份完整的<b>名詞小辭典</b>。</div>
+  </div>
+
+  <!-- ═══ 基礎層 ②：今天該做什麼（原 §3）════════════════════════════ -->
+  <section class="card hero" id="secToday">
+    <!-- 「今天不必做任何事」對已經在跑的人是對的，對還沒開戶的人是災難性的誤導 ——
+         而後者正是本頁改寫後的主要讀者。所以先問清楚你是哪一種。 -->
+    <div class="stagebar">
+      <span class="k">你現在的狀況：</span>
+      <div class="scopeseg" id="stageSeg" role="group" aria-label="你目前的階段"></div>
+    </div>
+    <div class="heroline" id="hHeadline">—</div>
+    <div class="buildbox" id="buildBox" hidden>
+      <div class="bk">你要做的第一件事</div>
+      <ol class="bsteps" id="bSteps"></ol>
+    </div>
+    <div class="herogrid">
+      <div class="heroexpo">
+        <div class="k">大盤動 1 元，你這份錢會動</div>
+        <div class="v" id="aExpo">—</div>
+        <div class="n" id="aExpoPlain">—</div>
+        <div class="n" id="aProfileName">—</div>
+      </div>
+      <div class="heroalloc">
+        <div class="capbar">
+          <label for="capIn">你要投入的<b>全部</b>資金</label>
+          <input id="capIn" type="number" inputmode="numeric" min="1" max="999999" step="10" value="100">
+          <span>萬</span><span id="capFromPlan"></span>
+        </div>
+        <!-- 金額口徑：舊版的「本金」直接被當成「台股這一份」去乘核心比重，
+             但本頁建議的是台股 40 / 美股 60 —— 填「全部的錢」的人會超配 2.5 倍。 -->
+        <div class="capflow">
+          <div class="step">
+            <span>你的錢怎麼切：</span>
+            <div class="scopeseg" id="capScope" role="group" aria-label="資金範圍"></div>
+          </div>
+          <div class="step" id="capFlowLine" style="margin-top:4px">—</div>
+          <div class="hint" id="capFlowHint">—</div>
+        </div>
+        <div class="capbar">
+          <label>風險風格</label>
+          <div class="segs" id="segProfiles" role="group" aria-label="風險風格"></div>
+        </div>
+        <div class="athbox"><span><span class="sw" style="background:var(--core)"></span>買 2 倍 ETF　<b id="hCoreName">—</b></span>
+          <span><b class="num" id="hCoreAmt">—</b> 萬</span></div>
+        <div class="athbox"><span><span class="sw" style="background:var(--res)"></span>先放著不動的現金（跌深了才用）</span>
+          <span><b class="num" id="hResAmt">—</b> 萬</span></div>
+        <div class="split">
+          <span class="c" id="barCore">核心 —</span><span class="r" id="barRes">準備金 —</span>
+        </div>
+        <div class="fired" id="aFired">—</div>
+        <div class="dots" id="aDots"></div>
+        <div class="tblnote">四種風格差在哪、為什麼推薦均衡型 →
+          <a href="#adv-rules">整套規則就這五條</a>裡有並排的對照表。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 基礎層 ③：市場現在在哪 ＋ 觸發階梯（原 §4 的前兩張卡）════════
+       原 §4 的第三張卡（20 年回撤走勢圖）是「為什麼」不是「今天做什麼」，
+       搬進進階層的 #adv-ddchart。 -->
+  <div class="grid-top" id="secMarket">
+
+    <section class="card">
+      <h2>市場現在在哪</h2>
+      <div class="stat2">
+        <div class="stat">
+          <div class="k">大盤今天收在</div>
+          <div class="v num" id="sClose">—</div>
+          <div class="u">點</div>
+          <div class="chg" id="sChg">—</div>
+        </div>
+        <div class="stat">
+          <div class="k">離最高點跌了</div>
+          <div class="v num" id="sDd">—</div>
+          <div class="u">目前水位</div>
+          <div class="chg" id="sMaxDd">—</div>
+        </div>
+      </div>
+      <div class="athbox">
+        <span>歷史最高點</span>
+        <span><b class="num" id="sAth">—</b> 點　<span id="sAthDate" style="color:var(--muted)">—</span></span>
+      </div>
+      <div class="athbox">
+        <span>這一波跌到最低</span>
+        <span><b class="num" id="sTrough">—</b> 點　<span id="sTroughDate" style="color:var(--muted)">—</span></span>
+      </div>
+      <div class="tblnote">「離最高點跌了多少」是這套規則<b>唯一</b>看的東西
+        （術語叫<button type="button" class="term" data-g="drawdown">回撤</button>）。
+        跌得夠深，才把現金投進去。
+        <a href="#adv-ddchart">大盤這 20 年跌過多深 →</a></div>
+    </section>
+
+    <section class="card act">
+      <h2>跌到哪裡才加碼 <span class="note">（看的是大盤，不是 2 倍 ETF 自己）</span></h2>
+      <div class="ladder" id="aLadder"></div>
+      <div class="tblnote" id="aLadderNote">—</div>
+      <details class="x how">
+        <summary>為什麼是 −25 / −35 / −45？而且第三格其實幾乎沒用過</summary>
+        <div class="body">
+          <p>這三個水位是回測比較過 8 種方案後選的：它的四種條件平均表現最好（Calmar 0.251）、
+            起伏最小、在崩盤期間也最好。<span class="src fixed">回測值</span></p>
+          <p><b>但要誠實講一件事：第三格（−45%）在歷史上從來沒有「單獨」發揮作用。</b>
+            在回測樣本期間內（2000 年 7 月起算），台股的回撤分布在 <b>−32% 到 −58% 之間沒有任何一次事件</b> ——
+            要嘛跌不到 −35%，要嘛一路跌破 −45%。所以歷史上<b>只要跌到 −35%，最後都會再跌到 −45%</b>
+            （樣本內只有 2000 和 2008 兩次）。</p>
+          <p><b>⚠ 但這不代表你可以提早在 −35% 就把剩下的錢全部投完。</b>
+            兩者之間隔了好幾個月，而且價差很大：</p>
+          <div class="scroll"><table>
+            <thead><tr><th>那一輪</th><th>第 2 批（−35%）</th><th>第 3 批（−45%）</th><th>第 3 批便宜多少</th></tr></thead>
+            <tbody>
+              <tr><td>2000 網路泡沫</td><td>2000-10-18　5,432 點</td><td>2000-12-26　4,721 點</td><td class="num risk-num">便宜 13%</td></tr>
+              <tr><td>2008 金融海嘯</td><td>2008-09-05　6,307 點</td><td>2008-10-08　5,206 點</td><td class="num risk-num">便宜 17.5%</td></tr>
+            </tbody>
+          </table></div>
+          <p>1997 那一輪拖得更久：第 2 批到第 3 批隔了 <b>5 個月</b>，而從第 1 批一路到第 3 批<b>橫跨 16 個月</b>（1997-10 → 1999-02）。
+            <b>提早投完等於用貴 13~18% 的價格買同一批貨</b> —— 照規則等，是有代價地在等，不是猶豫。</p>
+          <p>留著第三格的另一個理由是：「歷史上沒發生過」不等於「以後不會發生」。
+            而且把樣本拉回 1995，<b>1995 年那一波最深只到 −36.1%</b>，
+            會觸發 −35 但不會觸發 −45 —— <b>反例是存在的</b>。</p>
+          <p class="tblnote">出處：<code>backtest/tranche_final.py</code>、README「誠實的保留」。
+            ⚠ 這個「空隙」只有 <b>2 個獨立事件</b>支撐，作者自己也說「保留兩檔是為了防它只是樣本偶然，
+            不是因為它被驗證過」。<span class="src fixed">回測值</span></p>
+        </div>
+      </details>
+    </section>
+  </div>
+
+  <!-- ═══ 基礎層 ④：⚠ 最壞會有多壞（L1，不折疊）═══════════════════════
+       docs/IA.md §3.3 的例外條款：風險揭露即使不是「動作」，也不准折疊。
+       本站的核心價值是「不保證你會賺錢，只幫你看清楚最壞會有多壞」——
+       把 −80% 收進「看細節 ⌄」等於把誠實揭露刪掉了。
+
+       這一段的內容全部來自改版前 §1 那個紅框（.introwarn）。搬到這裡的理由：
+       它不是「你該不該往下看」的判準（那是上面三題），而是「你決定要做之後，
+       要先看清楚的代價」—— 所以它屬於基礎層的**結尾**，不是入口。
+       §7.2：凡是風險數字一律同時給金額，而且金額跟著你填的總資金與選的風格走。 -->
+  <section class="worst" id="secWorst">
+    <h2>⚠ 最壞會有多壞</h2>
+    <div class="wline" id="worstLine">—</div>
+    <div class="wgrid" id="worstGrid"></div>
+    <p id="worstNote">—</p>
+    <p><b>撐不住這種數字的人不該用這套。</b>這不是客套話 ——
+      中途賣掉會把「暫時的帳面虧損」變成「真的賠掉的錢」，
+      那是這套規則最常見的失敗原因，<b>比市場本身還常見</b>。</p>
+    <p style="font-size:12.5px">⚠ 上面每一個數字都是<b>回測值</b>（歷史上真的走過的那一條路），
+      <b>不是預測，也不是保證</b>。未來可以更糟：換一個起點、換一段成本條件，數字就會變
+      —— 下面「<a href="#adv-risk" style="color:#8f1d1d">什麼時候會害你賠錢</a>」把六種情況一條一條寫出來了。
+      <span class="src fixed">回測值</span></p>
+    <div id="hProfileWarn"></div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       進階層 —— 全部預設收合。
+       每個 <summary> 都寫成**結論句**（docs/IA.md §3.4）：收合狀態下它是唯一
+       可見的文字，寫成「詳細說明」這種標籤，收合就等於把內容刪掉了。
+       收合狀態由 assets/shell.js 記進 ap_state_v2.ui.adv（只記有 id 的）。
+       ═══════════════════════════════════════════════════════════════════ -->
+  <h2 class="layerhead">進階層 · 這套做法怎麼運作
+    <span class="small">第一次來的人從這裡開始；每週回來看的人可以全部跳過</span></h2>
+
+  <section class="advgroup" id="learn">
+
+  <details class="adv" id="adv-basics">
+    <summary>📘 指數 · ETF · 2 倍槓桿 —— 這三個字看懂，整頁就看得懂了</summary>
+    <div class="body">
+      <div class="three">
+        <div class="lcard">
+          <div><span class="ln">1</span><span class="lt">指數</span></div>
+          <p>把市場上所有公司包成<b>一籃子</b>，用一個數字表示這籃子整體漲了還是跌了。</p>
+          <p>台灣這個籃子叫<b>加權指數</b>，也就是大家說的「大盤」。它裡面有台積電、鴻海……
+            上市的公司幾乎都在裡面。</p>
+          <div class="eg">所以「大盤跌 10%」的意思是：<b>整個市場</b>平均縮水一成，
+            不是某一家公司出事。</div>
+        </div>
+        <div class="lcard">
+          <div><span class="ln">2</span><span class="lt">ETF</span></div>
+          <p>一種可以像股票一樣買賣的商品，但你買的<b>不是一家公司</b>，
+            而是「一整籃子」。</p>
+          <p>買一張追蹤大盤的 ETF，等於把錢分散到幾百家公司。<b>你不需要挑股票</b>，
+            也不會因為某一家倒了就血本無歸。</p>
+          <div class="eg">好處是<b>省事又分散</b>；代價是你永遠只能拿到市場的平均，
+            不會有「押中一支飆股」這種事。</div>
+        </div>
+        <div class="lcard">
+          <div><span class="ln">3</span><span class="lt">2 倍槓桿</span></div>
+          <p>一種<b>把漲跌都放大兩倍</b>的 ETF。大盤漲 1%，它大約漲 2%；
+            大盤跌 1%，它大約跌 2%。</p>
+          <p>台股有<b>四檔</b>可以選，這頁用的是 <b>00685L</b>（群益臺灣加權正2）——
+            因為它追的正是本頁在看的<b>加權指數</b>（下面那顆按鈕有四檔的比較）。
+            它靠期貨做到兩倍，<b>不是跟你借錢</b>，所以不會被追繳、不會斷頭。</p>
+          <div class="eg">⚠ 放大的是<b>兩邊</b>。大盤跌 40%，它大約跌 <b>64%</b> ——
+            不是你以為的 80%，因為它每天重新計算，跌的路上部位也跟著縮小。
+            <b>但 64% 一樣很痛。</b></div>
+          <div class="eg">它<b>每天</b>重新調整成兩倍，跌了會自動減碼 ——
+            這就是它<b>不會歸零</b>的原因，也是它在盤整時會被磨掉價值的原因。</div>
+        </div>
+      </div>
+      <p class="tblnote" style="margin-top:10px">還有一件新手最容易誤會的事：
+        <b>2 倍 ETF 不適合「買了就完全不管」，但也不會歸零。</b>
+        它每天重新調整成兩倍，所以在上上下下的盤整行情裡會慢慢磨掉價值（叫<button
+        type="button" class="term" data-g="volatility_decay">波動耗損</button>）；
+        但也因為台股每天最多跌 20%，它<b>數學上永遠除不到 0</b>。
+        這兩件事下面都會再講。</p>
+    </div>
+  </details>
+
+  <!-- 四檔正二的比較刻意是**獨立一格**，不是塞在上面那格裡面 ——
+       使用者把教學收合之後，「我到底該買哪一檔」這個問題還是要找得到答案。 -->
+  <details class="adv" id="adv-pick">
+    <summary>🏷 台股正二有四檔，這頁用最便宜、而且追對指數的那一檔 —— 差別比想像中大</summary>
+    <div class="body">
+      <p class="plainlead">四檔的漲跌都是「大盤的兩倍」，但有兩件事不一樣，而且都會影響你拿到多少錢。</p>
+
+      <p class="plainlead"><b>第一，它們追的不是同一個東西。</b>
+        本頁從頭到尾都在看<b>加權指數</b>（大盤）—— 什麼時候算歷史高點、跌多少才加碼、
+        現在貴不貴，全部是算大盤。四檔裡有三檔追的正是大盤；
+        <b>只有 00631L 追的是「台灣50」</b>（大盤裡最大的 50 家）。
+        兩者最大的差別是台積電：它在台灣50 佔 <b>60.9%</b>，在大盤只佔 <b>43.7%</b>。
+        所以買 00631L 而照本頁的訊號操作，你看的和你買的<b>不是同一個指數</b>。</p>
+
+      <p class="plainlead"><b>第二，內扣費用差一倍以上。</b>
+        這筆錢每天從淨值裡扣，你不會收到帳單。下表的
+        <b>「實際成本」</b>比公布的費率更有意義 —— 它是拿真實淨值回推的，
+        把期貨轉倉、價差、追蹤技巧全部算進去了（術語叫 <button type="button"
+        class="term" data-g="alpha_beta">alpha</button>）。</p>
+
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr><th>代號</th><th>它追什麼</th><th>公布內扣</th><th>實際成本<br><span
+                class="th2">扣完所有費用</span></th><th>幾倍<br><span class="th2">越接近 2 越好</span></th>
+              <th>基金規模</th><th>日均成交金額</th><th>掛牌</th></tr>
+          </thead>
+          <tbody id="tPick"></tbody>
+        </table>
+      </div>
+      <p class="tblnote" id="pickFoot">—</p>
+
+      <p class="plainlead" style="margin-top:10px"><b>所以這頁用 00685L</b>：它追的就是本頁在看的大盤，
+        而且實際成本是四檔裡最低的 —— <span id="pickGap">—</span></p>
+
+      <div class="keyn" style="background:#fffbe9;border-color:#ecd79a;color:#6b5410">
+        <b>⚠ 但 00685L 有三件事你必須先知道，不然會踩到：</b>
+        <ol style="margin:6px 0 0;padding-left:20px;line-height:1.85">
+          <li><b>它比較薄。</b>日均成交金額約 <b id="pickV60">—</b> 億，是 00631L 的
+            <b id="pickVRatio">—</b>。更直接的證據：歷史上它有 <b id="pickNt">—</b> 天
+            <b>完全沒有人交易</b>，最長連續 <b id="pickNtRun">—</b> 天（<span id="pickNtWhen">—</span>）。
+            現在已經不是那樣了，但<b>大跌那幾天想立刻買到想要的量，價差可能比 00631L 難看</b>。</li>
+          <li><b>它 2026-07-07 剛做「1 拆 24」。</b>一張的價格從三十幾萬變成一萬出頭 ——
+            門檻變低是好事，但你查它的歷史股價圖時，那一天前後會看起來像暴跌 90 幾 %，
+            那是分割不是虧損。</li>
+          <li><b>本頁的 26 年回測不是用它跑的。</b>回測的合成正二是對 00631L 校準的
+            （見下方風險第 ⑥ 條），不是對 00685L。兩者的「幾倍」很接近
+            （<span id="pickBeta">—</span>），所以回測仍具代表性，但這不是同一檔商品的實測。</li>
+        </ol>
+      </div>
+
+      <p class="tblnote" style="margin-top:9px">另外兩檔追大盤的（00675L、00663L）規則上也可以用，
+        只是實際成本各貴約 <span id="pickAlt">—</span>。<b>00631L 不建議搭配本頁使用</b> ——
+        除了追錯指數，它<b>從 2026-05-19 起還主動加進台積電現貨</b>去強化追台灣50，
+        也就是刻意往離開大盤的方向走（詳見風險第 ④ 條）。</p>
+    </div>
+  </details>
+
+  <details class="adv" id="adv-rules">
+    <summary>📏 整套規則就這五條 —— 平常放著不動、跌深了分批加碼、創新高才把現金補回來</summary>
+    <div class="body">
+      <p class="plainlead">它<b>不靠預測</b>。不猜高點、不猜低點、不看新聞。
+        只有一件事會讓它出手：<b>大盤已經從最高點跌下來多少</b>。
+        跌得夠深就把預留的現金投進去，等以後創新高再把現金補回來。
+        大多數日子的答案是「什麼都不用做」。</p>
+      <ol class="rules" id="oRules"></ol>
+
+      <h3 class="sec">四種風格的差別</h3>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr><th>風格</th><th>買 2 倍 ETF</th><th>留現金</th><th>平常的放大倍數</th><th>今天建議</th><th>現金全投完後</th></tr>
+          </thead>
+          <tbody id="tProfile"></tbody>
+        </table>
+      </div>
+      <div class="tblnote">選不出來就用推薦的<b>均衡型（70/30）</b>。判準只有一個：
+        <b>你能不能在帳面剩兩成的時候不賣掉？</b>能 → 均衡型；不確定 → 往保守方向選一格。
+        往保守選會少賺，但你抱得住才是真的。<b>改風格請回到最上面那排按鈕</b>，
+        上面所有金額會跟著變。</div>
+    </div>
+  </details>
+
+  <details class="adv" id="adv-build">
+    <summary>🛒 我手上還是現金，第一次要怎麼開始買 —— 分批買進，而且全程掛著「跌破就一次投完」的加速器</summary>
+    <div class="body">
+      <ol>
+        <li><b>先決定速度。</b>用下面的「現在貴不貴」溫度計決定要分幾個月買進，
+          慢慢把錢投到目標比例。<br>
+          分批<b>不是</b>在挑時機 —— 回測顯示今天的估值對未來一年幾乎沒有預測力
+          （相關程度只有 <b>−0.026</b>，等於零）。分批純粹是<b>讓你自己心裡好過一點</b>的工具，
+          好讓你不會在買完隔天大跌時崩潰賣掉。</li>
+        <li><b>買的過程中隨時掛著「加速器」。</b>只要大盤從最高點跌破
+          <span data-r="accel">—</span>，就把<b>還沒投進去的那部分核心</b>一次投完
+          （注意：是核心還沒投的部分，<b>不是你全部的錢</b>）。<br>
+          這條很重要：<b>只分批、不掛加速器，長期成績會明顯變差。</b>
+          下面那個「分批 vs 一次投入的完整數字」可以點開看。</li>
+        <li>買完之後這條規則就結束了，之後只看上面的加碼水位。
+          記得把最上面切換成「我已經照這套在跑了」。</li>
+      </ol>
+      <details class="x how">
+        <summary>分批 vs 一次投入的完整數字（以及一個重要的資料警告）</summary>
+        <div class="body">
+          <p>持有 15 年、每 100 萬本金、1995-2026 共 190 個起點的<b>終值中位數</b>：</p>
+          <p>一次投入 <b>661 萬</b>｜分批 12 個月 521 萬｜分批 24 個月（沒有加速器）<b>465 萬</b><br>
+             分批 12 個月＋跌 20% 加速 664 萬｜<b>分批 24 個月＋跌 25% 加速 667 萬</b>（本頁採用）</p>
+          <p>最差情境也從一次投入的 146 萬提高到 174 萬。結論是：
+            <b>慢慢分批單獨用會把中位數砍掉三成，配上加速器才追得回來。</b></p>
+          <p class="tblnote">⚠ <b>資料誠實揭露：</b>上面這組數字在本專案的 <code>backtest/</code>
+            資料夾裡<b>找不到能重新產生它的腳本</b>（現有的 <code>wait_for_crash.py</code>
+            沒有 24 個月、也沒有加速器）。它是 V2.2 當時的試算結果，腳本沒有保留下來。
+            <b>其他數字都可以重跑驗證，這一組不行 —— 請把它當成參考而非證據。</b>
+            <span class="src weak">來源待補</span></p>
+        </div>
+      </details>
+    </div>
+  </details>
+
+  <details class="adv" id="adv-value">
+    <summary>🌡 現在貴不貴？<span id="sumPace">—</span> ——
+      貴只影響<b>買多慢</b>，不影響<b>買多少</b></summary>
+    <div class="body">
+      <div class="thermo">
+        <div class="row1">
+          <span class="pe" id="vPe">—<small>倍</small></span>
+          <span class="pct">市場<button type="button" class="term" data-g="pe_ratio">本益比</button>　資料日 <span id="vAsOf">—</span></span>
+        </div>
+        <div class="bar"><span class="mark" id="vMark" style="left:0%"></span></div>
+        <div class="barlab" id="vScale"></div>
+        <div style="text-align:center;margin-top:6px;font-size:14px;font-weight:800">
+          比過去 <span id="vPct" style="color:#9b1c1c">—</span>% 的時候都貴
+        </div>
+        <div class="tblnote" id="vDrop" style="text-align:center"></div>
+        <div class="tblnote" id="vPeBasis" style="text-align:center"></div>
+        <div class="pace">
+          <div class="k">建議分幾個月把錢投進去</div>
+          <div class="v" id="vPace">—</div>
+          <div class="n" id="vPaceNote">—</div>
+        </div>
+      </div>
+
+      <div class="accel">
+        <div class="k">⚡ 建倉加速器（由<b>大盤跌幅</b>觸發，跟貴不貴無關）</div>
+        <div class="v" id="vAccel">—</div>
+        <div class="n" id="vAccelNote">—</div>
+        <details class="x how"><summary>「核心剩餘額度」到底是多少錢？</summary>
+          <div class="body" id="vAccelDef">—</div>
+        </details>
+      </div>
+
+      <details class="x how">
+        <summary>本益比這 30 年的走勢</summary>
+        <div class="body">
+          <div class="chartwrap" style="min-height:150px" tabindex="0" role="group" aria-label="本益比走勢圖，可用左右方向鍵逐月檢視">
+            <svg id="peChart" viewBox="0 0 660 220" preserveAspectRatio="xMidYMid meet" role="img"
+                 aria-label="市場本益比歷史走勢"></svg>
+            <div class="tip" id="peTip"></div>
+          </div>
+        </div>
+      </details>
+
+      <p class="tblnote"><b>本益比不用來決定槓桿倍率，只用來決定買進速度。</b>
+        回測測過 4 種映射家族共 8 個變體，沒有一個打敗固定槓桿 ——
+        原因寫在頁尾「為什麼『貴就減碼』這條直覺在回測裡完全沒有保護效果」。
+        <span class="src fixed">回測值</span></p>
+    </div>
+  </details>
+
+  </section><!-- /#learn -->
+
+  <h2 class="layerhead">進階層 · 證據與風險
+    <span class="small">這些數字支撐（或不支撐）上面那套規則 —— 決定要不要做之前該讀一次</span></h2>
+
+  <section class="advgroup" id="evidence">
+
+  <details class="adv" id="adv-ddchart">
+    <summary>📉 大盤這 20 年跌過多深 —— 紅色虛線就是加碼水位，看得出來「跌到 −25%」不是每年都有</summary>
+    <div class="body">
+      <div class="chartwrap" tabindex="0" role="group" aria-label="回撤走勢圖，可用左右方向鍵逐月檢視">
+        <svg id="ddChart" viewBox="0 0 660 340" preserveAspectRatio="xMidYMid meet" role="img"
+             aria-label="加權指數自歷史高點回撤走勢"></svg>
+        <div class="tip" id="ddTip"></div>
+      </div>
+      <div class="chartfoot" id="ddFoot">紅色虛線是「該加碼了」的水位</div>
+      <div class="gapnote" id="ddGap"></div>
+      <p class="tblnote">0% 是<b>當時</b>的最高點，不是今天的最高點 ——
+        所以這條線每次創新高就會回到 0，中間那些深谷才是這套規則真正出手的日子。</p>
+    </div>
+  </details>
+
+  <details class="adv" id="adv-backtest">
+    <summary>📊 這套做法過去 26 年的成績 —— 而且它<b>不是</b>表上 Calmar 最好的一列
+      <span class="src fixed">回測值</span></summary>
+    <div class="body">
+      <p class="tblnote">怎麼看這張表：<b>終值</b>＝一塊錢變成幾塊錢；
+        <b><button type="button" class="term" data-g="cagr">年化報酬</button></b>＝平均一年賺幾 %；
+        <b><button type="button" class="term" data-g="mdd">最大回撤</button></b>＝最慘的時候帳面少掉幾 %；
+        <b><button type="button" class="term" data-g="calmar">Calmar</button></b>＝年化報酬 ÷ 最大回撤，<b>數字越大代表「賺得值不值得忍」越划算</b>；
+        <b><button type="button" class="term" data-g="longest_underwater">最長水下</button></b>＝最久隔多久才回到原本的錢。
+        期間<span id="btSpan"></span>。</p>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>做法</th><th>平均放大倍數</th><th>終值</th><th>年化報酬</th><th>最大回撤</th><th>Calmar</th><th>最長水下</th></tr></thead>
+          <tbody id="tBt"></tbody>
+        </table>
+      </div>
+      <div class="tblnote" id="btGateNote"></div>
+      <div class="tblnote">
+        <b>本頁採用的 70/30 不是這張表 Calmar 最高的一列</b> —— 50/50 是 0.246、60/40 是 0.243，
+        都高於 70/30 的 0.238。選 70/30 的理由是<b>終值</b>（63.07 倍 vs 50/50 的 52.95 倍，高 19%），
+        代價是最大回撤多 5.7 個百分點。
+        <b>想少痛一點就往保守選一格，這張表把代價寫清楚了。</b>
+      </div>
+
+      <h3 class="sec">⚠ 但如果把起點往前挪五年半，結論會變<span style="font-weight:600;color:var(--muted)" id="btcSpan"></span></h3>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>同一套做法，改用共同期間</th><th>平均放大倍數</th><th>年化報酬</th><th>最大回撤</th><th>Calmar</th><th>最長水下</th></tr></thead>
+          <tbody id="tBtc"></tbody>
+        </table>
+      </div>
+      <div class="tblnote">
+        起點從 2000-07 往前挪到 1995-01（把 1997 年亞洲金融風暴含進來）之後，
+        同一套做法的 Calmar 從 <b>0.238 掉到 0.170</b>，而<b>美股的 S&amp;P500 2x 反而是 0.182</b>。
+        <br><b>這代表什麼：</b>「台股比較好」這個結論<b>撐不住</b> ——
+        它有一部分只是因為起點挑在 2000 年網路泡沫破掉<b>之後</b>。
+        這正是下面「<a href="#adv-blend">錢要分給幾個市場</a>」存在的理由。
+        <br>⚠ 這 0.068 的差距不能全算在起點頭上：兩張表的「年」定義不同
+        （一張用交易日÷252、一張用日曆年），換算到同一把尺之後大約是 <b>0.22 對 0.17</b> ——
+        <b>方向完全不變</b>，只是差距沒有帳面上看起來那麼大。
+      </div>
+    </div>
+  </details>
+
+  <details class="adv" id="adv-blend">
+    <summary>🌏 錢要分給幾個市場 —— 全押台股會用掉一倍的「風險額度」，同時持有美股只要一半</summary>
+    <div class="body">
+      <p class="plainlead">
+        <!-- 這一句由 paintCapFlow() 跟著「你的錢怎麼切」一起換。寫死不行：
+             上半部到底是「全部的錢」還是「台股那一份」，取決於上面選了哪一顆。 -->
+        <span id="bScopeNote">—</span><br>
+        重點是<b>同時持有</b>台股和美股，不是「把台股換成美股」。理由不是美股會賺比較多 ——
+        而是<b>全部押在台股上，風險已經開到接近極限</b>：
+        單押台股正二時，你的部位相當於「理論最大值」的
+        <b><span id="bKellyTw">—</span></b>（術語叫<button type="button" class="term" data-g="kelly">凱利</button>），
+        而理論最大值只要對未來的假設錯一點點，複利就會被摧毀。
+        分散之後同樣的持倉降到約 <b><span id="bKellyMix">—</span></b>，<b>安全邊際多了一倍</b>。
+      </p>
+
+      <div class="rangewrap">
+        <div class="rangebox tw"><div class="k">台股 2 倍</div><div class="v" id="bRangeTw">—</div>
+          <div class="n">00631L；內部一樣是 70 / 30（本頁上半部）<br><span id="bRangeTwAlt">—</span></div></div>
+        <div class="rangebox spx"><div class="k">美股 S&amp;P500 2 倍</div><div class="v" id="bRangeSpx">—</div>
+          <div class="n">SSO；美股這份內部同樣 70 / 30<br><span id="bRangeSpxAlt">—</span></div></div>
+      </div>
+
+      <div class="split">
+        <span class="tw" id="bBarTw">台股 —</span><span class="spx" id="bBarSpx">SPX —</span>
+      </div>
+      <div class="legend" id="bDemoNote">—</div>
+
+      <div class="kelly">
+        <div class="k">⚖ 你的部位用掉了多少「風險額度」</div>
+        <div class="v" id="bKelly">—</div>
+        <div class="n">同樣的錢、同樣的曝險，風險額度用掉一半就好 —— 這是分散化最實質的好處</div>
+      </div>
+
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr><th>配置</th><th>年化報酬</th><th>波動</th><th>最大回撤</th><th>Calmar</th>
+                <th>最長水下</th><th>風險額度用掉</th><th>15 年中位</th><th>15 年最差</th></tr>
+          </thead>
+          <tbody id="tBlend"></tbody>
+        </table>
+      </div>
+      <div class="tblnote" id="bFoot">—</div>
+
+      <details class="x">
+        <summary>40 / 60 這個比例可以改嗎？可以，而且改了幾乎沒差 —— 不知道怎麼選就照抄</summary>
+        <div class="body">
+          <p>這<b>不是最佳解，是「省得你選」</b>。落在 台股 30~50% 之間的任何一組，
+            統計上都分不出高下：全部掃過一遍，最好和次好的差距小到<b>低於你換股要付的手續費</b>。</p>
+          <p>而且「哪一組最好」這件事<b>沒有預測力</b>：把歷史切成前後兩半，
+            前半段的冠軍拿到後半段只排到第 28 名（共 66 組）。
+            帳面上的冠軍多半只是被某一場崩盤單獨決定的。</p>
+          <p><b>唯一撐得住的結論只有兩個</b>：分散比單押台股好、以及<b>不要單押任何一個市場</b>。
+            區間內的差異不值得你花時間，<b>區間外（全押一個市場）才是真的會被懲罰的決定</b>。</p>
+          <div class="scroll"><table>
+            <thead><tr><th>成本情境</th><th>最佳的台股比重</th><th>最佳 Calmar</th>
+              <th>現行台股 40</th><th>差</th></tr></thead>
+            <tbody id="tFlat"></tbody>
+          </table></div>
+          <p class="tblnote"><span id="nFlatSpan">—</span>。最佳點會從 40% 移到 30%，
+            但現行的 40% 在三種情境下都排第一或第二，最多只差 0.002 Calmar。</p>
+          <p><b>那多買台股一點呢？</b>台股 60 / 美股 40 在歷史成本下的終值確實比較高，
+            但那個優勢<b>全部來自 2024 年起的兩年半</b>。把那段拿掉重跑，40/60 每一項都贏。
+            更重要的是形狀：</p>
+          <div class="scroll"><table>
+            <thead><tr><th>成本情境</th><th>台股60 贏的機率</th><th>台股60 最差的十五年</th><th>台股40 最差的十五年</th></tr></thead>
+            <tbody id="tFlat60"></tbody>
+          </table></div>
+          <p>注意第一列：<b>台股 60 贏了七成五的時候，但最慘的那一次輸得更慘</b> ——
+            常常小贏、偶爾大輸，這是槓桿部位<b>最不該有的形狀</b>。
+            在最近三年的實際成本下，它只贏 <b id="nWin60">—</b> 的時候，
+            最慘的十五年是 <span class="risk-num">0.90 倍（投了十五年還在虧錢）</span>。</p>
+          <p class="tblnote">⚠ 三件不在回測裡、但真實存在的事：<b><button type="button" class="term"
+            data-g="us_estate_tax">美國遺產稅</button></b>（非美國稅務居民持有美股超過 6 萬美元的部分可能課到 40%，
+            請自行與會計師確認持有方式）、<b>匯率</b>（回測各自用本幣計價；
+            USDTWD 從 2004-03 的 32.02 到 2026-07 的 32.38，22.3 年年化 +0.05%，長期打平但仍是波動來源）、
+            以及<b>你抱得住哪一個</b>。這三項都可能讓你合理地多配台股 ——
+            但它們不是「台股會漲比較多」。</p>
+          <p class="tblnote">⚠ 上面「分散比單押好」的統計檢定
+            （勝率 <b id="bBoot">—</b>、90% 區間 <b id="bBootCi">—</b> <b id="bBootZero">—</b>）
+            是在<b id="bBootUniv">—</b>上做的，那斯達克從本頁移除後<b>沒有重算</b>。
+            而且區間下界只有 +0.0014，<b>幾乎貼著 0 —— 這個結論只是剛好過關，不是壓倒性的</b>。
+            <span class="src fixed">回測值</span></p>
+        </div>
+      </details>
+
+      <details class="x">
+        <summary>為什麼沒有那斯達克（QLD）？因為它不是第三個市場，是 S&amp;P500 的科技加強版</summary>
+        <div class="body">
+          <p>先說名詞：<b>QLD</b> 是那斯達克 100 的 2 倍槓桿 ETF，
+            地位相當於台股的 00631L、美股的 SSO，只是它追的是科技股為主的那斯達克。
+            很多人會問「為什麼不乾脆買它」，答案如下。</p>
+          <p>那斯達克 100 有<b>近七成的漲跌就是 S&amp;P500 本身</b>（用統計說是 R² 0.694）；
+            台股只有不到三成能被 S&amp;P500 解釋（R² 0.286）—— <b>台股才是真正的另一個市場</b>。</p>
+          <p>分散的定義是<b>降低整體風險</b>，而那斯達克做不到：把 S&amp;P500 換成那斯達克之後，
+            波動只會單調上升、回撤只會單調加深。它做的是同時放大報酬和風險，那叫加碼，不叫分散。</p>
+          <div class="two">
+            <div>
+              <div class="scroll">
+                <table>
+                  <thead><tr><th colspan="4">從 台股40/SPX60 出發，用那斯達克換掉 SPX</th></tr>
+                         <tr><th>那斯達克比重</th><th>波動</th><th>年化報酬</th><th>最大回撤</th></tr></thead>
+                  <tbody id="tNdxSwap"></tbody>
+                </table>
+              </div>
+              <div class="tblnote">波動單調上升、回撤單調加深。</div>
+            </div>
+            <div>
+              <div class="scroll">
+                <table>
+                  <thead><tr><th colspan="3">真要分散，加什麼比那斯達克有效（都是 1 倍）</th></tr>
+                         <tr><th>資產</th><th>與美股的連動</th><th>加 10% 後波動變化</th></tr></thead>
+                  <tbody id="tDiv"></tbody>
+                </table>
+              </div>
+              <div class="tblnote">那斯達克 1 倍是同基準對照組，而它<b>倒數第二</b>。</div>
+            </div>
+          </div>
+          <p class="tblnote">⚠ 左右兩表<b>算法不同、不可橫向比較</b>：左表是滿倉、沒有準備金結構的版本，
+            右表全部是 1 倍資產。決定移除那斯達克的依據不是「它很爛」，
+            而是掃描本來就把它的最佳比重壓在 0~10%，而 0 與 10 的差別在雜訊內 ——
+            台股40/SPX60 的 Calmar 只差 0.003，但 15 年最差、最長水下、波動三項都更好。</p>
+        </div>
+      </details>
+    </div>
+  </details>
+
+  <!-- ═══ 什麼時候會害你賠錢（原 §8）══════════════════════════════════
+       docs/IA.md §5.6「三個不准動的東西」第 2 條：六張卡**可以收合**，
+       但每一張的 <summary> 必須是那條風險的**結論句** —— 原本的 .rh 標題
+       已經是了，直接拿來當 summary，一個字都不改。
+       收合狀態下這一格底下就是六行結論句，等於一張「這套做法會怎麼害你」的清單。 -->
+  <details class="adv" id="adv-risk">
+    <summary>⚠ 這套做法什麼時候會害你賠錢 —— 六種情況，每一種都<b>真的發生過</b>，或<b>正在發生</b></summary>
+    <div class="body">
+      <p class="plainlead">下面每一條都不是「理論上的風險」，而是<b>回測裡真的發生過</b>、
+        或是<b>現在正在發生</b>的事。每一行標題就是那條風險的結論，點開才是證據。</p>
+
+      <div class="rcard">
+        <details class="x risky">
+          <summary>① 跌深之後如果很久不創新高，你會被鎖在「滿倉」狀態 —— 而且降低槓桿救不了你</summary>
+          <div class="body">
+            <p class="rp">這套規則靠「創新高」把現金補回來。<b>如果指數很多年不創新高，現金就永遠補不回來。</b>
+              三批現金在跌 45% 時全部投完之後，<b>不管你選哪種風格，都會變成 100% 持有 2 倍 ETF</b>，
+              也就是放大兩倍，而且只有創新高才降得下來。</p>
+            <div class="keyn">台股從 2000 年 2 月的 10,202 點，一直到 <b>2017 年 6 月</b>才突破 ——
+              那 <b>17 年</b>裡，這套規則會一路滿倉。</div>
+            <p class="rp"><b>最違反直覺的一點：</b>在這種情境下，<b>選比較保守的風格幾乎不會讓你少痛</b>，
+              因為現金投完之後所有風格都收斂到同樣的兩倍。它只會改善<b>最後拿到多少錢</b>。
+              <b>這是這套做法最根本的弱點，所有設計都只能減輕、不能根治。</b></p>
+            <details class="x">
+              <summary>實測數字：1997 年進場、持有 15 年，四種風格的結果</summary>
+              <div class="body">
+                <div class="scroll"><table>
+                  <thead><tr><th>風格</th><th>平常的放大倍數</th><th>15 年後</th><th>最大回撤</th></tr></thead>
+                  <tbody id="tA1997"></tbody>
+                </table></div>
+                <p><b>除了最積極的 80/20 之外，其餘設定的最大回撤一模一樣</b> ——
+                  因為那個回撤<b>不是發生在 1997-2002，是發生在 2008 年金融海嘯</b>：
+                  2000-2002 那場崩盤把現金全部投完，指數到 2007 年都沒創新高、現金從未補回，
+                  於是所有風格都以兩倍的部位硬吃了金融海嘯。</p>
+                <p class="tblnote">⚠ 1997 只有 <b>1 個獨立事件</b>（7 個重疊的月起點），
+                  而且那段沒有真實的股利資料（用每年 3.8% 回填）。
+                  在一般樣本裡，降低槓桿確實會降低回撤 —— 上表是<b>特定路徑</b>的性質，不是通則。
+                  <span class="src fixed">回測值</span></p>
+              </div>
+            </details>
+          </div>
+        </details>
+      </div>
+
+      <div class="rcard">
+        <details class="x risky">
+          <summary>② 如果你剛好在「很貴」的時候進場：唯一的類比是 1997 年，結果很差</summary>
+          <div class="body">
+            <p class="rp">有紀錄的這 <b id="nPeN">—</b> 個月當中，比今天更貴的只有 <b id="rPeAbove">—</b> 個，
+              分別落在：<span id="rPeYears">—</span>。<b>其中最大的一群是 1997 年</b> —— 那才是真正的「市場很貴」。（2009 年那幾個月看起來也很貴，但那是金融海嘯谷底、
+              公司獲利崩掉造成的假象，當時指數已經從高點跌了 41%，<b>機制完全相反</b>。）</p>
+            <div class="keyn">1997 年那 7 個起點進場、持有 15 年：100 萬只變成 <b>172 ~ 213 萬</b>；
+              隨便挑一天進場的中位數是 <b>660 萬</b>。<br>
+              全部撐過 <b>−83.8%</b> 的回撤，要 <b>4.7 ~ 6.7 年</b>才回本，7 個裡有 6 個<b>第 5 年還在虧</b>。</div>
+            <p class="rp">這就是「現在貴不貴」那張溫度計存在的意義：<b>貴的時候不是不能買，是要買慢一點。</b>
+              但要清楚知道 —— <b>慢也救不了 1997 那種等級的貴</b>。</p>
+            <p class="rp" style="font-size:12.5px">⚠ <b>這兩個數字的樣本性質完全不同，不能當成機率來讀。</b>
+              「172~213 萬」來自 <b>1 個獨立事件</b>（7 個重疊的月起點，全部落在 1997 年 3~9 月），
+              是唯一的一次觀測；「660 萬」來自 190 個高度重疊的起點，而且這些 15 年區間
+              <b>必然都結束在 2010~2026</b>，等於必然吃到兩段大多頭。
+              <br>⚠ 1997 那一段沒有真實的股利資料，是用每年 3.8% 回填的。
+              另外那 −83.8% 的回撤<b>不是發生在 1997 進場後不久，是發生在 2008 年</b>。
+              <span class="src fixed">回測值</span></p>
+          </div>
+        </details>
+      </div>
+
+      <div class="rcard">
+        <details class="x risky">
+          <summary>③ 台股 2 倍 ETF 便宜的原因已經反轉，現在它比美股還貴</summary>
+          <div class="body">
+            <p class="rp">台股正二過去便宜，靠的是台指期的「逆價差」補貼 ——
+              簡單說就是<b>期貨市場願意倒貼錢給你去做多</b>。這件事<b>已經反轉了</b>：
+              原本每年倒貼你 3.22%，2022 年之後變成每年<b>倒收你 5.11%</b>。</p>
+            <div class="scroll"><table>
+              <thead><tr><th>期間</th><th>台股 2 倍</th><th>美股 SSO</th><th>台股便宜多少</th></tr></thead>
+              <tbody id="tCost"></tbody>
+            </table></div>
+            <p class="rp" id="nCost">—</p>
+            <p class="rp"><b>兩邊變貴的原因不一樣，這才是重點。</b>
+              美股 SSO 的成本幾乎完全由聯準會的利率決定（與短期利率的連動高達 <b id="nCostCorr">—</b>）
+              —— <b>降息它就便宜回來</b>。台股這邊是期貨價差，而價差是由「有多少人想開槓桿」決定的，
+              <b>沒有任何機制保證它會回來</b>。
+              <span class="risk-num">美股貴是週期性的，台股貴是結構性的。</span></p>
+            <details class="x">
+              <summary>如果這個便宜完全消失，數字會變成什麼樣</summary>
+              <div class="body">
+                <p>把成本改成最近幾年<b>實際量到</b>的水位（每年多付約 5%）重跑：
+                  只押台股的 Calmar 從 0.170 掉到 <b>0.116</b>、
+                  <b>最長水下從 7.2 年拉長到 10.0 年</b>、
+                  而 15 年最差的那一代<b>開始虧錢</b>（0.76 倍，代表投了十五年還倒賠）。</p>
+                <div class="scroll">
+                  <table>
+                    <thead><tr><th>配置（紅利反轉情境）</th><th>Calmar</th><th>最長水下</th><th>15 年中位</th><th>15 年最差</th><th>虧損比率</th></tr></thead>
+                    <tbody id="tBlendStress"></tbody>
+                  </table>
+                </div>
+                <p><b>「15 年最差 0.76 倍」是這整段最該讓你停下來想一想的數字。</b>
+                  它的意思是：如果你剛好生在那一代，投了十五年之後打開帳戶，錢比放著還少。
+                  而<b>分散到美股的那一列，同樣情境下最差是 1.97 倍</b> —— 這就是分散在保護的東西。</p>
+                <p class="tblnote">⚠ 這裡講的是<b>「紅利反轉」不是「補貼歸零」</b>：
+                  成本從每年 −0.14% 變成 −5.11%，是從「幾乎免費」變成「每年倒貼 5%」，不是變回零。
+                  <br>⚠ 混合那一列是用「含 10% 那斯達克」的組合當<b>代表值</b>，
+                  沒有 40/60 的實際壓測值。<span class="src fixed">回測值</span>
+                  <br>⚠ 另外要分清楚：如果你<b>不用這套規則、直接抱著正二不動</b>，同樣情境下最長水下是
+                  <b>24.3 年</b>、最大回撤 −91.5% —— <b>那才是「準備金 + 回補」這層結構真正在擋的東西</b>。</p>
+              </div>
+            </details>
+          </div>
+        </details>
+      </div>
+
+      <div class="rcard">
+        <details class="x risky">
+          <summary>④ 如果你買的是 00631L，你看的指數和你買的指數<u>正在分開</u></summary>
+          <div class="body">
+            <p class="rp">這一條<b>只在你買 00631L 的時候才適用</b>。本頁預設的 00685L 追的就是大盤，沒有這個問題
+              （四檔的差別見上方「台股正二有四檔」）。</p>
+            <p class="rp">00631L 的名字寫的是「台灣50 正 2」，但它<b>過去</b>是純用<b>臺股期貨</b>建倉的，
+              交付給你的其實是 <b>2 倍的大盤</b> —— 所以拿本頁的大盤訊號去操作它，剛好對得上。
+              歷史數字很乾淨：2015~2026 它對「2× 大盤含息」只差 <b id="nTrkAll">—</b>／年，
+              對「2× 台灣50」則差 <b id="nTrkAll50">—</b>／年。</p>
+            <div class="keyn"><b>但 2026-05-19 元大把它改了。</b>現在它同時持有
+              <b id="nShiftSpot">—</b> 的台積電<b>現貨</b>加上 <b id="nShiftFut">—</b> 的台指期，
+              官方說法是要真的追 2 倍台灣50、<b>和 2 倍大盤「做出區隔」</b>。
+              也就是說，那個「剛好對得上」的巧合<b>正在被刻意取消</b>。</div>
+            <p class="rp">差別的來源是台積電的權重：它在台灣50 佔 <b id="nShiftW50">—</b>、
+              在大盤只佔 <b id="nShiftWTwse">—</b>，差 <b id="nShiftGap">—</b> 個百分點。
+              以前這個差別靠期貨被抹平，現在不會了。</p>
+            <p class="rp"><b>⚠ 但話要說清楚：到今天為止，這件事還「量不出來」。</b>
+              改制後只有 <b id="nShiftDays">—</b> 個交易日，太短。
+              而且同一段期間<b>四檔全部</b>落後理論值約 5 個百分點，包含三檔還在追大盤的 ——
+              那是波動耗損造成的（上方「指數 · ETF · 2 倍槓桿」有解釋），不是換標的造成的。<b>所以這一條是「有依據的預期」，不是「已經觀測到的事實」。</b></p>
+            <div class="scroll"><table>
+              <thead><tr><th>期間（年化）</th><th>00631L 實際</th><th>2× 大盤含息</th><th>差</th><th>2× 台灣50</th><th>差</th></tr></thead>
+              <tbody id="tTrack"></tbody>
+            </table></div>
+            <p class="rp" style="font-size:12.5px">⚠ 上表是 <b>2026-05 改制之前</b>的歷史，仍然有效，
+              但不再描述現在的 00631L。也別把「落後 43 個百分點」讀成「每年虧掉 43%」——
+              那是 <b>+91.9% 對上 +135.0%</b>，<b>兩邊都在大賺</b>，只是一邊賺更多。
+              <span class="src fixed">回測值</span></p>
+          </div>
+        </details>
+      </div>
+
+      <div class="rcard">
+        <details class="x risky">
+          <summary>⑤ 它不會歸零，但會不會讓你賺錢，完全取決於台股還漲不漲</summary>
+          <div class="body">
+            <p class="rp"><b>先講好消息：它數學上不會歸零。</b>兩個機制同時起作用 ——
+              一是它<b>每天自動重設成兩倍</b>（跌了自動減碼，所以永遠減不到 0），
+              二是台股有<b>單日漲跌幅限制</b> —— 個股一天最多動 10%，槓桿 ETF 是它的兩倍，
+              所以每天最多跌 20%、至少剩下 80%，一直乘下去除不到 0。
+              <b>兩個缺一不可</b>：如果你自己拿期貨做兩倍又不每天調整，回測裡是<b>真的會歸零的</b>。</p>
+            <p class="rp"><b>⚠ 但「不會歸零」是一句數學上的話，不是一個保護。</b>
+              在<b>比較樂觀的基準情境</b>裡，模擬 10,000 條路徑最差的結果是剩下 <b id="nMcWorst">—</b> 倍 ——
+              <span class="risk-num">也就是虧掉 98.8%</span>。
+              <b>對你的生活來說，這跟歸零沒有任何差別。</b>
+              所以「不會歸零」這件事<b>不應該</b>成為你敢做這件事的理由 ——
+              它只是說明「不會在某一天突然一次死掉」，不是說明「你不會賠光」。</p>
+            <div class="scroll"><table>
+              <thead><tr><th>30 年後（70/30）</th><th>會虧錢的機率</th><th>只剩不到一成的機率</th><th>輸給不開槓桿的機率</th></tr></thead>
+              <tbody id="tMc"></tbody>
+            </table></div>
+            <p class="rp"><b>真正的結論在第二列。</b>第一列內建了「台股維持過去 31 年含息 +9.8%／年」的假設。
+              <b>一旦台股變成 1990 年之後的日本</b>（含息只有 +2.4%／年），
+              <span class="risk-num">虧錢的機率會從 5.1% 跳到 44.9%</span>，
+              還有 15.6% 的機率 30 年後只剩不到十分之一。</p>
+            <div class="keyn">而且在那個情境下，因為指數一直不創新高、現金投完就沒有補回機制，
+              平均放大倍數還會<b>從 1.62 倍升到 1.74 倍</b> —— 越不賺錢、部位反而越大。<br>
+              <b>這正是上面第 ① 條，只是換成用機率講。</b></div>
+            <p class="rp" style="font-size:12.5px">⚠ <b>這是蒙地卡羅模擬，不是預言。</b>
+              <span id="nMcMethod">—</span> <span class="src fixed">回測值</span></p>
+          </div>
+        </details>
+      </div>
+
+      <div class="rcard" style="border-left-color:var(--warn);border-color:#e8c49a;background:#fffaf3">
+        <!-- 原本寫「三件」，但這張卡一直列了四件（稅／交易成本／內扣／你自己），
+             現在又多了一條「回測算錯」的更正 —— 索性不寫數字，避免下次再加又對不上。
+             ⚠ C16：alphaBug 這一段是**維持揭露、不重跑**（SPEC §10 C16）。 -->
+        <details class="x risky">
+          <summary style="color:#8a4a06">⑥ 回測沒算、以及回測算錯的事 —— 你一定會遇到</summary>
+          <div class="body">
+            <p class="rp" style="color:#4a3a20"><b>稅。</b>本頁所有回測<b>完全沒有計入任何稅</b> ——
+              台灣的證交稅、股利所得稅、二代健保補充保費，以及美股那邊的海外所得與遺產稅，
+              <b>一律都是零</b>。實際拿到手的一定比表上的數字少。</p>
+            <p class="rp" style="color:#4a3a20"><b>交易成本。</b>表層那些績效數字（63.07 倍、−76.7%、0.238）
+              也<b>沒有扣交易成本</b>。專案裡只有驗證用的腳本算過（台股每邊 0.15%，含 0.1% 證交稅），
+              結論是扣完之後這套規則的優勢仍在 —— 但表上的數字本身是未扣的。</p>
+            <p class="rp" style="color:#4a3a20"><b>內扣費用。</b>台股正二每年的內扣費用在
+              <b id="nFeeLo">—</b> 到 <b id="nFeeHi">—</b> 之間（四檔各不相同，見上方「台股正二有四檔」），
+              每天從淨值裡扣，你不會收到帳單，但它一直在。
+              <b>⚠ 注意不要重複計算</b>：那張表裡的「實際成本」<b>已經把內扣包在裡面了</b>
+              （那是拿真實淨值回推的，扣完所有費用之後的結果）。</p>
+            <div class="keyn" style="background:#fff;border-color:#e8c49a;color:#6b4410">
+              <b>⚠ 這一條是本頁自己抓到的錯，先講清楚再往下看。</b><br>
+              回測合成正二用的成本是 <b>−0.14%／年</b>。這個數字<b>是錯的</b> ——
+              它來自的那份 00631L 歷史檔<b>少了 <span id="nBugDays">—</span> 個交易日</b>
+              （<span id="nBugSpan">—</span> 整段不見了），
+              害缺口後的第一天變成一個假的單日大漲，把成本從
+              <b><span id="nBugFix">—</span>／年</b>一路美化到 −0.14%／年。<br>
+              用完整資料重算是 <b><span id="nBugFix2">—</span>／年</b>。也就是說
+              <b>本頁那些 26 年回測的終值，大約高估了 <span id="nBugInfl">—</span></b>。
+              重跑整套回測不在這次的範圍內，所以<b>數字先不動、但錯誤寫在這裡</b>。<br>
+              <span style="font-size:.94em">附帶一件剛好抵掉的事：本頁預設已從 00631L 換成
+              <b>00685L</b>，而 00685L 的實際成本是 <b><span id="nBugNew">—</span>／年</b>，
+              比 00631L 便宜約 <b><span id="nBugSave">—</span> 個百分點</b>。
+              換標的省下來的，量級上和上面高估的差不多 —— 但這是兩件不同的事，不要互相抵銷著看。</span>
+            </div>
+            <p class="rp" style="color:#4a3a20">成本看起來曾經很小，是因為過去被期貨的逆價差補貼抵掉了 ——
+              而那個補貼<b>已經反轉成每年倒收約 5%</b>，也就是上面第 ③ 條。</p>
+            <p class="rp" style="color:#4a3a20"><b>你自己。</b>回測假設你<b>百分之百照規則做</b>，
+              包括在帳面剩兩成的時候還照樣加碼。<b>這是所有假設裡最不可靠的一個。</b></p>
+          </div>
+        </details>
+      </div>
+    </div>
+  </details>
+
+  </section><!-- /#evidence -->
+
+  <footer>
+    <div class="fnote">資料來源：<b>台灣證券交易所（FMTQIK）</b>、<b id="fPeSrc">—</b>。<span id="fPeNote"></span>
+      　本頁為研究參考，<b>非投資建議</b>。
+      　這頁管「何時進場」；<b>總資金怎麼分配、幾歲能退休</b>是姊妹工具
+      <a href="../plan/">① 配資金(Coast FIRE 規劃器)</a> 的主場——配資金、挑時機,兩個一起用才完整。</div>
+
+    <details class="x how" id="glossBox">
+      <summary>📖 名詞小辭典 —— 頁面上每個專有名詞的白話解釋</summary>
+      <div class="body">
+        <input type="search" class="glosshunt" id="glossFilter" placeholder="輸入關鍵字篩選，例如「回撤」">
+        <div class="gloss" id="glossList"></div>
+      </div>
+    </details>
+
+    <details class="x how"><summary>資料從哪來、多久更新一次、本益比是哪一種算法</summary><div class="body">
+      <p><b>更新頻率。</b>加權指數日線與本益比由排程<b>每週一到週六傍晚</b>自動抓取。
+        任何抓取或解析失敗一律<b>不覆寫既有檔案</b>，並在超過 3 天未更新時自動顯示過期橫幅。</p>
+      <p><b>哪些數字是即時的、哪些是固定的。</b>本頁的
+        <span class="src live">每日更新</span> 標籤代表這個數字每天重算（指數、回撤、加碼水位、本益比）；
+        <span class="src fixed">回測值</span> 代表它是一次跑完就固定下來的歷史研究結果，
+        只有作者重跑回測時才會變；
+        <span class="src weak">來源待補</span> 代表產生它的腳本已經找不到，請當參考而非證據。</p>
+      <p><b>本益比的算法落差。</b>本頁的本益比來自 worldperatio，是用 <b>EWT</b>
+        （iShares MSCI Taiwan，一檔追蹤台灣的美國掛牌 ETF）計算的，<b>不是加權指數本身的本益比</b>
+        —— 台灣證交所只公布個股本益比，沒有大盤整體的官方數字。
+        兩者成分不同，所以絕對數值不能直接拿去跟別人講的「大盤本益比」比較。</p>
+      <p>對照一下：另一種常見算法是「加權指數 ÷ 台股實績 EPS」（<span id="nEpsAsOf">—</span>
+        財報為 <span id="nEpsActual">—</span> 元，法人預估 <span id="nEpsEst">—</span> 元）。
+        以最新收盤 <span id="nClose">—</span> 點換算：法人預估版 <b id="nPeEst">—</b>、
+        實績版 <b id="nPeActual">—</b>，而本頁顯示 <b id="nPeHere">—</b><span id="nPeLag"></span>。
+        <b>三者沒有固定的高低順序。</b>
+        ⚠ 上面那組 EPS 是<b>手動填入的固定值</b>（<span class="src fixed">回測值</span>），
+        每季才會更新一次，而收盤價每天都在動。</p>
+    </div></details>
+
+    <details class="x how"><summary>為什麼要「核心 ＋ 現金」兩層，而不是單純開低一點的槓桿</summary><div class="body">
+      <p><b>兩層的方向是相反的，這才是重點。</b></p>
+      <p><b>第一層（核心的 2 倍 ETF）本質是順勢：</b>它每天自動調整，跌了自動減碼、漲了自動加碼。
+        這層負責「<b>永遠不會歸零</b>」—— 如果 2 倍部位不減碼，指數跌 50% 你的錢就歸零了，
+        而台股 2000-2001（−56.3%）與 2008（−58.3%）各發生過一次。</p>
+      <p><b>第二層（準備金）本質是逆勢：</b>只有在指數從高點跌了 25/35/45% 才投入，跌越深投越多。
+        這層負責「<b>震盪盤不會被磨死</b>」。</p>
+      <p>兩層方向相反，正是這套做法在<b>同樣的平均槓桿</b>下打敗「固定開 1.8 倍」的原因
+        （Calmar 0.263 vs 0.211）——<b>不是因為用了比較多槓桿，是因為疊了一層反向的</b>。</p>
+      <p><b>為什麼回補要多等一季。</b>舊規則是「收盤創歷史新高就重置」。逐日量下來，
+        那在台股是一年動手 9 次、美股 27 次 —— 因為美股有 10.8% 的日子在創新高，台股只有 3.8%。
+        加上「距上次回補至少 63 個交易日」之後，台股降到一年 0.6 次、美股 2 次，
+        <b>而績效差異全部落在雜訊內</b>。所以這個改動的理由是「<b>同樣的結果、少動手 20 倍</b>」，
+        不是「這樣比較賺」。</p>
+      <p><b>代價：</b>閘門關著的期間，核心漲、現金不動，比例會自然偏離，曝險會往上漂。
+        台股實測中位 141%、九成時間 ≤ 149%、<b>史上最高到 162%</b>
+        <span class="src fixed">回測值</span>。<b>均衡型偶爾會短暫漂到接近積極型的曝險</b>
+        —— 這是這個改動唯一真正的成本。</p>
+    </div></details>
+
+    <details class="x how"><summary>為什麼「貴就減碼」這條直覺在回測裡完全沒有保護效果</summary><div class="body">
+      <p>這是最反直覺、但證據最一致的一條。回測測過 4 種映射家族共 8 個變體，
+        加上另一位作者公開的真實 5 格表的 5 個變體與 3 個相對分位版，
+        <b>沒有一個打敗固定槓桿</b>。</p>
+      <p><b>原因：本益比的分母（公司獲利）落後價格。</b>崩盤時獲利還沒反映下來，
+        本益比反而看起來很便宜 —— 2008 年 9 月與 11 月的谷底，這個訊號都在叫你上到<b>最高槓桿</b>。</p>
+      <p>更直接的證據：把「估值分位 ≥ 門檻就砍半曝險」拿去測，四個不同門檻的
+        <b>最大回撤一分不差全部是 −71.91%</b>，而年化報酬掉了 0.8 ~ 9.9 個百分點。
+        <b>零保護，純付出。</b></p>
+      <p>⚠ 但要誠實：那張表證明的是「<b>訊號在便宜的頂部沒用</b>」，不是「高估值頂部很安全」——
+        這段樣本裡根本<b>沒有高估值頂部可測</b>，唯一的一個（1997）落在日線資料起點之前。
+        所以本頁只用本益比調<b>買進速度</b>，不用它調<b>槓桿倍率</b>。</p>
+    </div></details>
+
+    <details class="x how"><summary>想看完整的研究過程與所有回測腳本</summary><div class="body">
+      <p>本頁只呈現結論。完整的推導、被否決的方案、以及所有「誠實的保留」，
+        都在專案根目錄的 <code>README.md</code>（約 1,400 行）。</p>
+      <p>回測腳本在 <code>backtest/</code>：主回測 <code>pe_backtest.py</code>、
+        加碼水位 <code>tranche_final.py</code>、1997 類比 <code>analogue_1997.py</code>、
+        跨市場 <code>us_portfolio.py</code>、穩健性 <code>us_robust.py</code>、
+        蒙地卡羅 <code>monte_carlo.py</code>、成本與追蹤 <code>lev_vs_1x.py</code>、
+        回補閘門 <code>us_sleeve_rule.py</code>。</p>
+      <p class="tblnote">⚠ 主回測 <code>pe_backtest.py</code> 依賴另一個 repo 的含息資料檔，
+        無法只靠本專案重新產生。</p>
+    </div></details>
+  </footer>
+</div>
+
+<div id="gpop" role="tooltip" aria-live="polite"></div>
+
+<script src="../assets/state.js"></script>
+<script src="../assets/shell.js"></script>
+<script>
+'use strict';
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var fmt = function (n, d) {
+    return Number(n).toLocaleString('en-US', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 });
+  };
+  var signed = function (n, d) { return (n > 0 ? '+' : n < 0 ? '-' : '') + fmt(Math.abs(n), d); };
+  var cls = function (n) { return n > 0 ? 'pos-num' : n < 0 ? 'neg-num' : ''; };
+  var slash = function (s) { return String(s).replace(/-/g, '/'); };
+  // 全頁 893 行原本沒有出現過「00631L」或「元大」—— 占七成篇幅的主角沒有可交易代號，
+  // 而美股那邊反而明寫 SSO。核心標的名稱一律走這裡，不要再散落三種叫法。
+  var coreLabel = function (d) {
+    var p = d.product;
+    return p && p.ticker ? p.ticker + ' ' + (p.name || '') : '台股 2x 槓桿 ETF';
+  };
+  var NS = 'http://www.w3.org/2000/svg';
+  // 「全押台股 vs 分散」的代價說明會從三個地方指過去(capFlowHint / 建倉步驟兩支),
+  // 深連結一律走這一個常數 —— 展開器改 id 時只要改這裡。
+  var LINK_BLEND = '<a href="#adv-blend">錢要分給幾個市場</a>';
+
+  function showBanner(kind, html) {
+    var b = $('banner'); b.className = 'banner show ' + kind; b.innerHTML = html;
+  }
+
+  function mk(svg, tag, attrs, text) {
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (text != null) e.textContent = text;
+    svg.appendChild(e);
+    return e;
+  }
+
+  /* 指標移動 / 觸控 / 鍵盤 共用的事件綁定。
+     舊版只綁 mousemove —— 頁面在 820px 以下有完整 RWD、手機明顯是一級目標，
+     但觸控裝置完全叫不出 tooltip，鍵盤使用者也無法聚焦。 */
+  function bindProbe(svg, wrap, count, onIndex, onLeave) {
+    var cur = 0;
+    function fromClientX(cx, W) {
+      var r = svg.getBoundingClientRect();
+      if (!r.width) return 0;
+      return (cx - r.left) * (W / r.width);
+    }
+    return {
+      attach: function (hit, W) {
+        function handle(ev) {
+          var t = ev.touches && ev.touches[0];
+          cur = onIndex(fromClientX((t || ev).clientX, W));
+          if (ev.cancelable && t) ev.preventDefault();
+        }
+        hit.addEventListener('mousemove', handle);
+        hit.addEventListener('touchstart', handle, { passive: false });
+        hit.addEventListener('touchmove', handle, { passive: false });
+        hit.addEventListener('mouseleave', onLeave);
+        hit.addEventListener('touchend', onLeave);
+        hit.addEventListener('touchcancel', onLeave);
+        if (!wrap || !wrap.addEventListener) return;
+        wrap.addEventListener('keydown', function (ev) {
+          var step = ev.shiftKey ? 12 : 1, next = cur;
+          if (ev.key === 'ArrowRight') next = Math.min(count - 1, cur + step);
+          else if (ev.key === 'ArrowLeft') next = Math.max(0, cur - step);
+          else if (ev.key === 'Home') next = 0;
+          else if (ev.key === 'End') next = count - 1;
+          else return;
+          ev.preventDefault();
+          cur = onIndex(null, next);
+        });
+        wrap.addEventListener('blur', onLeave);
+      },
+    };
+  }
+
+  /* ── 回撤走勢圖 ───────────────────────────────────────── */
+  function drawDd(hist, levels) {
+    var svg = $('ddChart');
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    if (!hist.length) return;
+
+    // 依容器寬度分檔：固定 viewBox 在 390px 手機上會把 12px 的字縮到 6.4px，
+    // 而右側 74px 的觸發線標籤等於吃掉 21% 的繪圖寬度去畫看不見的字。
+    var narrow = (svg.parentNode && svg.parentNode.clientWidth || 660) < 520;
+    var W = narrow ? 380 : 660, H = narrow ? 260 : 340;
+    var L = narrow ? 34 : 42, R = narrow ? 12 : 74, T = 12, B = narrow ? 24 : 28;
+    var FS = narrow ? 10 : 12;
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    var pw = W - L - R, ph = H - T - B;
+    var lo = Math.min.apply(null, hist.map(function (p) { return p[1]; }).concat([-45]));
+    var yMin = Math.floor((lo - 4) / 10) * 10, yMax = 0;
+    // X 軸依「年月」而非陣列索引 —— ddHistory 有 10 個月缺漏（2008-12、2009-01…），
+    // 按索引等距排點會讓時間軸變成非等距、年份刻度也畫在錯誤的水平位置。
+    var mnum = function (s) { var a = s.split('-'); return Number(a[0]) * 12 + Number(a[1]); };
+    var m0 = mnum(hist[0][0]), mSpan = Math.max(1, mnum(hist[hist.length - 1][0]) - m0);
+    var toX = function (i) { return L + ((mnum(hist[i][0]) - m0) / mSpan) * pw; };
+    var toY = function (v) { return T + ph - ((v - yMin) / (yMax - yMin)) * ph; };
+
+    mk(svg, 'rect', { x: L, y: T, width: pw, height: ph, fill: '#fff', stroke: '#c9d0dd' });
+    for (var v = yMin; v <= 0; v += 10) {
+      mk(svg, 'line', { x1: L, y1: toY(v), x2: L + pw, y2: toY(v), stroke: '#eef1f6' });
+      mk(svg, 'text', { x: L - 6, y: toY(v) + 4, 'text-anchor': 'end', 'font-size': FS, fill: '#5b6478' }, v + '%');
+    }
+    var seen = {}, yrStep = narrow ? 8 : 4;
+    hist.forEach(function (p, i) {
+      var yr = Number(p[0].slice(0, 4));
+      if (yr % yrStep || seen[yr] || p[0].slice(5) !== '01') return;
+      seen[yr] = 1;
+      mk(svg, 'line', { x1: toX(i), y1: T + ph, x2: toX(i), y2: T + ph + 4, stroke: '#9aa4b8' });
+      mk(svg, 'text', { x: toX(i), y: H - 9, 'text-anchor': 'middle', 'font-size': FS, fill: '#5b6478' }, yr);
+    });
+
+    // 加碼觸發線。窄版沒有右側留白，標籤改畫在線的上方左側。
+    levels.forEach(function (t) {
+      var pct = t.level * 100, y = toY(pct);
+      if (pct < yMin) return;
+      mk(svg, 'line', { x1: L, y1: y, x2: L + pw, y2: y, stroke: '#c62828', 'stroke-width': 1.2,
+        'stroke-dasharray': '5 4', opacity: .85 });
+      mk(svg, 'text', narrow
+        ? { x: L + 4, y: y - 3, 'font-size': 10, fill: '#c62828', 'font-weight': 700 }
+        : { x: L + pw + 6, y: y + 4, 'font-size': 11.5, fill: '#c62828', 'font-weight': 700 },
+        '第' + t.no + '批 ' + pct + '%');
+    });
+
+    // 面積 + 線
+    var pts = hist.map(function (p, i) { return toX(i).toFixed(1) + ',' + toY(p[1]).toFixed(1); });
+    mk(svg, 'polygon', { points: L + ',' + toY(0) + ' ' + pts.join(' ') + ' ' + (L + pw) + ',' + toY(0),
+      fill: '#16255c', opacity: .10 });
+    mk(svg, 'polyline', { points: pts.join(' '), fill: 'none', stroke: '#16255c', 'stroke-width': 1.6 });
+
+    var lastI = hist.length - 1;
+    mk(svg, 'circle', { cx: toX(lastI), cy: toY(hist[lastI][1]), r: 4.5, fill: '#d32f2f', stroke: '#fff', 'stroke-width': 1.5 });
+
+    var hov = mk(svg, 'circle', { r: 4, fill: '#16255c', stroke: '#fff', 'stroke-width': 1.5, opacity: 0 });
+    var hit = mk(svg, 'rect', { x: L, y: T, width: pw, height: ph, fill: 'transparent', style: 'cursor:crosshair' });
+    var tip = $('ddTip'), wrap = svg.parentNode;
+
+    function show(sx, forced) {
+      var bi = forced;
+      if (bi == null) {
+        var bd = Infinity;
+        for (var i = 0; i < hist.length; i++) { var dx = Math.abs(toX(i) - sx); if (dx < bd) { bd = dx; bi = i; } }
+      }
+      var r = svg.getBoundingClientRect();
+      hov.setAttribute('cx', toX(bi)); hov.setAttribute('cy', toY(hist[bi][1])); hov.setAttribute('opacity', 1);
+      tip.textContent = hist[bi][0].replace('-', ' / ') + '　回撤 ' + hist[bi][1].toFixed(1) + '%';
+      if (r.width) {
+        tip.style.left = (toX(bi) * r.width / W) + 'px';
+        tip.style.top = (toY(hist[bi][1]) * r.height / H) + 'px';
+      }
+      tip.style.opacity = 1;
+      return bi;
+    }
+    function hide() { hov.setAttribute('opacity', 0); tip.style.opacity = 0; }
+    bindProbe(svg, wrap, hist.length, show, hide).attach(hit, W);
+
+    // 螢幕閱讀器替代：aria-label 只有一句話，拿不到任何數值。
+    var deepest = hist.reduce(function (a, b) { return b[1] < a[1] ? b : a; }, hist[0]);
+    var last = hist[hist.length - 1];
+    svg.setAttribute('aria-label', '加權指數自歷史高點回撤走勢，近 20 年月度。'
+      + '目前 ' + last[1].toFixed(2) + '%（' + last[0] + '）；'
+      + '期間最深 ' + deepest[1].toFixed(2) + '%（' + deepest[0] + '）；'
+      + '加碼觸發線在 ' + levels.map(function (t) { return (t.level * 100).toFixed(0) + '%'; }).join('、') + '。');
+  }
+
+  /* ── P/E 走勢圖（小）───────────────────────────────────── */
+  function drawPe(hist, cur) {
+    var svg = $('peChart');
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    if (!hist.length) return;
+    var W = 660, H = 220, L = 36, R = 16, T = 10, B = 24;
+    var pw = W - L - R, ph = H - T - B;
+    var vs = hist.map(function (p) { return p[1]; });
+    var lo = Math.min.apply(null, vs), hi = Math.max.apply(null, vs);
+    var yMin = Math.floor((lo - 2) / 5) * 5, yMax = Math.ceil((hi + 2) / 5) * 5;
+    // 同樣依年月定位（peHistory 目前無缺漏，但兩張圖的軸算法應一致）
+    var mnum = function (s) { var a = s.split('-'); return Number(a[0]) * 12 + Number(a[1]); };
+    var m0 = mnum(hist[0][0]), mSpan = Math.max(1, mnum(hist[hist.length - 1][0]) - m0);
+    var toX = function (i) { return L + ((mnum(hist[i][0]) - m0) / mSpan) * pw; };
+    var toY = function (v) { return T + ph - ((v - yMin) / (yMax - yMin)) * ph; };
+
+    mk(svg, 'rect', { x: L, y: T, width: pw, height: ph, fill: '#fff', stroke: '#c9d0dd' });
+    for (var v = yMin; v <= yMax; v += 10) {
+      mk(svg, 'line', { x1: L, y1: toY(v), x2: L + pw, y2: toY(v), stroke: '#eef1f6' });
+      mk(svg, 'text', { x: L - 5, y: toY(v) + 4, 'text-anchor': 'end', 'font-size': 11, fill: '#5b6478' }, v);
+    }
+    var seen = {};
+    hist.forEach(function (p, i) {
+      var yr = Number(p[0].slice(0, 4));
+      if (yr % 5 || seen[yr] || p[0].slice(5) !== '01') return;
+      seen[yr] = 1;
+      mk(svg, 'text', { x: toX(i), y: H - 7, 'text-anchor': 'middle', 'font-size': 11, fill: '#5b6478' }, yr);
+    });
+    mk(svg, 'polyline', {
+      points: hist.map(function (p, i) { return toX(i).toFixed(1) + ',' + toY(p[1]).toFixed(1); }).join(' '),
+      fill: 'none', stroke: '#9b1c1c', 'stroke-width': 1.5
+    });
+    mk(svg, 'circle', { cx: toX(hist.length - 1), cy: toY(cur), r: 4, fill: '#d32f2f', stroke: '#fff', 'stroke-width': 1.5 });
+
+    var hov = mk(svg, 'circle', { r: 3.5, fill: '#9b1c1c', stroke: '#fff', 'stroke-width': 1.5, opacity: 0 });
+    var hit = mk(svg, 'rect', { x: L, y: T, width: pw, height: ph, fill: 'transparent', style: 'cursor:crosshair' });
+    var tip = $('peTip'), wrap = svg.parentNode;
+
+    function show(sx, forced) {
+      var bi = forced;
+      if (bi == null) {
+        var bd = Infinity;
+        for (var i = 0; i < hist.length; i++) { var dx = Math.abs(toX(i) - sx); if (dx < bd) { bd = dx; bi = i; } }
+      }
+      var r = svg.getBoundingClientRect();
+      hov.setAttribute('cx', toX(bi)); hov.setAttribute('cy', toY(hist[bi][1])); hov.setAttribute('opacity', 1);
+      tip.textContent = hist[bi][0].replace('-', ' / ') + '　P/E ' + hist[bi][1].toFixed(2);
+      if (r.width) {
+        tip.style.left = (toX(bi) * r.width / W) + 'px';
+        tip.style.top = (toY(hist[bi][1]) * r.height / H) + 'px';
+      }
+      tip.style.opacity = 1;
+      return bi;
+    }
+    function hide() { hov.setAttribute('opacity', 0); tip.style.opacity = 0; }
+    bindProbe(svg, wrap, hist.length, show, hide).attach(hit, W);
+
+    svg.setAttribute('aria-label', '市場本益比歷史月度走勢，' + hist[0][0] + ' 至 '
+      + hist[hist.length - 1][0] + '。最低 ' + lo.toFixed(2) + '、最高 ' + hi.toFixed(2)
+      + '、目前 ' + cur.toFixed(2) + '。');
+  }
+
+  /* ── 渲染 ─────────────────────────────────────────────── */
+
+  /* 名詞小辭典搬到 assets/shell.js —— 全站只有一份(本頁 60 條 + /plan/ 32 條
+     → 合併成 75 條)。本頁只在 init 時告訴殼要掃哪個範圍、跳過哪些容器。 */
+  /* 「三個字先搞懂」的收合狀態改由 assets/shell.js 記進 ap_state_v2.ui.adv ——
+     S6 之後它是 details.adv#adv-basics，跟其餘 8 個展開器走同一套記憶機制。
+     本頁專用的 localStorage 鍵 `2x.lesson3` 隨之退役（SPEC §8.1 已註記）：
+     兩層之後進階層一律預設收合，那個鍵唯一的作用（記住「我已經讀過教學」）
+     現在由殼統一提供，留著只會變成第二份會漂移的真相。 */
+
+  /* ── 深連結：展開 + 捲到位（抄 /plan/ 的 jumpToHash）─────────────────
+     shell.js 的 openHash() 只會 el.closest('details') —— 對 #learn / #evidence
+     這種 <section class="advgroup"> 群組**無效**（它們裡面才是展開器）。
+     而且同一頁內按 <a href="#adv-rules"> 不會重新載入，只有 hashchange 會觸發，
+     所以這裡自己接一份。基礎層的錨點（#secWorst 等）不是 details，照樣能捲。 */
+  function jumpToHash() {
+    var t = $(location.hash.slice(1));
+    if (!t) return;
+    // 目標本身是展開器 → 展開它；是群組 → 展開群組裡的第一個。
+    var d = (t.tagName === 'DETAILS') ? t : (t.querySelector ? t.querySelector('details.adv') : null);
+    if (!d && t.closest) d = t.closest('details');
+    while (d) {
+      d.open = true;
+      d = d.parentElement && d.parentElement.closest ? d.parentElement.closest('details') : null;
+    }
+    /* ⚠ 一定要指定 behavior:'instant'。本頁的 html 有 scroll-behavior:smooth
+       （/plan/ 沒有 —— 所以那邊照抄 scrollIntoView 是對的，這邊不是）。
+       平滑捲動在這裡會被打斷：載入時的兩段式跳轉本來就會連跳兩次，
+       而剛展開的那一段還會因為畫圖／填表改變版面高度，動畫走到一半就停住。
+       實測 `#evidence` 深連結會卡在 scrollY=106（目標 3507）。
+       使用者自己點頁內 <a href="#…"> 仍然是平滑的，那條 CSS 保留。 */
+    if (!t.scrollIntoView) return;
+    try { t.scrollIntoView({ block: 'start', behavior: 'instant' }); }
+    catch (e) { t.scrollIntoView(true); }   // 舊瀏覽器不認 'instant' 會丟 TypeError
+  }
+
+  /* ── 圖表的「展開才畫」───────────────────────────────────────────
+     兩張 SVG 現在都在收合的展開器裡。收合時容器 clientWidth = 0，
+     drawDd() 會判定成窄版（<520 → 380×260 的手機版面），
+     等使用者展開時就卡在手機版面上不會自己改回來。
+     所以：收合狀態不畫，展開的那一刻才畫，並且對所有祖先 <details> 都掛監聽
+     （toggle 事件**不會冒泡**，只綁最外層會漏掉巢狀的那一張）。 */
+  function visible(el) {
+    return !!(el && el.parentNode && el.parentNode.clientWidth > 0);
+  }
+  function bindDraw(svgId, draw) {
+    var svg = $(svgId);
+    if (!svg) return function () {};
+    var run = function () { if (visible(svg)) draw(); };
+    var d = svg.closest ? svg.closest('details') : null;
+    while (d) {
+      d.addEventListener('toggle', run);
+      d = d.parentElement && d.parentElement.closest ? d.parentElement.closest('details') : null;
+    }
+    run();
+    return run;
+  }
+
+  /* 自動註解(SURFACE + annotateTerms)也搬到 assets/shell.js。
+     本頁改用 APShell.annotateTerms(),在 render() 把動態內容填完之後呼叫一次。 */
+
+  function render(d) {
+    var res = d.reserve;
+    // fallback 要用 key 找，不能用陣列索引 —— profiles[1] 是保守 60/40，
+    // 而推薦的是均衡 70/30，抓錯會讓主面板與全頁的 70/30、140% 全面打架。
+    var rec = res.profiles.filter(function (p) { return p.recommended; })[0]
+      || res.profiles.filter(function (p) { return p.key === 'balanced'; })[0]
+      || res.profiles[0];
+
+    $('hVer').textContent = '(' + d.version + ')';
+    // 兩個日期是不同的東西：taiex.date 是指數收盤日、updated 是排程抓取日。
+    $('mUpdated').textContent = slash(d.taiex.date) + '（收盤）';
+    $('mFetched').textContent = slash(d.updated);
+    $('mPeSrc').textContent = d.sources.pe;
+    $('fPeSrc').textContent = d.sources.pe;
+    $('fPeNote').textContent = d.sources.peNote + '。';
+
+    // 市場狀態
+    $('sClose').textContent = fmt(d.taiex.close, 2);
+    $('sClose').style.color = d.taiex.change > 0 ? 'var(--up)' : d.taiex.change < 0 ? 'var(--down)' : 'var(--ink)';
+    var chg = $('sChg');
+    chg.textContent = '今天漲跌　' + signed(d.taiex.change, 2) + '（' + signed(d.taiex.changePct, 2) + '%）';
+    chg.className = 'chg ' + cls(d.taiex.change);
+    $('sDd').textContent = res.curDd.toFixed(2) + '%';
+    var t1Level = res.tranches.length ? res.tranches[0].level * 100 : -25;
+    $('sDd').style.color = res.curDd <= t1Level ? 'var(--core)' : 'var(--ink)';
+    $('sMaxDd').textContent = '這一波最深　' + res.maxDd.toFixed(2) + '%';
+    $('sMaxDd').className = 'chg risk-num';
+    $('sAth').textContent = fmt(res.ath, 2);
+    $('sAthDate').textContent = slash(res.athDate);
+    $('sTrough').textContent = fmt(res.trough, 2);
+    $('sTroughDate').textContent = slash(res.troughDate);
+
+    /* ── 金額口徑：總資金 → 台股這一份 → 核心／準備金 ──────────────
+       舊版的「本金」沒說是哪一筆錢，程式卻直接拿它乘核心比重；而同一頁下方
+       又說上半部只是「台股這一份」（預設 40%）。填「全部的錢」的人會超配 2.5 倍。
+       這裡改成兩段式，並保留「我只做台股」讓不分散的人也能算對。 */
+    var sel = rec;
+    var capital = 100;                 // 總資金（萬）
+    /* 預設「只做台股」。本頁建議的仍然是台股 40 / 美股 60（見進階層的「錢要分給幾個市場」），但預設值不跟著它，
+       理由是可執行性：本頁沒有美股的即時資料，選 40/60 時上半部算出來的金額只有總資金的
+       四成，剩下六成這一頁給不出任何指令（見下方建倉步驟的 ⚠）。讀者多半只有台股帳戶，
+       預設顯示他真正能照做的那一組，代價（風險額度 36% → 73%）就寫在按鈕正下方那一行。
+       用 !== '0' 而不是 === '1'：沒存過 → true（新讀者拿到只做台股），
+       按過「分散」的人存的是 '0' → 保留他自己的選擇，不會被這次改動硬改掉。 */
+    var twOnly = true;                 // 是否只做台股
+    /* 資金來源優先序：本頁自己存過的 > 同站台 ① 配資金填的可投資資產 > 預設 100。
+       只在「本頁從沒存過」時才帶入，使用者一動 capIn 就寫 2x.capital，之後永遠以本頁為準。 */
+    var capFromPlan = false;
+    try {
+      var ownCap = Number(localStorage.getItem('2x.capital'));
+      if (ownCap > 0) {
+        capital = ownCap;
+      } else {
+        // APState.investTotal() 內建同一條優先序;這裡只需要知道「是不是從 ① 配資金帶過來的」
+        var fromPlan = APState.investTotal();
+        if (fromPlan > 0 && fromPlan !== 100) { capital = fromPlan; capFromPlan = true; }
+      }
+    } catch (e) { /* 無痕 */ }
+    try { twOnly = localStorage.getItem('2x.twonly') !== '0'; } catch (e) { /* 無痕 */ }
+    var twPct = (d.blend && d.blend.demo && d.blend.demo.tw) || 40;
+    var spxPct = (d.blend && d.blend.demo && d.blend.demo.spx) || 60;
+    var twCap = function () { return capital * (twOnly ? 1 : twPct / 100); };
+    /* 兩組凱利值都要在 paintCapFlow 之前備妥。§7 的 cur / bst 是在本函式後段才宣告的，
+       而 paintAllocation() 的首次呼叫比那裡早 —— 直接引用會 hoisting 成 undefined，
+       靜靜吃到寫死的 fallback。單押台股(b0) 之前已經搬上來，分散(bBest) 這次一起搬。 */
+    var b0 = (d.blend && d.blend.rows)
+      ? (d.blend.rows.filter(function (r) { return r.tw === 100; })[0] || null) : null;
+    var bBest = (d.blend && d.blend.rows)
+      ? (d.blend.rows.filter(function (r) { return r.best; })[0] || null) : null;
+
+    $('capIn').value = capital;
+    if (capFromPlan && $('capFromPlan')) {
+      $('capFromPlan').innerHTML = '<span class="src live" title="這個數字來自同站台「① 配資金」填的可投資資產。直接改這一格就會以你在本頁填的為準。">來自 ① 配資金</span>';
+    }
+    $('hCoreName').textContent = coreLabel(d);
+
+    // 使用者測試：一個還沒開戶的人看到「今天不必做任何事」，會以為自己不用買；
+    // 但他真正該做的是「開始建倉」。兩種人的指令完全相反，所以先分岔。
+    // 預設是「還沒開始」—— 猜錯的代價不對稱：對新手講「不必做任何事」比對老手多問一次糟得多。
+    var stage = 'new';
+    try { stage = localStorage.getItem('2x.stage') === 'running' ? 'running' : 'new'; } catch (e) { /* 無痕 */ }
+    $('stageSeg').innerHTML =
+      '<button type="button" data-st="new" aria-pressed="' + (stage === 'new') + '">我還沒開始買</button>'
+      + '<button type="button" data-st="running" aria-pressed="' + (stage === 'running') + '">我已經照這套在跑了</button>';
+
+    /* 按鈕名稱只講「內容」不講「權威」：舊版左邊那顆叫「照本頁建議」，說了誰推薦，
+       沒說它是什麼，新手看不出兩顆差在哪。現在一顆講範圍、一顆講作用（分散風險）。
+       順序跟著預設走 —— 被選中的那顆放左邊。哪一顆是本頁的結論交給下面那行提示講。 */
+    $('capScope').innerHTML =
+      '<button type="button" data-tw="1" aria-pressed="' + twOnly + '">我只做台股</button>'
+      + '<button type="button" data-tw="0" aria-pressed="' + (!twOnly) + '">分散風險：台股 '
+        + twPct + ' / 美股 ' + spxPct + '</button>';
+
+    $('segProfiles').innerHTML = res.profiles.map(function (p) {
+      return '<button type="button" data-key="' + p.key + '" aria-pressed="'
+        + (p.key === rec.key) + '">' + p.name + ' ' + (p.baseExposure / 100).toFixed(1) + '倍'
+        + (p.recommended ? ' ★' : '') + '</button>';
+    }).join('');
+
+    function paintCapFlow() {
+      var tw = twCap();
+      $('capFlowLine').innerHTML = twOnly
+        ? '總資金 <b>' + fmt(capital, 0) + '</b> 萬 <span class="arw">→</span> 全部投入台股 <b>'
+          + fmt(tw, 1) + '</b> 萬'
+        : '總資金 <b>' + fmt(capital, 0) + '</b> 萬 <span class="arw">→</span> 台股這份 <b>'
+          + fmt(tw, 1) + '</b> 萬（本頁在管的）　＋　美股這份 <b>'
+          + fmt(capital - tw, 1) + '</b> 萬';
+      /* 只做台股這一支現在是預設可見的文案，所以它必須自己把整件事講完：
+         下面的金額指的是什麼、本頁自己的結論是哪一個、不照結論做的代價、去哪裡讀原因。
+         這是全頁唯一「預設值和本頁研究結論不一致」的地方，那句代價不能省。 */
+      var kTw = (b0 && b0.kelly) || 73, kMix = (bBest && bBest.kelly) || 36;
+      $('capFlowHint').innerHTML = twOnly
+        ? '下面所有金額都是這 <b>' + fmt(tw, 1) + '</b> 萬怎麼分配。'
+          + '<br>⚠ 但<b>本頁的研究結論是「分散」比較好</b>：全押台股時你的部位會用掉 <b>'
+          + kTw + '%</b> 的風險額度，同時持有美股只要 <b>' + kMix
+          + '%</b> —— 安全邊際差一倍。原因見進階層的「' + LINK_BLEND + '」。'
+        : '下面所有金額都是「台股這 <b>' + fmt(tw, 1) + '</b> 萬」怎麼分配。'
+          + '美股那 <b>' + fmt(capital - tw, 1) + '</b> 萬請用 SSO 照同一套規則各自跑'
+          + '（<b>本頁沒有美股的即時資料</b>，高點和跌幅要你自己查）。';
+
+      /* §7 的開場句原本寫死「上面都只是台股那一份」，那是照 40/60 預設寫的；
+         全部的錢都在台股時上半部就是全部，那句話會變成錯的。所以跟著切換一起重寫。 */
+      $('bScopeNote').innerHTML = twOnly
+        ? '你現在選的是<b>「我只做台股」</b>，所以上面那些金額就是你<b>全部的錢</b>。'
+          + '這一段要講的是：這個選擇的代價是什麼。'
+        : '你現在選的是<b>「分散風險：台股 ' + twPct + ' / 美股 ' + spxPct + '」</b>，'
+          + '所以上面那些金額只是<b>台股那 ' + fmt(tw, 1) + ' 萬</b>怎麼分配。'
+          + '這一段要講的是為什麼這樣切。';
+    }
+
+    function paintAllocation() {
+      var tw = twCap();
+      var cw = sel.curCoreW * 100, rw = sel.curReserveW * 100;
+      $('barCore').style.width = cw + '%';
+      $('barRes').style.width = rw + '%';
+      $('barCore').textContent = cw >= 12 ? '2倍 ETF ' + cw.toFixed(0) + '%' : '';
+      $('barRes').textContent = rw >= 12 ? '現金 ' + rw.toFixed(0) + '%' : '';
+      $('aExpo').innerHTML = (sel.curExposure / 100).toFixed(2)
+        + '<span style="font-size:.4em;font-weight:800;margin-left:2px">元</span>';
+      $('aExpoPlain').innerHTML = '大盤跌 1 元，也一樣跌 <b>'
+        + (sel.curExposure / 100).toFixed(2) + '</b> 元<span class="jargon">'
+        + '（術語：淨曝險 ' + sel.curExposure.toFixed(0) + '%）</span>';
+      $('aProfileName').textContent = sel.name + '型　2倍 ETF ' + (sel.coreW * 100).toFixed(0)
+        + ' / 現金 ' + (sel.reserveW * 100).toFixed(0);
+      $('hCoreAmt').textContent = fmt(tw * sel.curCoreW, 1);
+      $('hResAmt').textContent = fmt(tw * sel.curReserveW, 1);
+
+      paintCapFlow();
+      paintA1997();
+      paintLadder();
+      paintAccelDef();
+      paintResearch();
+      paintStage();
+      paintHeadline();
+      paintWorst();
+      paintCheck();
+    }
+
+    /* ── 基礎層的 L1 風險揭露（docs/IA.md §3.3，不折疊）────────────────
+       改版前這一段是寫死的：不管你填多少錢、選哪一種風格，都印
+       「你的帳面會少掉八成、100 萬看到剩 23 萬」。兩個問題：
+         ① 填了 500 萬的人要自己心算；
+         ② −76.7% 是**均衡型 70/30** 的回測值，選積極 80/20 的人實際是 −79.6%，
+            選防禦 50/50 的人是 −71.0% —— 同一個數字對四種風格都說一次，
+            對其中三種是假的。
+       現在兩件事都跟著資料走：backtest.rows 依 coreW/reserveW 對到那一列。 */
+    function btRowFor(p) {
+      var rows = (d.strategy && d.strategy.backtest && d.strategy.backtest.rows) || [];
+      var want = Math.round(p.coreW * 100) + '/' + Math.round(p.reserveW * 100);
+      var hit = rows.filter(function (r) { return String(r.name).indexOf(want) >= 0; })[0];
+      // 對不到就退回「本頁採用」那一列（cur），再退回第一列。名稱格式改過也不會整段消失。
+      return hit || rows.filter(function (r) { return r.cur; })[0] || rows[0] || null;
+    }
+    function paintWorst() {
+      var tw = twCap(), row = btRowFor(sel);
+      if (!row) { $('worstLine').textContent = '—'; return; }
+      var mdd = Math.abs(row.mdd), left = tw * (1 - mdd / 100);
+      // 1997 那種「在最貴的時候進場」的回撤，來自 analogue1997（同一份資料的另一組）
+      var a = (d.strategy && d.strategy.analogue1997 && d.strategy.analogue1997.rows) || [];
+      var a97 = a.filter(function (r) { return r.key === sel.key; })[0];
+      var mc = (d.research && d.research.mc) || null;
+
+      $('worstLine').innerHTML = '你的 <b>' + fmt(tw, 1) + '</b> 萬，最壞的時候會一度只剩 <b>'
+        + fmt(left, 1) + '</b> 萬（' + row.mdd.toFixed(1) + '%）。';
+
+      var cells = [
+        ['一般情況最深', row.mdd.toFixed(1) + '%',
+          '回測 ' + (d.strategy.backtest.span || '') + '，' + sel.name + '型'],
+        ['最久要等多久回本', row.uw.toFixed(1) + ' 年',
+          '同一段回測裡最長的一次「水下」'],
+      ];
+      if (a97) {
+        cells.push(['在最貴的時候進場', a97.mdd.toFixed(1) + '%',
+          '1997 那種進場點，要 4.7 ~ 6.7 年才回本']);
+      }
+      $('worstGrid').innerHTML = cells.map(function (c) {
+        return '<div class="wcell"><div class="k">' + c[0] + '</div>'
+          + '<div class="v">' + c[1] + '</div><div class="n">' + c[2] + '</div></div>';
+      }).join('');
+
+      $('worstNote').innerHTML = '<b>而且上面那個「' + row.uw.toFixed(1)
+        + ' 年」是最樂觀的一把尺。</b>1997 那種進場點要 <b>4.7 到 6.7 年</b>才回本；'
+        + '如果台股的成本條件變差（<a href="#adv-risk" style="color:#8f1d1d">第 ③ 條風險</a>，'
+        + '<b>而且已經在發生</b>），回測裡最久是 <b>10 年</b>。'
+        + '<b>請用「十年」當你的心理準備。</b>'
+        + (mc ? '<br><b>而且槓桿最壞可能幾乎賠光。</b>模擬 10,000 條路徑，最差的一條剩下 <b>'
+            + mc.worstPath.toFixed(3) + ' 倍</b> —— 也就是這 ' + fmt(tw, 1) + ' 萬變成 <b>'
+            + fmt(tw * mc.worstPath, 1) + ' 萬</b>（虧掉 98.8%）。'
+            + '它<b>數學上不會歸零</b>，但對你的生活來說沒有差別。' : '');
+    }
+
+    /* 三題自我檢核的第 2 題要用**他自己的錢**問（docs/IA.md §7.2）。
+       改版前寫死 100 萬 → 23 萬；那對第一次造訪的人剛好正確（預設總資金就是 100），
+       對填過金額的人則是要他自己換算。 */
+    function paintCheck() {
+      var el = $('qCheck2');
+      if (!el) return;
+      var tw = twCap(), row = btRowFor(sel);
+      var left = row ? tw * (1 - Math.abs(row.mdd) / 100) : tw * 0.233;
+      el.innerHTML = '看到帳上的 <b>' + fmt(tw, 1) + '</b> 萬變成 <b>' + fmt(left, 1)
+        + '</b> 萬，你能<b>不賣</b>、繼續照規則做嗎？';
+    }
+
+    /* ── 還沒開始的人要看的東西 ────────────────────────────────
+       使用者測試指出的最大缺口：整頁說「分 18~24 個月買進」，
+       卻從來沒有寫出「所以我這個月要匯多少錢」。那是唯一真正可執行的數字。 */
+    function paintStage() {
+      var box = $('buildBox');
+      if (stage !== 'new') { box.hidden = true; return; }
+      box.hidden = false;
+      var tw = twCap(), coreAmt = tw * sel.coreW, resAmt = tw * sel.reserveW;
+      // pace.months 形如「18 ~ 24 個月」或「0 ~ 3 個月」，取出其中的整數
+      var mm = String(d.pe.pace.months).match(/\d+/g) || ['12'];
+      var lo = Number(mm[0]), hi = Number(mm[mm.length - 1]) || lo;
+      var perMonth = function (m) { return m > 0 ? coreAmt * 10000 / m : coreAmt * 10000; };
+      var money = function (v) { return Math.round(v / 100) * 100; };
+      var amtTxt = (lo === hi || lo === 0)
+        ? '<span class="amt">' + fmt(money(perMonth(hi || 1)), 0) + ' 元</span>'
+        : '<span class="amt">' + fmt(money(perMonth(hi)), 0) + ' ~ '
+          + fmt(money(perMonth(lo)), 0) + ' 元</span>';
+      var ea2 = res.entryAccel;
+
+      var steps = [];
+      steps.push('先開一個<b>證券戶</b>（已經有就跳過），確認買得到 <b>' + coreLabel(d) + '</b>。');
+      steps.push('把要買 2 倍 ETF 的那 <b>' + fmt(coreAmt, 1) + ' 萬</b>，'
+        + '分 <b>' + d.pe.pace.months + '</b>買進 —— 也就是<b>每個月大約投入 ' + amtTxt + '</b>。'
+        + '<br><span style="color:var(--muted)">（分幾個月是下面「現在貴不貴」那張溫度計決定的，'
+        + '現在偏貴所以慢一點。）</span>');
+      if (ea2) {
+        steps.push('這段期間<b>隨時盯著一件事</b>：只要大盤跌到 <b>' + fmt(ea2.triggerIndex, 0)
+          + ' 點</b>（離最高點 ' + (ea2.level * 100).toFixed(0) + '%），'
+          + '就<b>把還沒買的部分一次買完</b>，不要再慢慢分了。');
+      }
+      steps.push('另外那 <b>' + fmt(resAmt, 1) + ' 萬</b>先放定存或短期債<b>不要動</b> —— '
+        + '那是等大盤跌深了才用的（見下方「跌到哪裡才加碼」）。');
+      steps.push('<b>買完之後這一段就結束了</b>，把上面切換成「我已經照這套在跑了」，'
+        + '之後每天只要看加碼水位就好。');
+      /* 兩邊都要有話講。舊版只寫了 !twOnly 那支，而「只做台股」已經是預設路徑 ——
+         預設路徑在步驟清單裡一句提醒都沒有，等於「錢要分給幾個市場」的結論在行動面板上消失。 */
+      if (!twOnly) {
+        steps.push('<b>⚠ 美股那 ' + fmt(capital - tw, 1) + ' 萬：本頁算不出來。</b>'
+          + '規則一模一樣（買 SSO、七三分、跌 25/35/45% 加碼），但<b>本頁沒有美股的即時資料</b>，'
+          + '高點和跌幅要你自己查。如果你不打算做美股，請把上面切成「我只做台股」，'
+          + '<b>但要先讀完進階層的「' + LINK_BLEND + '」</b> —— 全押台股會讓風險用量從 '
+          + ((bBest && bBest.kelly) || 36) + '% 跳回 ' + ((b0 && b0.kelly) || 73) + '%。');
+      } else {
+        steps.push('<b>⚠ 你選的是「只做台股」，所以這 ' + fmt(tw, 1) + ' 萬就是你全部的錢。</b>'
+          + '本頁的研究結論是<b>同時持有台股和美股</b>（買 SSO，規則一模一樣），'
+          + '因為全押單一市場的風險用量是 ' + ((b0 && b0.kelly) || 73) + '%，分散後只要 '
+          + ((bBest && bBest.kelly) || 36) + '%。<b>照上面做之前請先讀完進階層的「' + LINK_BLEND + '」</b>，'
+          + '確認你是知道代價才這樣選的。');
+      }
+      $('bSteps').innerHTML = steps.map(function (t) { return '<li>' + t + '</li>'; }).join('');
+    }
+
+    // 1997 高估值進場的 15 年終值。資料裡的 final 以本金 100 萬為基準，
+    // 所以每一處都要乘 twCap/100 —— 首屏那一行與失效模式表吃的是同一組數字。
+    function paintA1997() {
+      var a = (d.strategy && d.strategy.analogue1997) || null;
+      if (!a || !a.rows || !a.rows.length) { $('hProfileWarn').innerHTML = ''; return; }
+      var k = twCap() / 100;
+      var find = function (key) {
+        return a.rows.filter(function (r) { return r.key === key; })[0] || null;
+      };
+      var mine = find(sel.key), recRow = find(rec.key);
+
+      $('tA1997').innerHTML = a.rows.map(function (r) {
+        return '<tr' + (r.key && r.key === sel.key ? ' class="cur"' : '') + '>'
+          + '<td>' + r.label + '</td>'
+          + '<td class="num">' + r.expo.toFixed(0) + '%</td>'
+          + '<td class="num">' + fmt(r.final * k, 0) + ' 萬</td>'
+          + '<td class="num risk-num">−' + Math.abs(r.mdd).toFixed(1) + '%</td></tr>';
+      }).join('');
+
+      if (!mine) { $('hProfileWarn').innerHTML = ''; return; }
+      /* 使用者測試抓到的最嚴重誤讀：舊寫法只給「32 萬會變成 63 萬」，
+         新手讀成「就算最慘也翻倍」，警告直接變成廣告。
+         真正的訊息是「比正常情況少賺三分之二」，所以一定要把對照組放在同一句裡。
+         MEDIAN15X：1995-2026 不看估值隨便挑一天進場、持有 15 年的終值中位數
+         ＝ 每 100 萬變 660 萬（README「唯一真正的高估值類比是 1997」一節）。 */
+      var MEDIAN15X = 6.60;
+      var bad = mine.final * k, normal = twCap() * MEDIAN15X;
+      var lossPct = normal > 0 ? (1 - bad / normal) * 100 : 0;
+      $('hProfileWarn').innerHTML = '<p style="font-size:12.5px">'
+        + '<b>⚠ 這一行比它看起來嚴重。</b>如果碰上 1997 那種「最貴的時候」進場，'
+        + '這 <b>' + fmt(twCap(), 1) + ' 萬</b>持有 15 年只會變成 <b>' + fmt(bad, 0) + ' 萬</b>。'
+        + '看起來還是有賺，<b>但一般情況的中位數是 ' + fmt(normal, 0) + ' 萬</b> —— '
+        + '<span class="risk-num">等於少掉了 ' + lossPct.toFixed(0) + '%</span>，'
+        + '而且中間要先撐過 −83.8% 的帳面虧損、4.7~6.7 年才回本。'
+        + (sel.recommended || !recRow ? ''
+          : '（推薦的' + rec.name + '型是 ' + fmt(recRow.final * k, 0) + ' 萬。）')
+        + '詳見 <a href="#adv-risk" style="color:#8f1d1d">什麼時候會害你賠錢</a>第 ② 條。</p>';
+    }
+
+    // V2.5 四組研究常數。全部是靜態回測結果，缺任何一組就整段不渲染。
+    function paintResearch() {
+      var R = d.research;
+      // 缺資料時把「那顆補充按鈕」整個藏掉 —— 寧可不出現，也不要出現一張空表讓人以為壞了。
+      var hide = function (id) {
+        var el = $(id);
+        var dt = el && el.closest && el.closest('details');
+        if (dt) dt.style.display = 'none';
+      };
+      /* ⚠ S6 之後六張風險卡本身也是 <details>，所以風險卡裡的表**不能**用 hide()：
+         那會把整條風險（連同它的結論句 summary）一起藏掉 —— 資料掉了不該讓揭露跟著消失。
+         這幾張只藏表格本身的 .scroll 容器，卡片的文字全部留著。 */
+      var hideTable = function (id) {
+        var el = $(id);
+        var box = el && el.closest && (el.closest('.scroll') || el.parentNode);
+        if (box && box.style) box.style.display = 'none';
+      };
+      if (!R) { ['tCost', 'tTrack', 'tMc', 'tFlat'].forEach(hideTable); return; }
+      var pct = function (v) { return (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2) + '%'; };
+      var cl2 = function (v) { return v >= 0 ? 'pos-num' : 'neg-num'; };
+
+      // ③ 持有成本
+      if (R.cost && R.cost.rows) {
+        $('tCost').innerHTML = R.cost.rows.map(function (r) {
+          var gap = r.tw - r.us;
+          return '<tr><td>' + r.span + '</td>'
+            + '<td class="num ' + cl2(r.tw) + '">' + pct(r.tw) + '</td>'
+            + '<td class="num ' + cl2(r.us) + '">' + pct(r.us) + '</td>'
+            + '<td class="num ' + cl2(gap) + '">' + pct(gap) + '</td></tr>';
+        }).join('');
+        var last = R.cost.rows[R.cost.rows.length - 2] || R.cost.rows[0];
+        $('nCost').innerHTML = '怎麼讀這張表：數字是「ETF 實際報酬 − 2 倍指數報酬」，'
+          + '<b>正的代表持有槓桿反而倒賺你錢，負的代表它在扣你錢</b>。'
+          + '最近一段（' + last.span + '）台股是 ' + pct(last.tw) + '／年、美股 '
+          + pct(last.us) + '／年 —— '
+          + (last.tw < last.us ? '<b>台股反而比較貴了</b>。' : '台股仍較便宜。');
+        $('nCostCorr').textContent = (R.cost.ssoIrxCorr < 0 ? '−' : '+')
+          + Math.abs(R.cost.ssoIrxCorr).toFixed(2);
+      } else { hideTable('tCost'); }
+
+      // ⑥ 四檔正二比較（V3.1）。整段缺資料就把補充按鈕整個藏掉 ——
+      //    寧可不出現，也不要出現一張空表讓人以為壞了。
+      if (R.products2x && R.products2x.rows && R.products2x.rows.length) {
+        var P = R.products2x, pr = P.rows;
+        var pick = pr.filter(function (r) { return r.pick; })[0] || pr[0];
+        var big = pr.reduce(function (a, b) { return b.aum > a.aum ? b : a; }, pr[0]);
+        var lowFee = Math.min.apply(null, pr.map(function (r) { return r.fee; }));
+        var bestA = Math.max.apply(null, pr.map(function (r) { return r.alpha; }));  // α 越接近 0 越便宜
+        $('tPick').innerHTML = pr.map(function (r) {
+          var isTw50 = r.idx !== '加權';
+          return '<tr' + (r.pick ? ' class="pick"' : '') + '>'
+            + '<td class="tk">' + r.tk + (r.pick ? ' ★' : '') + '<br><span class="th2">'
+              + r.name + '</span></td>'
+            + '<td' + (isTw50 ? ' class="bad"' : '') + '>'
+              + (isTw50 ? '台灣50<br><span class="th2">⚠ 不是本頁在看的</span>' : '大盤（加權）') + '</td>'
+            // 成本不套 cl2()：pos-num/neg-num 是「價格漲跌」專用的顏色，
+            // 拿來染成本會讓 −1.34%/年 顯示成綠色，讀起來像「好事」。
+            // 這裡只把「最低的那一個」標出來，其餘保持中性。
+            + '<td class="num">' + r.fee.toFixed(2) + '%'
+              + (r.fee === lowFee ? ' <span class="best">最低</span>' : '') + '</td>'
+            + '<td class="num' + (r.alpha === bestA ? ' bestcell' : '') + '">'
+              + pct(r.alpha) + '／年'
+              + (r.alpha === bestA ? ' <span class="best">最低</span>' : '') + '</td>'
+            + '<td class="num">' + r.beta.toFixed(2) + ' 倍</td>'
+            + '<td class="num">' + fmt(r.aum, 0) + ' 億</td>'
+            + '<td class="num">' + r.value60.toFixed(1) + ' 億</td>'
+            + '<td class="num">' + r.listed.slice(0, 7) + '</td></tr>';
+        }).join('');
+        $('pickFoot').innerHTML = '「實際成本」與「幾倍」為共同期間 <b>' + P.common
+          + '</b>（' + (P.rows.length ? '9.3 年' : '') + '）對「每日重設 2 倍的大盤含息」的實測，'
+          + '產出腳本 <code>backtest/tw_2x_products.py</code>，資料為證交所官方日線。'
+          + '公布內扣與基金規模為 MoneyDJ <b>' + P.feeAsOf + '</b> 查證值。'
+          + '日均成交金額為最近 60 個交易日平均 —— <b>用金額不用張數</b>，'
+          + '因為 00685L 剛分割，張數會虛增約 24 倍。';
+
+        // 「便宜多少」用複利講，不要只丟一個百分點差 —— 新手對 1.2% 沒有感覺，對「多兩成」有。
+        var worst = pr.reduce(function (a, b) { return b.alpha < a.alpha ? b : a; }, pr[0]);
+        var yrs = 15, ratio = Math.pow((1 + pick.alpha / 100) / (1 + worst.alpha / 100), yrs) - 1;
+        $('pickGap').innerHTML = '每年便宜 <b>' + Math.abs(pick.alpha - worst.alpha).toFixed(2)
+          + ' 個百分點</b>（' + pct(pick.alpha) + ' 對上 ' + worst.tk + ' 的 ' + pct(worst.alpha)
+          + '），<b>複利 15 年下來終值差約 ' + (ratio * 100).toFixed(0) + '%</b>。';
+        $('pickV60').textContent = pick.value60.toFixed(1);
+        $('pickVRatio').textContent = '約 ' + (pick.value60 / big.value60 * 100).toFixed(0) + '%';
+        $('pickNt').textContent = pick.notrade;
+        $('pickNtRun').textContent = pick.worstRun;
+        $('pickNtWhen').textContent = pick.worstFrom
+          ? slash(pick.worstFrom) + ' ~ ' + slash(pick.worstTo) + '，當時它還很小'
+          : '當時它還很小';
+        $('pickBeta').innerHTML = pick.beta.toFixed(2) + ' 對 ' + big.beta.toFixed(2);
+        var alts = pr.filter(function (r) { return !r.pick && r.idx === '加權'; });
+        $('pickAlt').innerHTML = alts.map(function (r) {
+          return r.tk + ' ' + Math.abs(r.alpha - pick.alpha).toFixed(2) + ' 個百分點';
+        }).join('、') || '—';
+      } else { hide('tPick'); }
+
+      // ④ 標的錯配
+      if (R.tracking && R.tracking.rows) {
+        $('tTrack').innerHTML = R.tracking.rows.map(function (r) {
+          var a = r.etf - r.idx2x, b = r.etf - r.e50x2;
+          return '<tr><td>' + r.span + '</td>'
+            + '<td class="num">' + r.etf.toFixed(2) + '%</td>'
+            + '<td class="num">' + r.idx2x.toFixed(2) + '%</td>'
+            + '<td class="num ' + cl2(a) + '">' + pct(a) + '</td>'
+            + '<td class="num">' + r.e50x2.toFixed(2) + '%</td>'
+            + '<td class="num ' + cl2(b) + '">' + pct(b) + '</td></tr>';
+        }).join('');
+        var all = R.tracking.rows[R.tracking.rows.length - 1];
+        $('nTrkAll').textContent = pct(all.etf - all.idx2x);
+        $('nTrkAll50').textContent = pct(all.etf - all.e50x2);
+      } else { hideTable('tTrack'); }
+
+      // ⑥ 卡片：內扣費用區間 + 本頁自己抓到的 α 資料缺漏錯誤。
+      //    這些數字寫死就會和上面的比較表打架，所以一律吃同一份資料。
+      if (R.products2x && R.products2x.rows) {
+        var fees = R.products2x.rows.map(function (r) { return r.fee; });
+        $('nFeeLo').textContent = Math.min.apply(null, fees).toFixed(2) + '%';
+        $('nFeeHi').textContent = Math.max.apply(null, fees).toFixed(2) + '%';
+        var B = R.products2x.alphaBug;
+        if (B) {
+          $('nBugDays').textContent = B.missingDays;
+          $('nBugSpan').textContent = slash(B.gapFrom) + ' ~ ' + slash(B.gapTo);
+          $('nBugFix').textContent = pct(B.corrected);
+          $('nBugFix2').textContent = pct(B.corrected);
+          $('nBugInfl').textContent = B.final26Inflation.toFixed(1) + '%';
+          var pk = R.products2x.rows.filter(function (r) { return r.pick; })[0];
+          var o631 = R.products2x.rows.filter(function (r) { return r.tk === '00631L'; })[0];
+          if (pk && o631) {
+            $('nBugNew').textContent = pct(pk.alpha);
+            $('nBugSave').textContent = Math.abs(pk.alpha - o631.alpha).toFixed(2);
+          }
+        }
+      }
+
+      // 2026-05-19 的結構變更。數字全部從資料讀 —— 台積電權重會變，寫死就會過期。
+      if (R.products2x && R.products2x.shift) {
+        var S = R.products2x.shift;
+        $('nShiftSpot').textContent = S.tsmcSpot.toFixed(2) + '%';
+        $('nShiftFut').textContent = S.twFut.toFixed(2) + '%';
+        $('nShiftW50').textContent = S.w50.toFixed(1) + '%';
+        $('nShiftWTwse').textContent = S.wTwse.toFixed(1) + '%';
+        $('nShiftGap').textContent = (S.w50 - S.wTwse).toFixed(1);
+        $('nShiftDays').textContent = S.days;
+      }
+
+      // ⑤ 蒙地卡羅
+      if (R.mc && R.mc.rows) {
+        $('nMcMethod').textContent = '方法：' + R.mc.method
+          + '。它假設「未來長得像過去」，如果台股走上完全沒發生過的路，這些機率一樣不準。';
+        $('tMc').innerHTML = R.mc.rows.map(function (r, i) {
+          return '<tr' + (i ? ' class="warnrow"' : '') + '><td>' + r.label + '</td>'
+            + '<td class="num risk-num">' + r.lose.toFixed(1) + '%</td>'
+            + '<td class="num risk-num">' + r.wipe.toFixed(1) + '%</td>'
+            + '<td class="num risk-num">' + r.vs1x.toFixed(1) + '%</td></tr>';
+        }).join('');
+        $('nMcWorst').textContent = R.mc.worstPath.toFixed(3);
+      } else { hideTable('tMc'); }
+
+      // ① 權重曲面
+      if (R.blendFlat && R.blendFlat.rows) {
+        $('nFlatSpan').textContent = R.blendFlat.span;
+        $('tFlat').innerHTML = R.blendFlat.rows.map(function (r) {
+          var gap = r.cur - r.bestCalmar;
+          return '<tr><td>' + r.label + '</td>'
+            + '<td class="num">台股 ' + r.best + '%</td>'
+            + '<td class="num">' + r.bestCalmar.toFixed(3) + '</td>'
+            + '<td class="num">' + r.cur.toFixed(3) + '</td>'
+            + '<td class="num">' + (Math.abs(gap) < 0.0005 ? '±0.000'
+              : (gap >= 0 ? '+' : '−') + Math.abs(gap).toFixed(3)) + '</td></tr>';
+        }).join('');
+        $('tFlat60').innerHTML = R.blendFlat.rows.map(function (r) {
+          return '<tr><td>' + r.label + '</td>'
+            + '<td class="num' + (r.win6040 < 50 ? ' risk-num' : '') + '">'
+            + r.win6040.toFixed(1) + '%</td>'
+            + '<td class="num' + (r.worst6040 < r.worstCur ? ' risk-num' : '') + '">'
+            + r.worst6040.toFixed(2) + 'x</td>'
+            + '<td class="num">' + r.worstCur.toFixed(2) + 'x</td></tr>';
+        }).join('');
+        var lastF = R.blendFlat.rows[R.blendFlat.rows.length - 1];
+        $('nWin60').textContent = lastF.win6040.toFixed(1) + '%';
+      } else { hideTable('tFlat'); }
+    }
+
+    function paintLadder() {
+      var tw = twCap();
+      var nx = res.nextTranche;
+      var rows = ['<div class="lrow now"><span class="node"></span><div class="body">'
+        + '<span class="amt num">' + res.curDd.toFixed(2) + '%</span>'
+        + '<div class="t">今天　' + fmt(d.taiex.close, 0) + ' 點</div>'
+        + '<div class="s">離歷史最高點 ' + fmt(res.ath, 0) + '（' + slash(res.athDate) + '）還差這麼多</div>'
+        + '</div></div>'];
+
+      if (nx) {
+        var prog = Math.max(0, Math.min(1, res.curDd / (nx.level * 100)));
+        rows.push('<div class="lprog"><div class="bar2"><span style="width:'
+          + (prog * 100).toFixed(1) + '%"></span></div>'
+          + '<div class="cap">還要再跌 ' + fmt(Math.abs(nx.distPts), 0) + ' 點（'
+          + Math.abs(nx.distPct).toFixed(2) + '%）才輪到第一批加碼'
+          + '　<span style="font-weight:600">（距離已經走了 ' + (prog * 100).toFixed(0)
+          + '%，還沒到就什麼都不用做）</span></div></div>');
+      }
+
+      rows = rows.concat(res.tranches.map(function (t) {
+        var amt = tw * sel.reserveW * t.share;
+        return '<div class="lrow' + (t.fired ? ' on' : '') + '"><span class="node"></span><div class="body">'
+          + '<span class="amt num">' + fmt(amt, 1) + ' 萬</span>'
+          + '<div class="t">第 ' + t.no + ' 批　大盤跌到 ' + fmt(t.triggerIndex, 0) + ' 點　'
+          + '<span class="rule-num">（' + (t.level * 100).toFixed(0) + '%）</span>'
+          + '　<span class="tag ' + (t.fired ? 'done">已投入' : 'wait">還沒到') + '</span></div>'
+          + '<div class="s">投入現金的 ' + (t.share * 100).toFixed(0) + '%'
+          + '　·　那時 2 倍 ETF 大約會跌 ' + Math.abs(t.leveredDd).toFixed(0) + '%</div>'
+          + '</div></div>';
+      }));
+
+      var rs = res.reset;
+      if (rs && rs.gapDays > 0) {
+        rows.push('<div class="lrow' + (rs.gateOpen ? ' on' : '') + '">'
+          + '<span class="node"></span><div class="body">'
+          + '<span class="amt num">' + fmt(rs.level, 0) + ' 點</span>'
+          + '<div class="t">把現金補回來　' + (rs.gateOpen
+            ? '等創新高　<span class="tag done">時間已滿足</span>'
+            : '還要等 ' + rs.gateIn + ' 個交易日　<span class="tag wait">時間還沒到</span>')
+          + '</div>'
+          + '<div class="s">上次補回 ' + slash(rs.lastDate) + '（' + fmt(rs.lastClose, 0)
+          + ' 點）　·　' + (rs.gateOpen
+            ? '距今 ' + rs.elapsed + ' 個交易日，已滿 ' + rs.gapDays + ' 日'
+            : '約 ' + slash(rs.gateEta) + ' 滿足')
+          + '　·　大盤還需再漲 ' + rs.levelPct.toFixed(1) + '%</div>'
+          + '</div></div>');
+      }
+      $('aLadder').innerHTML = rows.join('');
+
+      var full = res.profiles[0].fullExposure.toFixed(0);
+      var note = '三批全部投完之後 → 放大倍數變成 <b>' + full
+        + '%</b>（也就是滿倉 2 倍），<b>而且只有「把現金補回來」才降得回去</b>。';
+      if (rs && rs.gapDays > 0) {
+        note += '補回來要<b>創新高</b>＋<b>距上次滿 ' + rs.gapDays
+          + ' 個交易日</b>兩個條件同時成立。等待期間核心會漲、現金不動，'
+          + '所以放大倍數會慢慢往上漂 —— 台股實測史上最高漂到 <b>162%</b>'
+          + '<span class="src fixed">回測值</span>。';
+      }
+      $('aLadderNote').innerHTML = note;
+    }
+
+    $('segProfiles').addEventListener('click', function (ev) {
+      var btn = ev.target.closest && ev.target.closest('button[data-key]');
+      if (!btn) return;
+      var p = res.profiles.filter(function (x) { return x.key === btn.dataset.key; })[0];
+      if (!p) return;
+      sel = p;
+      Array.prototype.forEach.call($('segProfiles').children, function (b) {
+        b.setAttribute('aria-pressed', String(b === btn));
+      });
+      paintAllocation();
+    });
+    $('capScope').addEventListener('click', function (ev) {
+      var btn = ev.target.closest && ev.target.closest('button[data-tw]');
+      if (!btn) return;
+      twOnly = btn.dataset.tw === '1';
+      try { localStorage.setItem('2x.twonly', twOnly ? '1' : '0'); } catch (e) { /* 無痕 */ }
+      Array.prototype.forEach.call($('capScope').children, function (b) {
+        b.setAttribute('aria-pressed', String(b === btn));
+      });
+      paintAllocation();
+    });
+    $('capIn').addEventListener('input', function () {
+      var v = Number($('capIn').value);
+      capital = v > 0 ? v : 100;
+      try { localStorage.setItem('2x.capital', String(capital)); } catch (e) { /* 隱私模式 */ }
+      // 使用者親手改過 → 這格已是本頁自己的值,徽章功成身退(之後永遠不再從共享鍵帶入)。
+      if ($('capFromPlan')) $('capFromPlan').innerHTML = '';
+      paintAllocation();
+    });
+
+    var nFired = res.tranches.filter(function (t) { return t.fired; }).length;
+    $('aFired').innerHTML = nFired === 0
+      ? '目前還沒有跌到任何一個加碼水位　<b>維持平常的配置就好</b>'
+      : '已經加碼 <b>' + nFired + ' / ' + res.tranches.length + '</b> 批　現金已投入 <b>'
+        + (res.deployed * 100).toFixed(0) + '%</b>';
+    $('aDots').innerHTML = res.tranches.map(function (t) {
+      return '<span class="dot' + (t.fired ? ' on' : '') + '" role="img" aria-label="第' + t.no
+        + '批 自高點' + (t.level * 100) + '%：' + (t.fired ? '已投入' : '待觸發') + '"></span>';
+    }).join('');
+
+    // ── 今日結論句 ────────────────────────────────────────────
+    // 「今天不必做任何事」只對『已經照這套在跑』的人成立。
+    // 對還沒開始的人，正確答案永遠是「開始建倉」—— 這兩句話方向相反，不能共用一行。
+    function paintHeadline() {
+      var head, sub;
+      if (stage === 'new') {
+        head = '你的第一步：先把部位建起來';
+        sub = '「跌到某某點才加碼」那些規則，是<b>建倉完成之後</b>才開始走的。先看下面的步驟。';
+      } else if (res.entryAccel && res.entryAccel.reached) {
+        head = '⚡ 加速器觸發了：把核心還沒投的部分一次投完';
+        sub = res.nextTranche
+          ? '之後維持下方配置；等大盤跌到 ' + fmt(res.nextTranche.triggerIndex, 0) + ' 點再照規則加碼'
+          : '之後維持下方配置';
+      } else if (nFired === 0) {
+        head = '今天不必做任何事';
+        sub = res.nextTranche
+          ? '維持下方配置；等大盤跌到 ' + fmt(res.nextTranche.triggerIndex, 0) + ' 點再照規則加碼'
+          : '維持下方配置';
+      } else if (nFired < res.tranches.length) {
+        head = '現金已投入 ' + (res.deployed * 100).toFixed(0) + '%，維持不動，等第 '
+          + (nFired + 1) + ' 批';
+        sub = res.nextTranche
+          ? '等大盤跌到 ' + fmt(res.nextTranche.triggerIndex, 0) + ' 點再投下一批'
+          : '維持下方配置';
+      } else {
+        head = '現金三批都投完了 —— 滿倉，等大盤創新高才補回來';
+        sub = '這時你的放大倍數是最高的，而且只有創新高才降得回去';
+      }
+      $('hHeadline').innerHTML = head + '<small>' + sub + '</small>';
+    }
+
+    $('stageSeg').addEventListener('click', function (ev) {
+      var btn = ev.target.closest && ev.target.closest('button[data-st]');
+      if (!btn) return;
+      stage = btn.dataset.st === 'running' ? 'running' : 'new';
+      try { localStorage.setItem('2x.stage', stage); } catch (e) { /* 無痕 */ }
+      Array.prototype.forEach.call($('stageSeg').children, function (b) {
+        b.setAttribute('aria-pressed', String(b === btn));
+      });
+      paintAllocation();
+    });
+
+    paintAllocation();
+
+    $('ddFoot').textContent = '紅色虛線是「該把現金投進去」的水位（'
+      + res.tranches.map(function (t) { return (t.level * 100).toFixed(0) + '%'; }).join(' / ') + '）';
+
+    /* ── 走勢圖的資料缺漏揭露 ─────────────────────────────────
+       taiex_daily.json 在最初建檔時，有幾個月份的來源抓取靜默失敗（sources.js
+       舊版遇到非 OK 回應會回傳空陣列而不是報錯），而排程只回頭補最近 3 個月，
+       所以那些洞永遠補不回來。這裡動態偵測並揭露，不寫死月份清單。 */
+    function findGaps(hist) {
+      var out = [], i, y, m, cur, nxt;
+      for (i = 0; i < hist.length - 1; i++) {
+        cur = hist[i][0]; nxt = hist[i + 1][0];
+        y = Number(cur.slice(0, 4)); m = Number(cur.slice(5, 7));
+        for (;;) {
+          m += 1; if (m > 12) { m = 1; y += 1; }
+          var ym = y + '-' + (m < 10 ? '0' + m : m);
+          if (ym >= nxt) break;
+          out.push(ym);
+          if (out.length > 60) return out;   // 保險，避免資料異常時無限迴圈
+        }
+      }
+      return out;
+    }
+
+    // ── 估值溫度計 ─────────────────────────────────────────────
+    $('vPe').innerHTML = fmt(d.pe.display, 2) + '<small>倍</small>';
+    $('vAsOf').textContent = slash(d.pe.asOf);
+    $('vPct').textContent = d.pe.pctile.toFixed(1);
+    $('vMark').style.left = d.pe.pctile + '%';
+
+    var peSorted = d.peHistory.map(function (p) { return p[1]; }).sort(function (a, b) { return a - b; });
+    var atPct = function (q) { return peSorted[Math.min(peSorted.length - 1, Math.round(q * (peSorted.length - 1)))]; };
+    $('vScale').innerHTML = [[0, '最便宜'], [0.25, '25%'], [0.5, '中間'], [0.8, '80%'], [0.9, '90%'], [1, '最貴']]
+      .map(function (x) {
+        return '<span>' + atPct(x[0]).toFixed(1) + '<br><i style="font-style:normal;opacity:.7">'
+          + x[1] + '</i></span>';
+      }).join('');
+
+    $('vDrop').innerHTML = [0.9, 0.8].map(function (q) {
+      var target = atPct(q);
+      if (target >= d.pe.value) return '';
+      var idx = d.taiex.close * target / d.pe.value;
+      return '公司獲利不變的話，大盤要跌到 <b>' + fmt(idx, 0) + '</b> 點（'
+        + ((idx / d.taiex.close - 1) * 100).toFixed(0) + '%）才回到第 ' + (q * 100).toFixed(0) + ' 百分位';
+    }).filter(Boolean).join('<br>');
+    // 這個點位是用 EWT 的本益比去換算加權指數 —— 兩者成分不同，必須就地講清楚。
+    $('vPeBasis').innerHTML = '⚠ 上面這個點位只是<b>粗略參考</b>：本頁的本益比是用 '
+      + 'EWT（一檔在美國掛牌、追蹤台灣的 ETF）算的，成分和加權指數不完全一樣，'
+      + '拿它換算出來的大盤點位會有誤差。<b>不要把它當成精確的目標價。</b>';
+
+    $('vPace').textContent = d.pe.pace.label + '　' + d.pe.pace.months;
+    $('vPaceNote').textContent = d.pe.pace.note;
+    // 展開器收合時 <summary> 是唯一看得到的字（docs/IA.md §3.4）——
+    // 把「今天的答案」直接寫進結論句，不必展開就知道現在該快還是該慢。
+    // textContent 而非 innerHTML：SUMMARY 在 annotateTerms 的 SKIP 名單裡，這裡不會被動到。
+    if ($('sumPace')) $('sumPace').textContent = '現在' + d.pe.pace.label + '，建議分 ' + d.pe.pace.months + '買進';
+
+    // 建倉加速器：只影響「還沒進場的錢」
+    var ea = res.entryAccel;
+    if (ea) {
+      $('vAccel').textContent = '大盤跌到 ' + fmt(ea.triggerIndex, 0)
+        + ' 點（離最高點 ' + (ea.level * 100).toFixed(0) + '%）';
+      $('vAccelNote').textContent = ea.reached
+        ? '已經觸發 → 核心還沒投的部分應該一次投完'
+        : '還要再跌 ' + fmt(Math.abs(ea.distPts), 0) + ' 點（' + Math.abs(ea.distPct).toFixed(2) + '%）'
+          + '　跌破就把核心剩下的額度一次投完';
+    } else {
+      $('vAccel').textContent = '—';
+      $('vAccelNote').textContent = '—';
+    }
+
+    function paintAccelDef() {
+      var tw = twCap();
+      var t1 = res.tranches[0];
+      var coreAmt = tw * sel.coreW, resAmt = tw * sel.reserveW;
+      var done = coreAmt * 0.3, left = coreAmt - done;
+      var sameDay = res.entryAccel && t1 && res.entryAccel.level === t1.level;
+      var firstBatch = resAmt * (t1 ? t1.share : 0);
+      $('vAccelDef').innerHTML =
+        '<b>「核心剩餘額度」＝ 你打算買 2 倍 ETF 的目標金額，當中「還沒買進去」的那一部分</b>，'
+        + '不是你全部的錢；那 ' + (sel.reserveW * 100).toFixed(0)
+        + '% 的現金不參與，它照上面的加碼水位走。'
+        + '<br>例：這 ' + fmt(tw, 1) + ' 萬、' + sel.name + '型 → 要買 2 倍 ETF 的目標是 '
+        + fmt(coreAmt, 1) + ' 萬。若你已經分批買了三成（' + fmt(done, 1) + ' 萬），'
+        + '跌破當天就把剩下的 <b>' + fmt(left, 1) + ' 萬</b>一次買完'
+        + (sameDay
+          ? '；<b>同一天</b>現金也會觸發第 1 批、再投入 ' + fmt(firstBatch, 1)
+            + ' 萬（合計 ' + fmt(left + firstBatch, 1) + ' 萬）—— 加速器的水位刻意跟第 1 批同一格。'
+          : '。（加速器水位與第 1 批不同格，兩者不會同一天觸發。）')
+        + '<br>建倉完成之後這條規則就結束了，之後只看加碼水位。';
+    }
+
+    // ── 五條規則（全部由 data.json 渲染，改參數文字就會跟著變）─────────
+    var lv = res.tranches.map(function (t) { return (t.level * 100).toFixed(0) + '%'; }).join(' / ');
+    // 用共同分母寫，1/6、2/6、3/6 一眼就看得出「越跌投越多」；
+    // 約分成 1/6、1/3、1/2 雖然等值，卻要讀者自己通分才看得出這是 1:2:3。
+    var shDen = res.tranches.reduce(function (m, t) {
+      return Math.max(m, Math.round(1 / t.share));
+    }, 1);
+    var sh = res.tranches.map(function (t) {
+      return Math.round(t.share * shDen) + '/' + shDen;
+    }).join('、');
+    var accelTxt = res.entryAccel ? (res.entryAccel.level * 100).toFixed(0) + '%' : '—';
+    var gapTxt = (res.reset && res.reset.gapDays > 0)
+      ? res.reset.gapDays + ' 個交易日（約一季）' : '';
+    Array.prototype.forEach.call(document.querySelectorAll('[data-r="accel"]'), function (el) {
+      el.textContent = accelTxt;
+    });
+    $('oRules').innerHTML = [
+      ['平常：<b>' + (rec.coreW * 100).toFixed(0) + '% 買 2 倍 ETF、'
+        + (rec.reserveW * 100).toFixed(0) + '% 放現金</b>　→　大盤動 1 元，你的錢動 <b>'
+        + (rec.baseExposure / 100).toFixed(1) + '</b> 元',
+        '2 倍 ETF 是 ' + coreLabel(d) + '；現金就放定存或短期債，不要拿去做別的。'
+        + '這個比例平常不用動，漲跌都不管。'],
+      ['大盤從<b>歷史最高點</b>跌到 <b>' + lv + '</b> 時，依序把現金投入 <b>' + sh + '</b>',
+        '看的是<b>大盤</b>跌多少，不是看你的 2 倍 ETF 跌多少（它會跌更多，別被嚇到）。'
+        + '跌越深投越多，因為便宜的機會不常有。'],
+      [gapTxt
+        ? '大盤<b>創歷史新高</b>，<b>而且</b>距上次補回滿 <b>' + gapTxt
+          + '</b> → 賣掉一些 ETF，把現金補回原本的比例'
+        : '大盤<b>創歷史新高</b> → 賣掉一些 ETF，把現金補回原本的比例',
+        '這是現金<b>唯一</b>的補充管道，也是整套做法<b>最脆弱的假設</b> —— '
+        + '如果大盤很多年不創新高，現金就補不回來（見下方風險第 ① 條）。'],
+      ['現金全部投完後 → 放大倍數變成 <b>' + res.profiles[0].fullExposure.toFixed(0)
+        + '%</b>，<b>只有補回來才降得下去</b>',
+        '注意：不管你原本選哪一種風格，投完之後都會收斂到同一個數字。'
+        + '<b>選比較保守的風格，救不了這個情境。</b>'],
+      ['<b>絕對不借錢</b>：不融資、不質押、不開槓桿帳戶',
+        '上限 ' + res.profiles[0].fullExposure.toFixed(0)
+        + '% 全部來自不會被追繳的 ETF。再往上加就會有「被迫在最低點賣出」的風險，'
+        + '那是這套做法唯一真正會讓你歸零的方式。'],
+    ].map(function (r) {
+      return '<li><div class="rt">' + r[0] + '</div><div class="rs">' + r[1] + '</div></li>';
+    }).join('');
+
+    // 風格表
+    $('tProfile').innerHTML = res.profiles.map(function (p) {
+      return '<tr class="' + (p.recommended ? 'rec' : '') + '">'
+        + '<td>' + p.name + (p.recommended ? '（推薦）' : '') + '</td>'
+        + '<td>' + (p.coreW * 100).toFixed(0) + '%</td>'
+        + '<td>' + (p.reserveW * 100).toFixed(0) + '%</td>'
+        + '<td>' + p.baseExposure.toFixed(0) + '%</td>'
+        + '<td><b style="color:var(--core)">' + p.curExposure.toFixed(0) + '%</b></td>'
+        + '<td>' + p.fullExposure.toFixed(0) + '%</td></tr>';
+    }).join('');
+
+    // ── 回測表 ────────────────────────────────────────────────
+    $('btSpan').textContent = d.strategy.backtest.span;
+    $('tBt').innerHTML = d.strategy.backtest.rows.map(function (r) {
+      return '<tr' + (r.cur ? ' class="cur"' : '') + '>'
+        + '<td style="text-align:left">' + r.name + (r.cur ? '　<span class="tag wait">本頁採用</span>' : '') + '</td>'
+        + '<td class="num">' + r.expo + '%</td>'
+        + '<td class="num">' + (r.fin != null ? r.fin.toFixed(2) + 'x' : '—') + '</td>'
+        + '<td class="num">' + r.cagr.toFixed(1) + '%</td>'
+        + '<td class="num risk-num">' + r.mdd.toFixed(1) + '%</td>'
+        + '<td class="num"><b>' + r.calmar.toFixed(3) + '</b></td>'
+        + '<td class="num">' + r.uw.toFixed(1) + ' 年</td></tr>';
+    }).join('');
+    // 主回測表出自 pe_backtest.py，那支腳本沒有 V2.6 的回補閘門參數 ——
+    // 頁面叫人照新規則做，卻拿舊規則的績效當證據，這件事必須就地揭露。
+    $('btGateNote').innerHTML = '⚠ <b>這張表跑的是上一版規則</b>：它的回補條件只有「創新高」，'
+      + '<b>沒有包含本頁現在採用的「還要多等 '
+      + ((res.reset && res.reset.gapDays) || 63) + ' 個交易日」那道閘門</b>。'
+      + '作者實測兩者的報酬差異落在雜訊範圍內（真正的差別是動手次數少 20 倍），'
+      + '但<b>這張表本身沒有用新規則重跑過</b>。<span class="src fixed">回測值</span>';
+
+    var btc = d.strategy.backtestCommon;
+    $('btcSpan').textContent = '（' + btc.span + '）';
+    $('tBtc').innerHTML = btc.rows.map(function (r) {
+      return '<tr' + (r.cur ? ' class="cur"' : '') + '>'
+        + '<td style="text-align:left">' + r.name + (r.cur ? '（本頁採用）' : '') + '</td>'
+        + '<td class="num">' + r.expo + '%</td>'
+        + '<td class="num">' + r.cagr.toFixed(1) + '%</td>'
+        + '<td class="num risk-num">' + r.mdd.toFixed(1) + '%</td>'
+        + '<td class="num"><b>' + r.calmar.toFixed(3) + '</b></td>'
+        + '<td class="num">' + r.uw.toFixed(1) + ' 年</td></tr>';
+    }).join('');
+
+    // ── 跨市場配置 ─────────────────────────────────────────────
+    var b = d.blend, rg = b.range, dm = b.demo;
+    $('bRangeTw').textContent = dm.tw + '%';
+    $('bRangeSpx').textContent = dm.spx + '%';
+    $('bRangeTwAlt').textContent = '可調 ' + rg.tw[0] + '~' + rg.tw[1] + '%';
+    $('bRangeSpxAlt').textContent = '可調 ' + rg.spx[0] + '~' + rg.spx[1] + '%';
+    [['bBarTw', 'tw', '台股'], ['bBarSpx', 'spx', 'S&P500']].forEach(function (x) {
+      $(x[0]).style.width = dm[x[1]] + '%';
+      $(x[0]).textContent = dm[x[1]] >= 8 ? x[2] + ' ' + dm[x[1]] + '%' : '';
+    });
+    $('bDemoNote').textContent = '這是預設值（' + dm.tw + ' / ' + dm.spx
+      + '），不是「最佳解」—— 落在可調範圍內的任一組，統計上都分不出高下';
+
+    var cur = b.rows.filter(function (r) { return r.cur; })[0];
+    var bst = b.rows.filter(function (r) { return r.best; })[0];
+    if (!cur || !bst) {
+      throw new Error('blend.rows 缺少 cur 或 best 旗標，凱利對照無法渲染');
+    }
+    // 兩個數字都從資料讀，不寫死 —— 舊版把「73%」硬編在正文，重跑回測就會與表格打架。
+    $('bKellyTw').textContent = cur.kelly + '%';
+    $('bKellyMix').textContent = bst.kelly + '%';
+    $('bKelly').innerHTML = '只押台股 <s>' + cur.kelly + '%</s>　→　台股美股分開配置後 <b>'
+      + bst.kelly + '%</b>';
+
+    $('tBlend').innerHTML = b.rows.map(function (r) {
+      var single = r.tw === 100 || r.spx === 100 || r.ndx === 100;
+      var tag = r.best ? '　<span class="tag ok">預設</span>'
+        : r.cur ? '　<span class="tag wait">目前</span>'
+        : r.ref ? '　<span class="tag wait">對照組</span>' : '';
+      return '<tr class="' + (r.best ? 'rec' : r.cur ? 'cur' : r.ref ? 'warnrow' : '') + '">'
+        + '<td style="text-align:left">' + r.name.replace('（對照，非選項）', '') + tag + '</td>'
+        + '<td class="num">' + r.cagr.toFixed(1) + '%</td>'
+        + '<td class="num">' + r.vol.toFixed(2) + '%</td>'
+        + '<td class="num risk-num">' + r.mdd.toFixed(1) + '%</td>'
+        + '<td class="num"><b>' + r.calmar.toFixed(3) + '</b></td>'
+        + '<td class="num">' + r.uw.toFixed(1) + ' 年</td>'
+        + '<td class="num"' + (single ? ' style="color:var(--warn-ink);font-weight:700"' : '') + '>' + r.kelly + '%</td>'
+        + '<td class="num">' + r.med15.toFixed(2) + 'x</td>'
+        + '<td class="num"' + (r.worst15 < 1 ? ' style="color:var(--warn-ink);font-weight:700"' : '') + '>'
+        + r.worst15.toFixed(2) + 'x</td></tr>';
+    }).join('');
+    var stressCur = (b.stress && b.stress.rows || []).filter(function (r) { return r.cur; })[0];
+    $('bFoot').innerHTML = b.span + '。'
+      + '「15 年中位／最差」＝把歷史切成所有可能的 15 年區間，中間那個與最糟那個的結果；'
+      + '<b>小於 1 代表那一代人投了十五年還在虧錢</b>'
+      + (stressCur
+        ? '（在下方「紅利反轉」的情境裡，只押台股就是 ' + stressCur.worst15.toFixed(2) + 'x）。'
+        : '。')
+      + '<span class="src fixed">回測值</span>';
+
+    $('tBlendStress').innerHTML = b.stress.rows.map(function (r) {
+      return '<tr class="' + (r.cur ? 'warnrow' : '') + '">'
+        + '<td style="text-align:left">' + r.name
+        + (r.proxy ? ' <span class="tag wait">代表值</span>' : '') + '</td>'
+        + '<td class="num"><b>' + r.calmar.toFixed(3) + '</b></td>'
+        + '<td class="num">' + r.uw.toFixed(1) + ' 年</td>'
+        + '<td class="num">' + r.med15.toFixed(2) + 'x</td>'
+        + '<td class="num"' + (r.worst15 < 1 ? ' style="color:var(--warn-ink);font-weight:700"' : '') + '>'
+        + r.worst15.toFixed(2) + 'x</td>'
+        + '<td class="num">' + r.loss + '%</td></tr>';
+    }).join('');
+
+    // 自助法的檢定樣本裡含那斯達克，那斯達克下架後沒重算 —— data.json 有這個欄位，
+    // 舊版卻從來沒讀它，等於把限制條件默默吃掉了。
+    var ci = b.bootstrap.ci;
+    var ciSign = function (v) { return (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(4); };
+    $('bBoot').textContent = b.bootstrap.winRate.toFixed(1) + '%';
+    $('bBootCi').textContent = '[' + ciSign(ci[0]) + ', ' + ciSign(ci[1]) + ']';
+    $('bBootZero').textContent = ci[0] > 0 ? '不含 0' : '跨過 0';
+    $('bBootUniv').textContent = b.bootstrap.universe === '三市場'
+      ? '含那斯達克的三市場組合' : (b.bootstrap.universe || '原始樣本');
+
+    $('tNdxSwap').innerHTML = b.ndxSwap.map(function (r, i) {
+      return '<tr class="' + (i === 0 ? 'rec' : '') + '">'
+        + '<td><b>' + r.ndx + '%</b></td>'
+        + '<td class="num">' + r.vol.toFixed(2) + '%</td>'
+        + '<td class="num">' + r.cagr.toFixed(1) + '%</td>'
+        + '<td class="num risk-num">' + r.mdd.toFixed(1) + '%</td></tr>';
+    }).join('');
+
+    $('tDiv').innerHTML = b.diversifiers.map(function (r) {
+      var weak = Math.abs(r.corr) < 0.5;
+      return '<tr class="' + (r.isNdx ? 'warnrow' : '') + '">'
+        + '<td style="text-align:left">' + r.name + '</td>'
+        + '<td class="num">' + (r.corr >= 0 ? '+' : '−') + Math.abs(r.corr).toFixed(3)
+        + ' <span class="tag ' + (weak ? 'ok">✓ 連動低' : 'wait">✗ 連動高') + '</span></td>'
+        + '<td class="num">' + (r.dVol > 0 ? '+' : '−') + Math.abs(r.dVol).toFixed(2) + '%</td></tr>';
+    }).join('');
+
+    // ── 註：另一種本益比算法的對照 ──────────────────────────────
+    var ok = d.onekoniEps;
+    $('nEpsAsOf').textContent = ok.epsAsOf;
+    $('nEpsActual').textContent = fmt(ok.epsActual, 0);
+    $('nEpsEst').textContent = fmt(ok.epsEst, 0);
+    $('nClose').textContent = fmt(d.taiex.close, 0);
+    $('nPeEst').textContent = (d.taiex.close / ok.epsEst).toFixed(1);
+    $('nPeActual').textContent = (d.taiex.close / ok.epsActual).toFixed(1);
+    $('nPeHere').textContent = fmt(d.pe.display, 2);
+    var lagDays = Math.round((Date.parse(d.taiex.date) - Date.parse(d.pe.asOf)) / 86400000);
+    $('nPeLag').textContent = lagDays > 0
+      ? '（本益比的資料日比收盤落後 ' + lagDays + ' 天，所以在下跌途中本頁會偏高）'
+      : '（本益比資料日與收盤同為 ' + slash(d.pe.asOf) + '，沒有落差）';
+
+    // 比今日更貴的月份 —— 分母一律吃 peHistory.length，不寫死
+    var above = d.peHistory.filter(function (p) { return p[1] > d.pe.value; });
+    $('nPeN').textContent = d.peHistory.length;
+    $('rPeAbove').textContent = above.length;
+    // 年份分布也要即時算 —— P/E 每天在動，寫死「絕大多數是 1997」會越來越不準
+    var byYear = {};
+    above.forEach(function (x) { var y = x[0].slice(0, 4); byYear[y] = (byYear[y] || 0) + 1; });
+    $('rPeYears').innerHTML = Object.keys(byYear).sort().map(function (y) {
+      return '<b>' + y + '</b> 年 ' + byYear[y] + ' 個月';
+    }).join('、') || '無 —— 今天就是史上最貴';
+
+    // ── 圖 ────────────────────────────────────────────────────
+    var dd = d.ddHistory;
+    var lastYm = dd[dd.length - 1][0];
+    var cut = (Number(lastYm.slice(0, 4)) - 20) + '-' + lastYm.slice(5);
+    var ddSlice = dd.filter(function (p) { return p[0] >= cut; });
+    // 兩張圖都在收合的展開器裡 —— 收合時不畫（畫了也是手機版面），展開的那一刻才畫。
+    var redrawDd = bindDraw('ddChart', function () { drawDd(ddSlice, res.tranches); });
+    var redrawPe = bindDraw('peChart', function () { drawPe(d.peHistory, d.pe.value); });
+
+    var gaps = findGaps(ddSlice);
+    if (gaps.length) {
+      var gfc = gaps.filter(function (g) { return g >= '2008-09' && g <= '2009-06'; }).length > 0;
+      $('ddGap').innerHTML = '⚠ 這張圖有 <b>' + gaps.length + '</b> 個月份沒有資料（'
+        + gaps.slice(0, 6).join('、') + (gaps.length > 6 ? ' 等' : '')
+        + '）—— 當初建檔時來源抓取失敗，且排程只回頭補最近 3 個月，所以補不回來。'
+        + (gfc ? '<b>受影響最大的是 2008 金融海嘯谷底：圖上看到的最深跌幅比實際淺約 2 個百分點。</b>' : '');
+    }
+
+    var rzT = null;
+    window.addEventListener('resize', function () {
+      $('ddTip').style.opacity = 0; $('peTip').style.opacity = 0;
+      if (rzT) clearTimeout(rzT);
+      // 收合中的那一張不重畫（redraw* 自己會判斷 visible），避免白白算一次窄版。
+      rzT = setTimeout(function () {
+        try { redrawDd(); redrawPe(); } catch (e) { /* 忽略 */ }
+      }, 150);
+    });
+
+    // 動態內容都填完之後才標名詞，否則 JS 寫進去的那些字會漏掉。
+    // 在橫幅之前跑：橫幅是系統訊息，不需要也不應該被塞名詞氣泡。
+    // header 是深藍底,灰虛線＋灰問號在上面幾乎看不見 —— 跳過之後，
+    // 「加權指數」這種最基本的詞會自動落到正文裡真正解釋它的段落。
+    try {
+      APShell.annotateTerms(document.querySelector('.wrap'), {skip: ['header']});
+    } catch (e) { if (window.console) console.warn(e); }
+
+    /* 深連結最後才跳：上面所有表格與階梯都填完了，版面高度才是最終的。
+       跳兩次（抄 /plan/）—— 第一次讓瀏覽器自己的片段捲動有東西可捲，
+       load 之後再補一次，因為圖表撐開會再改一次版面高度。 */
+    if (location.hash.slice(1)) {
+      setTimeout(jumpToHash, 0);
+      if (document.readyState === 'complete') setTimeout(jumpToHash, 120);
+      else window.addEventListener('load', function () { setTimeout(jumpToHash, 120); });
+    }
+
+    /* ── 過期提示 ──────────────────────────────────────────────
+       舊版只看 d.updated，但排程每次執行都會把它設成今天 —— 上游網站凍結、
+       腳本仍然「成功」的情況下，橫幅永遠不會亮，而畫面上的數字其實是舊的。
+       改成三個日期一起看：抓取日、指數收盤日、本益比資料日。 */
+    var today = Date.now();
+    var ageOf = function (s) { return Math.floor((today - Date.parse(s + 'T00:00:00Z')) / 86400000); };
+    var ageFetch = ageOf(d.updated), ageIdx = ageOf(d.taiex.date), agePe = ageOf(d.pe.asOf);
+    if (ageFetch > 3) {
+      showBanner('warn', '⚠ 資料可能已過期：最後抓取 ' + slash(d.updated) + '（' + ageFetch + ' 天前）'
+        + '，最新收盤 ' + slash(d.taiex.date)
+        + '<small>每日排程可能失敗，或上游網站改版導致抓取中斷。請檢查 GitHub Actions 執行紀錄。</small>');
+    } else if (ageIdx > 6 || agePe > 20) {
+      // 抓取是新的，但內容沒動 —— 這是「腳本成功但上游凍結」的病，舊版完全看不出來
+      showBanner('warn', '⚠ 抓取是新的（' + slash(d.updated) + '），但<b>資料內容本身偏舊</b>：'
+        + '指數收盤日 ' + slash(d.taiex.date) + '（' + ageIdx + ' 天前）、'
+        + '本益比資料日 ' + slash(d.pe.asOf) + '（' + agePe + ' 天前）。'
+        + '<small>排程有跑、也有寫檔，但上游網站可能停止更新。畫面上的數字請當成該日期的狀態看。</small>');
+    }
+  }
+
+  // 名詞小辭典與教學區塊不依賴 data.json，先跑起來 ——
+  // 就算資料抓不到，讀者至少還能查名詞、看得懂這頁在講什麼。
+  // 共用殼:導覽 + 名詞氣泡 + 頁尾辭典 + 進階展開器的收合記憶(ap_state_v2.ui.adv)。
+  // glossary:false —— 自動註解要等 data.json 渲染完才跑(見 render() 末尾),
+  // 否則 JS 寫進去的那些字會全部漏掉。
+  APShell.init({page:'timing', glossary:false});
+  // 同一頁內按 <a href="#adv-rules"> 只會發 hashchange，不會重新載入。
+  // shell.js 的 openHash 對 <section class="advgroup"> 群組無效，所以自己接一份。
+  window.addEventListener('hashchange', jumpToHash);
+
+  // 抓取失敗與「抓到了但結構不對」是兩種病，橫幅也要分開講 —— 否則欄位少一個
+  // 會被誤導成網路問題（fetch 已成功，.catch 的文案完全對不上）。
+  fetch('data.json?t=' + Date.now())
+    .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function (d) {
+      try {
+        render(d);
+      } catch (e) {
+        showBanner('err', '✕ data.json 結構異常，頁面無法完整渲染：' + e.message
+          + '<small>資料抓取本身是成功的。多半是排程腳本改了欄位，'
+          + '或手動編輯 data.json 時刪掉了頁面依賴的列。請檢查 scripts/update_data.js。</small>');
+        if (window.console) console.error(e);
+      }
+    })
+    .catch(function (e) {
+      showBanner('err', '✕ 無法載入 data.json：' + e.message
+        + '<small>若你是用 file:// 直接開啟本檔，瀏覽器會擋下 fetch。'
+        + '請在本資料夾執行 <code>python -X utf8 -m http.server 8080</code>，再開 http://localhost:8080/ 。</small>');
+    });
+})();
+</script>
+</body>
+</html>

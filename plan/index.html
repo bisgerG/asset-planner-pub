@@ -1,0 +1,2188 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Coast FIRE 規劃器</title>
+<link rel="stylesheet" href="../assets/ui.css">
+<style>
+  /* 本頁專屬版面。:root token、body、.wrap、.sitenav、.btn、.term/#gpop、.src、
+     details.x、#glossList 全部來自 assets/ui.css(它排在前面,所以這裡永遠贏)。 */
+  /* S11:本頁樣式改 mobile-first —— 基準 = 手機(390px 起可用),
+     720px 起多欄、820px 起放大字級。斷點約定見 assets/ui.css 頭部。 */
+  :root{ --wrap:1100px }
+  body{line-height:1.5;font-size:14px}
+  @media (min-width:820px){ body{font-size:15px} }
+  .wrap{padding:12px}
+  @media (min-width:720px){ .wrap{padding:18px} }
+  h1{font-size:22px;margin:6px 0 2px}
+  h2{font-size:17px;margin:0 0 10px}
+  .sub{color:var(--mut);font-size:13px;margin:0 0 14px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
+  .panel>h2{margin:-16px -16px 12px;padding:8px 14px;font-size:16px;font-weight:800;color:var(--navy);background:#eaeff8;border-bottom:1px solid var(--line);border-radius:9px 9px 0 0}
+  .grid{display:grid;gap:12px}
+  .g2,.g3{grid-template-columns:1fr}
+  @media(min-width:720px){
+    .g2{grid-template-columns:repeat(2,1fr)}
+    .g3{grid-template-columns:repeat(3,1fr)}
+  }
+  label{display:block;font-size:12px;color:var(--mut);margin-bottom:3px}
+  input[type=number]{width:100%;padding:8px;background:#fff;border:1px solid var(--line);
+    border-radius:6px;color:var(--ink);font-size:15px}
+  input:focus-visible,select:focus-visible{outline:2px solid var(--core);outline-offset:1px}
+  .field{margin-bottom:10px}
+  .row{display:flex;align-items:center;gap:8px}
+  .banner{background:#fff1f1;border:1px solid #e7a3a3;border-left:5px solid #c62828;color:#5c2020;border-radius:10px;
+    padding:10px 13px;font-size:12.5px;margin-bottom:16px}
+  .cards{display:grid;grid-template-columns:1fr;gap:12px}
+  @media(min-width:720px){.cards{grid-template-columns:repeat(3,1fr)}}
+  .card{background:var(--panel);border:1px solid var(--line);
+    border-radius:10px;padding:14px;text-align:center}
+  .card .k{font-size:12px;color:var(--mut)}
+  .card .v{font-size:30px;font-weight:700;margin:4px 0;color:var(--acc)}
+  .card .r{font-size:12px;color:var(--mut)}
+  .card.good .v{color:var(--good)} .card.warn .v{color:var(--warn-ink)} .card.bad .v{color:var(--bad)}
+  .card .t{font-size:14px;font-weight:700;margin-bottom:6px;color:var(--ink)}
+  .chk{display:block;padding:7px 0;font-size:13.5px;line-height:1.5;cursor:pointer}
+  .chk input{margin-right:8px;transform:scale(1.15);vertical-align:-1px}
+  dl.gloss{margin:8px 0 0}
+  dl.gloss dt{font-weight:700;color:var(--acc);margin-top:11px;font-size:13.5px}
+  dl.gloss dd{margin:3px 0 0;font-size:13px;color:var(--mut);line-height:1.65}
+  /* ── 常駐摘要列(S5)────────────────────────────────────────────
+     從「★ 我的計畫」點進來的人,要一眼看出自己還在同一個計畫裡。
+     sticky:調參數時捲到哪都看得到「上次算出來是什麼」。 */
+  /* 手機不 sticky:摘要列(一行摘要+三顆按鈕+體檢)在 390px 可以吃掉半個畫面,
+     黏住等於把表單擠出視野;720px 起才有黏住的本錢。 */
+  .sumbar{background:var(--navy);color:#fff;
+    border-radius:10px;padding:10px 12px;margin:0 0 16px;box-shadow:0 2px 10px rgba(10,20,50,.18)}
+  @media (min-width:720px){ .sumbar{position:sticky;top:0;z-index:30;padding:12px 15px} }
+  .sumbar .sumline{font-size:13.5px;line-height:1.75}
+  .sumbar .sumline b{color:var(--gold)}
+  .sumbar .sumline .stale{color:#ffd9a8;font-weight:700}
+  .sumbar .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center}
+  .sumbar .btn{font-size:13.5px;padding:7px 16px}
+  .sumbar .btn.ghost{background:transparent;color:#fff;border-color:#6b7db5}
+  .sumbar .btn.ghost:hover{background:rgba(255,255,255,.1);color:#fff;border-color:#9fb0e0}
+  .sumbar .prog{margin:10px 0 0;max-width:none;background:#33437a}
+  .advice{margin-top:11px;padding-top:9px;border-top:1px solid #33437a;font-size:12.5px;line-height:1.7;color:#dbe3f6}
+  .advice b{color:var(--gold)}
+  .advice a{color:#cfe0ff}
+
+  /* ── 兩層之間的分隔標題(S5:6 tab → 基礎層 + 進階層)────────── */
+  .layerhead{font-size:16px;color:var(--navy);margin:26px 0 10px;padding-bottom:6px;
+    border-bottom:2px solid var(--gold);display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .layerhead .small{font-weight:400}
+  /* 進階區塊的分組:錨點 #strategy / #compare 指到這裡 */
+  section.advgroup{scroll-margin-top:96px}
+  .panel,details.adv{scroll-margin-top:96px}
+  #mainChart{width:100%;height:240px;display:block;background:#fff;border:1px solid var(--line);border-radius:8px}
+  @media (min-width:720px){ #mainChart{height:360px} }
+  /* 進階區的寬表(對照表/壓測表)在窄屏內部橫向捲動,頁面本身不出現水平捲軸 */
+  details.adv > .body{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:right}
+  th:first-child,td:first-child{text-align:left}
+  /* 歷史崩盤壓測表:「配置」欄標籤(你的配置/純0050 基準)靠左對齊,兩列才會切齊 */
+  #scen th:nth-child(2){text-align:left}
+  #scen td.cfgcell{text-align:left}
+  th{color:var(--mut);font-weight:600}
+  table thead th{background:var(--navy);color:#fff;font-weight:700}
+  .slider{width:100%}
+  input[type=range].slider{accent-color:var(--core)}
+  .wt{display:flex;justify-content:space-between;font-size:12px;color:var(--mut)}
+  .asset{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+  .asset .top{display:flex;justify-content:space-between;align-items:center;gap:6px}
+  .asset .nm{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+  .asset .top .small{flex:none;white-space:nowrap}
+  .numw{width:54px;padding:3px 6px;background:#fff;border:1px solid var(--line);border-radius:6px;color:var(--ink);font-size:14px;text-align:right}
+  .ameta{font-size:11px;color:var(--mut);margin-top:3px}
+  .ameta b{color:var(--ink)}
+  .rolehint{cursor:pointer;color:var(--acc);text-decoration:underline dotted;white-space:nowrap}
+  .roletext{display:none;font-size:11.5px;color:var(--muted);margin-top:6px;line-height:1.55;border-top:1px dashed var(--line);padding-top:6px}
+  .roletext.show{display:block}
+  .catlabel{font-size:12px;font-weight:700;color:var(--core);margin:13px 0 7px;border-left:3px solid var(--acc);padding-left:8px}
+  .catlabel.first{margin-top:2px}
+  .taglegend{font-size:11.5px;color:var(--mut);margin:0 0 12px;line-height:1.6}
+  .levbox{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:12px 13px;margin-top:14px}
+  .levhead{display:flex;justify-content:space-between;align-items:baseline;font-size:13.5px;font-weight:600;gap:8px}
+  .levhead b{font-size:19px;color:var(--warn-ink)}
+  .levbox .wt{margin-bottom:3px}
+  .pill{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--line);color:var(--mut)}
+  details{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:9px}
+  details>summary{cursor:pointer;font-weight:600;font-size:14px;color:var(--acc)}
+  details p,details ul{font-size:13px;color:var(--ink);margin:8px 0}
+  .mut{color:var(--mut)} .good{color:var(--down)} .warn{color:var(--warn-ink)} .bad{color:var(--up)}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--mut);margin-top:8px}
+  .legend i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:5px}
+  .totbad{color:var(--up);font-weight:700}
+  .small{font-size:12px;color:var(--mut)}
+  .stressgrid{display:grid;grid-template-columns:1fr;gap:12px}
+  @media(min-width:720px){.stressgrid{grid-template-columns:1fr 1fr}}
+  .sbox{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px}
+  .sbox h4{margin:0 0 8px;font-size:14px}
+  .bar{height:18px;border-radius:4px;background:#e4e8f0;position:relative;margin:3px 0 9px}
+  .bar>span{position:absolute;left:0;top:0;bottom:0;border-radius:4px}
+  /* ── 1.5 時間軸現金流 ── */
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 12px}
+  .chips button{font:inherit;font-size:12.5px;font-weight:600;padding:4px 11px;cursor:pointer;
+    border:1px dashed var(--line);border-radius:999px;background:#fff;color:var(--core)}
+  .chips button:hover{border-style:solid;border-color:var(--core);background:var(--panel)}
+  .flowrow{display:flex;flex-wrap:wrap;gap:5px;align-items:center;padding:7px 8px;margin:5px 0;
+    border:1px solid var(--line);border-radius:9px;background:#fff}
+  .flowrow input,.flowrow select{font:inherit;font-size:13px;padding:3px 6px;border:1px solid var(--line);
+    border-radius:6px;background:#fff;color:var(--ink);min-width:0}
+  .flowrow .fn{flex:1 1 96px;min-width:80px}
+  .flowrow .fa{width:66px;text-align:right}
+  .flowrow .fg{width:56px}
+  .flowrow .fk{width:74px}
+  .flowrow .fs,.flowrow .fe{width:78px}
+  .flowrow .fv{width:52px;text-align:right}
+  .flowrow .x{border:0;background:none;cursor:pointer;color:var(--muted);font-size:15px;padding:2px 5px}
+  .flowrow .x:hover{color:var(--warn-ink)}
+  .flowrow.inc{border-left:3px solid var(--core)}
+  .flowrow.exp{border-left:3px solid var(--res)}
+  .flowmore{flex-basis:100%;display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);
+    padding:5px 2px 1px;border-top:1px dashed var(--line);margin-top:4px}
+  .flowmore label{cursor:pointer}
+  .tl{margin:12px 0 4px;font-size:12px}
+  .tl .lane{position:relative;height:19px;margin:3px 0;background:var(--panel);border-radius:4px}
+  .tl .lane>i{position:absolute;top:0;bottom:0;border-radius:4px;font-style:normal;font-size:11px;
+    color:#fff;line-height:19px;padding:0 5px;overflow:hidden;white-space:nowrap}
+  .tl .lane>i.inc{background:var(--core)}
+  .tl .lane>i.exp{background:var(--res)}
+  .tl .lane>i.once{min-width:5px;padding:0}
+  .tl .axis{position:relative;height:15px;color:var(--muted)}
+  .tl .axis>span{position:absolute;transform:translateX(-50%);font-size:11px}
+  .tl .rmark{position:absolute;top:0;bottom:0;width:0;border-left:1px dashed var(--warn)}
+  .cta{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:20px;text-align:center;margin-top:6px}
+  .prog{height:8px;border-radius:5px;background:#e4e8f0;overflow:hidden;margin:14px auto 0;max-width:360px;display:none}
+  .prog.show{display:block}
+  .prog>span{display:block;height:100%;width:0;background:var(--core);transition:width .2s}
+  /* 欄位小字提示(CTA / 該填什麼) */
+  .field .hint{font-size:11px;color:var(--mut);margin-top:3px;line-height:1.5}
+  /* 暫存 / 比較 */
+  .snaplist{display:flex;flex-direction:column;gap:8px}
+  .snaplist .empty{color:var(--mut);font-size:13px;padding:10px 0}
+  .snap{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px 12px;
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .snap .nm{font-weight:600;font-size:13.5px;flex:1;min-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .snap .meta{font-size:11px;color:var(--mut)}
+  .snap .acts{display:flex;gap:5px;flex-wrap:wrap}
+  .snap .acts button{background:#fff;border:1px solid var(--line);color:var(--muted);
+    border-radius:6px;padding:3px 9px;font-size:12px;cursor:pointer}
+  .snap .acts button:hover{color:var(--core);border-color:var(--core)}
+  .cmpsel{width:100%;padding:8px;background:#fff;border:1px solid var(--line);border-radius:6px;color:var(--ink)}
+  table.cmptbl td.best{color:var(--good);font-weight:700}
+  table.cmptbl td.worst{color:var(--bad);font-weight:700}
+  table.cmptbl td:first-child{color:var(--mut);font-weight:600}
+  table.cmptbl tr.grp td{color:var(--core);font-weight:700;background:#eaeff8;text-align:left}
+  /* (範本卡與台股 vs 美股比較表的 CSS 隨 tab0 一起刪除 ——
+      範本卡的唯一的家是「★ 我的計畫」❷、市場比較表是「🚀 快速開始」第 9 題。) */
+  /* 區塊徽章:必填/選填 */
+  .pill.must{color:#8a1c1c;border-color:#e7a3a3;background:#fdecea}
+  .pill.opt{color:var(--muted);border-color:var(--line);background:#fff}
+  h2 .pill{font-size:11px;font-weight:600;vertical-align:middle;margin-left:7px}
+  /* 進階展開器一律用 assets/ui.css 的 details.adv + .body —— 全站只有一種。
+     (S5 前這裡另有一個 details.advbox,是「一個大盒子塞 5 組」的舊寫法;
+      IA §5.5 要求拆成獨立展開器,所以整批換掉,那份 CSS 也跟著刪。)
+     .adv 的收合狀態由 assets/shell.js 記進 ap_state_v2.ui.adv —— 只記有 id 的。 */
+  details.adv > .body > .catlabel:first-child{margin-top:2px}
+  /* 全域可讀性:展開卡/清單行距放鬆,避免文字牆 */
+  details p{line-height:1.72;margin:8px 0}
+  details li{line-height:1.7;margin-bottom:5px}
+  details summary{cursor:pointer;padding:3px 0}
+  .taglegend{line-height:1.7}
+  p.small{line-height:1.7}
+  /* 風險卡與重點框 */
+  .rcard{border:1px solid #e7a3a3;border-left:5px solid #c62828;border-radius:8px;
+    background:#fff8f8;padding:11px 13px;margin-bottom:10px}
+  .rcard:last-child{margin-bottom:0}
+  .rcard .rh{font-size:15px;font-weight:800;color:#8f1d1d;margin-bottom:5px;line-height:1.55}
+  .rcard .rp{font-size:13.5px;line-height:1.85;color:#4a3030;margin:0 0 7px}
+  .rcard .rp:last-child{margin-bottom:0}
+  .rcard .rp b{color:#8f1d1d}
+  .keyn{display:block;background:#fff;border:1px solid #e7c3c3;border-radius:7px;
+    padding:8px 11px;margin:7px 0;font-size:13.5px;font-weight:700;color:#7a1515;line-height:1.75}
+  .tblnote{margin-top:8px;font-size:12.5px;color:var(--muted);font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav id="apNav"></nav>
+  <h1>⚙ 配資金 —— 自己調參數</h1>
+  <p class="sub">
+    這一頁是<b>進階層</b>:你已經看過「★ 我的計畫」,想自己動每一個旋鈕。<br>
+    上面兩格(<b>1.1 基本財務</b>、<b>1.3 投資組合</b>)填完就能算,其餘全部可以用預設值。<br>
+    運算都在你的瀏覽器裡、<b>財務數字不外傳</b>;所有報酬為前瞻假設、非預測。設定會自動記在本機。
+  </p>
+
+  <div class="banner">
+    ⚠️ <b>常駐風險揭露</b><br>
+    這套計畫本質上是在賭「市場長期會往上」<span class="jargon">(術語:regime bet)</span>。回測用的歷史報酬來自史上最強的一段多頭,天生偏樂觀<span class="jargon">(倖存者偏差)</span>——請當參考,別當預期。<br>
+    槓桿 ETF 在 2008 式崩盤會讓帳面<b>只剩不到兩成</b>(SSO 實測 −85%、6 年才回本);QQQ 在 2000 式情境跌 −83%、15 年才回高點。最差情境連 65 歲都可能不夠,需要續工或砍支出。
+  </div>
+
+  <div id="migNote" class="termhint" style="display:none;margin:0 0 12px"></div>
+
+  <!-- ══ 常駐摘要(S5:6 tab → 兩層之後,這是唯一永遠看得到的結果)══════
+       docs/IA.md §5.5:「從 /plan-result/ 點進來時,這一行讓他知道自己還在同一個計畫裡」。
+       完整的結果(里程碑、把握度、最壞會有多壞)在「★ 我的計畫」,這裡刻意只留一行摘要
+       —— 兩頁各印一次同一組數字,就是改版前「不像同一個網站」的來源之一。 -->
+  <div class="sumbar" id="sumbar">
+    <div class="sumline" id="sumText">讀取中…</div>
+    <div class="acts">
+      <button class="btn" id="startBtn" type="button">▶ 重新計算</button>
+      <a class="btn ghost" href="../plan-result/">★ 看完整結果</a>
+      <button class="btn ghost" id="snapSaveBtn2" type="button">💾 存為快照</button>
+    </div>
+    <div class="prog" id="coreProg"><span></span></div>
+    <div id="adviceBox" class="advice" style="display:none"></div>
+  </div>
+
+  <h2 class="layerhead">基礎層 · 設定 <span class="small mut">1.1 與 1.3 填完就能算</span></h2>
+
+  <div class="panel" id="basics">
+    <h2>1.1 你的基本財務狀況 <span class="pill must">★必填</span></h2>
+    <p class="sub" style="margin-top:-4px">先填這幾格就能開始算,大約 1 分鐘。不確定的欄位,照下面灰字提示填即可。</p>
+    <div class="grid g3">
+      <div class="field"><label>目前年齡</label><input type="number" id="age" value="35"><div class="hint">你現在幾歲</div></div>
+      <div class="field"><label>預計退休年齡</label><input type="number" id="retire" value="65"><div class="hint">打算幾歲退休?不確定就填 65。這歲之前每月投入持續存入;這歲之後停止投入、開始提領</div></div>
+      <div class="field"><label>目前可投資資產(萬)</label><input type="number" id="net" value="50"><div class="hint">能投入市場的錢,<b>含</b>當崩盤抄底用的準備金現金;但<b>不含</b>自住房、以及放在投資之外的 6 個月緊急生活費</div></div>
+      <div class="field"><label>每月可再投入(萬)</label><input type="number" id="mon" value="1" step="0.1"><div class="hint">薪水扣掉開銷後,每月能持續投資的錢</div></div>
+      <!-- S9:這一格原本標「目前一年生活費」,但它**只在退休後生效** ——
+           buildFlowSchedule 把它排成 s:'ret' → e:'max' 的「基本生活費」,
+           還決定 withdraw 與 fireNum。同一頁 1.5 的說明本來就寫著
+           「退休後的生活費則是 1.1 的『年支出』」,是欄位標籤在說謊。 -->
+      <div class="field"><label>退休後一年生活費(萬)</label><input type="number" id="exp" value="35"><div class="hint"><b>退休後</b>你一年打算花多少?這直接決定 FIRE 目標與退休後每年能提領多少</div></div>
+      <div class="field"><label>目前一年生活費(萬)</label><input type="number" id="spendNow" value="35"><div class="hint">你<b>現在</b>一年花多少?<b>不進模擬</b>,只用來估「緊急預備金要準備多少」(半年份)</div></div>
+      <div class="field"><label>退休後年金/勞退(萬/年)</label><input type="number" id="pension" value="0"><div class="hint">退休後每年可領的勞退/年金,沒有就填 0</div></div>
+    </div>
+    <details style="margin-top:4px">
+      <summary>ⓘ 退休後年支出直接決定你的 FIRE 目標——預設 35 萬只是起點,強烈建議改成你自己的數字</summary>
+      <p>預設 <b>35 萬/年(約 2.9 萬/月)</b>,參考<b>主計總處 113 年(2024)家庭收支調查</b>:臺中市平均每戶消費支出 97.3 萬/年 ÷ 每戶 2.82 人 ≈ <b>每人每月 2.87 萬 ≈ 全年 34.5 萬</b>,取整 35 萬。各地差很多:<b>全國平均略低</b>、<b>臺北市最高(每人每月約 3.5 萬、≈ 全年 42 萬)</b>、非六都通常更低。</p>
+      <p><b>強烈建議改成「你自己的」年支出</b>——FIRE 算的是<b>你想要的退休生活水準</b>,不是平均值。它直接決定你的 FIRE 目標金額(= 年支出 ÷ 提領率)。</p>
+      <p class="mut"><b>跟現在會一樣嗎?</b>不一定:退休族通常比工作時<b>少花約一兩成</b>(房貸繳清、通勤/治裝減少),但<b>晚年醫療、長照可能回升</b>。本工具把退休支出當「實質固定」,屬<b>偏保守</b>的假設(寧可抓多、別抓少)。走「🚀 快速開始」的人在第 2 題就會被問一次,並可以用快捷鈕直接套 −20%／−30%。</p>
+      <p class="mut"><b>那「目前一年生活費」那一格呢?</b>它<b>完全不進模擬</b>,只有「計劃書」拿它算緊急預備金建議(半年份)。緊急預備金要蓋的是<b>你現在</b>的開銷,不是退休後的預算 —— 所以兩格分開。</p>
+    </details>
+  </div>
+
+  <!-- 1.2 經濟假設 -->
+  <div class="panel" id="economy">
+    <h2>1.2 經濟假設 <span class="pill opt">可用預設</span></h2>
+    <p class="sub" style="margin-top:-4px">不確定就直接沿用預設值。這些只微調計算的保守程度,不影響你能不能開始算。</p>
+    <div class="grid g3">
+      <div class="field"><label>通膨率 %</label><input type="number" id="infl" value="2" step="0.1"><div class="hint">物價每年上漲幅度,不確定就用 2</div></div>
+      <div class="field"><label>每年提領率 SWR %</label><input type="number" id="swr" value="3.5" step="0.1"><div class="hint">退休後每年從資產領出來花的比例,不確定就用 3.5</div></div>
+      <div class="field"><label>金額顯示方式</label>
+        <select id="dispmode" style="width:100%;padding:8px;background:#fff;border:1px solid var(--line);border-radius:7px;color:var(--ink)">
+          <option value="real" selected>實質購買力(現在的錢)</option>
+          <option value="nom">名目金額(未來的數字)</option>
+        </select>
+        <div class="hint">建議用「實質購買力」,避免被未來大數字誤導</div>
+      </div>
+    </div>
+    <details style="margin-top:4px">
+      <summary>ⓘ 通膨預設 2% 是台灣長期均值的偏保守版——調高它,目標變大、達成變難</summary>
+      <p>通膨讓「同樣的錢」未來買得更少。工具預設用<b>實質購買力(現在的錢)</b>顯示,就是把未來金額用通膨還原,避免被名目大數字騙。</p>
+      <ul>
+        <li><b>2%</b>:台灣長期 CPI 約 1–2%,取 2% 偏保守。</li>
+        <li>調高(如 3%)→ 目標金額變大、達成變難(更保守);調低 → 反之。</li>
+        <li>它也會從報酬裡扣:你的<b>實質報酬 ≈ 名目報酬 − 通膨</b>。</li>
+      </ul>
+    </details>
+    <details style="margin-top:4px">
+      <summary>ⓘ 提領率預設 3.5%,比經典 4% 法則保守——因為你可能要撐 40 年,不是 30 年</summary>
+      <p><b>SWR = 退休後每年可從本金提領的比例</b>(逐年隨通膨調整)。本工具用它反推目標:<b>FIRE 數字 = 年支出 ÷ SWR</b>。</p>
+      <ul>
+        <li><b>4% 法則(Bengen 1994 / Trinity Study 1998)</b>:用美股歷史測「提初始本金 4%、逐年加通膨、撐 30 年」,幾乎不會破產 → FIRE 數字 = 年支出 ×25。</li>
+        <li><b>為什麼預設較保守的 3.5%(×28.6)</b>:① 前瞻報酬比 20 世紀低、現在估值偏高;② 提早退休年限可能 40–50 年(比 30 年更嚴苛);③ 組合有槓桿、序列風險更大。學界(Morningstar、Pfau、Early Retirement Now)在這些條件下多落在 3.3–3.5%。</li>
+        <li><b>怎麼調</b>:確定 65 歲才退、且能彈性縮支出 → 可拉到 4%;想更安心 / 早退 / 長壽 → 3.0–3.25%。</li>
+      </ul>
+      <p class="mut">前提:這假設「提領僵硬」(不管市場好壞都固定提)。若你願意壞年份少花一點,實際能撐更高的提領率。它是機率,不是保證。</p>
+    </details>
+  </div>
+
+  <!-- 1.3 投組 -->
+  <div class="panel" id="portfolio">
+    <h2>1.3 你的投資組合 <span class="pill must">★必填</span></h2>
+    <p class="sub" style="margin-top:-4px">決定錢怎麼分配。<b>權重加總需 = 100%</b>(不必自己湊,會自動正規化)。</p>
+    <!-- 差異 C4(S5 落地):改版前這一格顯示的是 ASSET_META 的「歷史實測波動」,
+         但拿去模擬的是 assetDefs().sigma —— SSO 顯示 38%、實際用 32%,差 6 個百分點,
+         而畫面上沒有任何地方說這件事,讀者會以為他看到的就是拿去算的。
+         現在顯示的一律是**模擬用的 sigma**;歷史最大回撤保留為獨立欄位並標明它沒有進引擎。 -->
+    <p class="taglegend">每格標示「<b>前瞻基準年化 · 模擬波動 · 歷史最深回撤</b>」;<b>點「ⓘ 理由」可展開該標的的完整說明</b>。<br>
+    <b>年化</b>與<b>模擬波動</b>就是<b>真的拿去跑模擬的那兩個數字</b>(已扣倖存者偏差的前瞻假設,非歷史)。<br>
+    <b>歷史最深回撤</b>是<b>歷史實測值、不是模擬輸入</b> —— 引擎完全沒有用到它,放在這裡只當風險教育的參考(如 S&P 2008 −55%、Nasdaq 2000 −83%、黃金 2011–15 −45%)。<br>
+    標籤:🟢核心打底 · 🟡注意集中/利率 · 🟠進攻、波動大 · 🔴槓桿、尾部風險。<br>
+    調整方式:<b>直接在每格右側填入權重數字</b>(不必湊到 100%,會自動正規化)。改完到上方按「▶ 重新計算」。</p>
+    <div id="weights"></div>
+    <div class="row" style="margin-top:10px;align-items:flex-start;gap:16px;flex-wrap:wrap">
+      <div style="text-align:center;flex:none">
+        <canvas id="pieChart" style="width:118px;height:118px;background:transparent;border-radius:0"></canvas>
+        <div class="small mut" style="margin-top:2px">正規化(計算用)</div>
+      </div>
+      <div style="flex:1;min-width:200px">
+        <div>權重合計:<b id="wsum">0</b>% <span class="small" id="wnote"></span></div>
+        <div id="pieLegend" class="small" style="margin-top:7px;display:flex;flex-wrap:wrap;gap:5px 14px"></div>
+        <div class="small mut" style="margin:11px 0 4px">你填的原始權重(<span style="color:var(--navy);font-weight:700">深藍線</span> = 100% 基準;超過=過配、不足=低配):</div>
+        <div id="rawBar" style="position:relative;height:18px;background:#eef1f6;border:1px solid var(--line);border-radius:4px"></div>
+      </div>
+    </div>
+    <div id="netExpBox" class="levbox" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"></div>
+    <p class="small mut" style="margin-top:12px">持有正二/SSO 的話,它們的<b>三層成本假設</b>(逆價差 · 波動耗損 · 融資成本)
+      在下面進階層的「<a href="#leverage">🔴 正二／SSO 的槓桿成本假設</a>」——用預設即可,想自己調再點開。</p>
+    <div class="row" style="margin-top:14px">
+      <button class="btn ghost" id="resetBtn" type="button" style="padding:4px 11px;font-size:12px">↺ 重設為預設值</button>
+      <span class="small mut" id="status"></span>
+    </div>
+  </div>
+
+  <!-- ══ 進階層 · 參數 ══════════════════════════════════════════════════
+       docs/IA.md §5.5:6 個 tab → 「常駐摘要 + 基礎層 + 進階層」。
+       進階層**全部預設收合**,而且是 13 個獨立展開器 —— 改版前是「一個大 advbox
+       裡面塞 5 組」,展開後還是一面牆,等於沒有分層。
+       每個 <summary> 都寫成**結論句**(docs/IA.md §3.4):收合狀態下它是唯一可見的
+       文字,寫成「進階設定」這種標籤等於把內容刪掉。
+       收合狀態由 assets/shell.js 記進 ap_state_v2.ui.adv(只記有 id 的)。 -->
+  <h2 class="layerhead">進階層 · 參數
+    <span class="small mut">全部可以跳過 —— 用預設值直接按「▶ 重新計算」就好</span></h2>
+
+  <details class="adv" id="leverage">
+    <summary>🔴 7% 的大盤開 2 倍,扣完三層成本只剩約 5% —— 三個滑桿就是那三層成本(只在你持有正二/SSO 時有影響)</summary>
+    <div class="body">
+      <div class="small" id="l2formula" style="margin:0 0 2px"></div>
+      <div class="small" id="ssoformula" style="margin:0 0 11px"></div>
+      <div class="grid g3" style="gap:13px">
+        <div>
+          <div class="wt"><span>逆價差(正二,−%/年)</span><span><b id="carryv">3.0</b>%</span></div>
+          <input type="range" class="slider" id="carry" min="-1" max="5" step="0.5" value="3">
+        </div>
+        <div>
+          <div class="wt"><span>波動耗損(共用,−%/年)</span><span><b id="voldragv">1.5</b>%</span></div>
+          <input type="range" class="slider" id="voldrag" min="0" max="4.5" step="0.5" value="1.5">
+        </div>
+        <div>
+          <div class="wt"><span>融資成本(SSO,−%/年)</span><span><b id="ssofinv">4.0</b>%</span></div>
+          <input type="range" class="slider" id="ssofin" min="0" max="5" step="0.5" value="4">
+        </div>
+      </div>
+      <div class="small" style="margin-top:9px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <button class="btn ghost" id="reloadCarry" type="button" style="padding:3px 9px;font-size:12px">↻ 更新逆價差</button>
+        <span id="carryInfo" class="mut"></span>
+      </div>
+      <details style="margin-top:9px">
+        <summary>ⓘ 三個滑桿=槓桿的三層成本;預設值就是「對齊現況」,不確定就別動</summary>
+        <p><b>正二 = 2×大盤(7%) − 波動耗損 − 內扣(1.3%) − 逆價差;SSO = 2×標普500(7%) − 波動耗損 − 內扣(0.89%) − 融資成本。</b></p>
+        <p><b>① 逆價差+成本</b>:正二靠台指期複製槓桿,期貨折溢價影響報酬——順風(往左/負)加分、逆風(往右/正)扣分。<b>數字的正負是方向、不是加減</b>:「+3%」代表「每年約 3% 的逆風拖累」。預設值由 carry.json 每月自動載入 =「近 5 年的平均拖累」(目前那個平均剛好約 +3%/年),旁邊另顯示「當年(近1年)」看是否在惡化。歷史:2015–21 是 −3%(順風)→ 2022–25 反轉成 +5%(逆風)。手動查:搜「台指期 逆價差」,折價大→往左、折價消失→往右。</p>
+        <p><b>② 波動耗損(正二/SSO 共用)</b>:每日重設 2× 槓桿穿越波動的複利損失。理論 σ²≈4.4%(假設天天洗),但實測 0050 vs 完美2x(2016–26)<b>全期實際只 −0.6%</b>(強趨勢年甚至負的,只有盤整年 2018 接近理論)。故預設折衷 <b>1.5%</b>。怕失落十年式盤整 → 拉 3–4%;信續強趨勢 → 拉 0。<b>註:這是共用值——實測台股 0050 近10年≈0%;S&P500 的實測耗損也不大(強趨勢年甚至為負),但你若擔心進入長期盤整,可把此值上調。</b></p>
+        <p><b>③ 融資成本(SSO 專用)</b>:美股 2x 靠 SWAP 借錢開槓桿,對借的部分付利息 <b>≈ 美元短率</b>。<b>台股正二沒有這項</b>(它的對應物是逆價差),所以兩者分開算。2010–21 零利率時 ≈ 0;現在短率 ~4.3% → 拖累約 4%。預設 <b>+4%</b>(對齊現況);利率走低 → 往左,利率走高 → 往右。姊妹專案 2x 實測:SSO 全期成本 ≈「0.89% 內扣 + 美元短率 + 0.46%」,12 年內誤差最大只有 0.84 個百分點——降息就會便宜回來。</p>
+      </details>
+      <!-- ↓ 原 tab4 觀念卡 ①②:它們解釋的就是上面這三個滑桿,搬過來當「▸ 為什麼」
+           (docs/IA.md §5.5 觀念卡拆散對照表)。 -->
+      <details style="margin-top:4px">
+        <summary>📌 7% 的大盤開 2 倍,扣完三層成本只剩約 5%——「2 倍」是倍率,不是報酬保證</summary>
+        <p>直覺以為「正二 = 0050 × 2」,但那只在<b>單邊上漲</b>成立。長期年化要扣三層:</p>
+        <ul>
+          <li><b>① 波動耗損 ≈ σ²(理論約 −4.4%/年)</b>:每日重設槓桿,漲跌來回會破洞,波動越大破越凶。</li>
+          <li><b>② 內扣費用(約 −1.3%/年)</b>。</li>
+          <li><b>③ 逆價差(曾是順風 −3%,現已反轉成 +5% 的拖累)</b>。</li>
+        </ul>
+        <p>結果:7% 的原型,2 倍後前瞻基準只剩 <b class="warn">~5%</b>。「2 倍」是倍率,不是報酬保證。上面三個滑桿就是讓你自己決定這三層各扣多少。</p>
+      </details>
+      <details style="margin-top:4px">
+        <summary>📌 噴出月看到 1.9 倍很爽,盤整年只剩 0.06 倍——用單月推長期,就是倖存者偏差</summary>
+        <p>近一個月 0050 +11.7%、正二 +22.3%(≈1.9 倍)——沒錯,單邊噴出時槓桿就是這樣。</p>
+        <p>但看會回檔的真實市場:<b>2021–2022 盤整,0050 +3.3%,正二只有 +0.2%(0.06 倍!)</b><span class="src fixed">回測值</span>。漲的月份多賺、跌與盤整的月份被耗損吃光 → 沉澱到年化 ~5%。用一個噴出的月份推斷長期,就是倖存者偏差。</p>
+      </details>
+    </div>
+  </details>
+
+  <!-- 錨點 #strategy(docs/IA.md §6.3):這一組是「分批 / 降槓 / 模擬 / 機制 / 提領」。
+       群組本身不是 <details>,所以深連結進來時由頁尾的 jump() 負責展開第一個展開器。 -->
+  <section class="advgroup" id="strategy">
+  <details class="adv" id="adv-dca">
+    <summary>一次全投平均略勝,但分批避開「槓桿在頂部歐印」——用槓桿、錢又大,就分 12~24 個月</summary>
+    <div class="body">
+        <div class="grid g3">
+          <div class="field"><label>分批進場月數</label><input type="number" id="dcaMonths" value="0" min="0" max="120" step="1"><div class="hint">把現有資產分幾個月慢慢投?怕買在高點才需要,不確定就填 0(一次投完)。例如 24 = 分 24 個月、每月一筆,會直接改變模擬。</div></div>
+        </div>
+        <details style="margin-top:4px">
+          <summary>ⓘ 一次全投平均略勝,但分批避開「槓桿在頂部歐印」——用槓桿、錢又大,就分 12~24 個月</summary>
+          <p><b>分批進場 = 把一大筆錢分成數個月、每月陸續投入,而不是一次全壓。</b>它防的是「<b>買在高點、然後馬上崩</b>」這個進場時機風險。</p>
+          <p><b>誠實的取捨(本工具實測):</b></p>
+          <ul>
+            <li><b>長期(30 年退休終值):一筆全投平均略勝</b>——市場長期向上,越早投賺越多;分批等於手裡留現金、有機會成本。</li>
+            <li><b>但「進場頭 3 年的最大回撤」分批較淺</b>(實測中位 23%→19%、壞情境 40%→34%,看圖下方讀數)。它保護的是「剛進場就重傷、心態崩掉、提前出場」的短期風險。</li>
+          </ul>
+          <p><b>該設幾個月:</b>① 市場屢創新高、估值貴;② 你「怕買高」;③ <b>你用槓桿(正二/SSO)</b>——歐印槓桿在頂部 = −84% 回撤,最該分批;④ 大資金、無法靠每月薪水攤平。符合越多 → 設越久(12~24 月)。反之(年輕、小資金、純定投、不開槓桿)→ 設 0 月一次全投反而較好。</p>
+          <p class="mut"><b>別跟準備金搞混</b>:準備金(現金部位)全程保留、只在崩盤觸發時抄底;分批管「核心怎麼進場」、準備金管「崩盤怎麼加碼」,兩個是不同工具、一起用。</p>
+        </details>
+
+    </div>
+  </details>
+
+  <details class="adv" id="adv-glide">
+    <summary>年輕時腰斬有薪水能救,60 歲腰斬沒時間救——越接近退休,越該自動降槓</summary>
+    <div class="body">
+        <div class="grid g3">
+          <div class="field"><label>隨年齡自動降低槓桿</label>
+            <select id="glide" style="width:100%;padding:8px;background:#fff;border:1px solid var(--line);border-radius:7px;color:var(--ink)">
+              <option value="0" selected>關閉(全程維持目標曝險)</option>
+              <option value="1">啟用(隨齡自動降槓)</option>
+            </select>
+            <div class="hint">年紀越大越保守、自動把槓桿換成債券。不確定就保持「關閉」</div>
+          </div>
+          <div class="field"><label>從幾歲開始降槓</label><input type="number" id="glideStart" value="45" min="30" max="70" step="1"><div class="hint">啟用後才有作用,常見設 45~50。退休前約降到一半曝險,會直接改變模擬。</div></div>
+        </div>
+        <details style="margin-top:4px">
+          <summary>ⓘ 年輕時腰斬有薪水能救,60 歲腰斬沒時間救——越接近退休,越該自動降槓</summary>
+          <p><b>生命週期投資法</b>(Ayres-Nalebuff):年輕時部位小、就算腰斬也是小錢、又有幾十年薪水能補 → 可以多開槓桿;<b>年紀越大、部位越大、能補的薪水越少 → 應該逐步降槓守成</b>,把賺到的果實保住。</p>
+          <p><b>它解決的問題</b>:你 35 歲腰斬是「300 萬變 150 萬」、還有 25 年薪水能補;但 60 歲腰斬是「2000 萬變 1000 萬」、而且<b>沒時間也沒金流補回來了</b>。這叫「退休前夕碰崩盤」風險,是會打爛整個退休計畫的存在性風險。</p>
+          <p><b>工具怎麼做</b>:啟用後,從你設的年齡(預設 45)開始,<b>每年自動把一點正二/SSO 賣掉、換成債券</b>,到退休前把槓桿降約 70%(起始淨曝險 ~107% → 退休前 ~55%)。效果會反映在模擬的<b>較淺回撤、較好的壞情境</b>上(上方「淨曝險」顯示的是起始值)。</p>
+          <p class="mut"><b>該開嗎</b>:想退休前更安穩、怕臨退休碰崩盤 → 開。年輕、還想衝、距退休很遠 → 可先關著,過幾年再開。預設關閉,基準投影不變。</p>
+        </details>
+
+    </div>
+  </details>
+
+  <details class="adv" id="adv-engine">
+    <summary>參數化平滑好調;歷史重抽抽得出「連跌好幾年」——回撤會深一截,那就是它的價值</summary>
+    <div class="body">
+        <div class="grid g3">
+          <div class="field"><label>模擬方式</label>
+            <select id="engine" style="width:100%;padding:8px;background:#fff;border:1px solid var(--line);border-radius:7px;color:var(--ink)">
+              <option value="param" selected>參數化抽樣(預設,平滑)</option>
+              <option value="hist">歷史重抽 block-bootstrap(真實序列)</option>
+            </select>
+            <div class="hint">「參數化」平順好調;「歷史重抽」用真實崩盤更嚴苛、更接近真相。不確定就用預設(只影響 2.2 機率帶圖)。</div>
+          </div>
+        </div>
+        <details style="margin-top:4px">
+          <summary>ⓘ 參數化平滑好調;歷史重抽抽得出「連跌好幾年」——回撤會深一截,那就是它的價值</summary>
+          <p><b>參數化抽樣(預設)</b>:用常態+肥尾隨機抽每月報酬。優點:你能<b>自由設定</b>各標的年化/波動、曲線平順、速度快。缺點:<b>各月獨立(iid)、沒有序列記憶</b>——抽不出「連跌四年」「失落十年」這種真實逆境,會<b>系統性高估槓桿的安全性</b>。</p>
+          <p><b>歷史重抽(block-bootstrap)</b>:從<b>美股+美債 1928–2024 真實年報酬</b>中,一次抽一段<b>連續 4–12 年</b>串接成你的年限,所有標的用<b>同一段歷史年份</b>對齊。這樣就保留了<b>動能、均值回歸、失落十年、以及崩盤時相關性一起飆高</b>等真實結構。</p>
+          <p><b>實測差很大</b>:同一個「正二30/VTI33/現金37」,歷史模式的<b>回撤中位 58%→74%、退休成功率 82%→67%</b>——因為真實歷史有 1929–32(−80% 實質)、1970s 停滯、2000–09 失落十年這些 iid 抽不出來的多年序列,槓桿在這些序列裡會被狠咬。<b>這個落差,正是這個功能的價值。</b></p>
+          <p class="mut"><b>誠實限制</b>:① 台股 / QQQ 等以<b>美股史代理</b>其序列形狀(台股長期可靠資料不易取得);② <b>年內崩盤被抹平</b>(COVID 兩個月 −34% 會變成一整年);③ 歷史只有<b>一條已實現路徑</b>(本身也是一種倖存者偏差)。台股專屬的 1990 −80% 崩盤,另見下面的<a href="#adv-scen">歷史崩盤壓測</a>。</p>
+          <p><b>該用哪個</b>:想看「平順的假設投影、自由調參數」→ <b>參數化</b>;想壓力測「真實多年逆境 / 序列風險對槓桿的傷害」→ <b>歷史重抽</b>。<b>兩個都看最好。</b></p>
+        </details>
+
+    </div>
+  </details>
+
+  <details class="adv" id="adv-mech">
+    <summary>現金回市場沒有唯一正解:加碼賺最多、再平衡最穩、並用居中——不確定就用預設「並用」</summary>
+    <div class="body">
+        <div class="grid g3">
+          <div class="field"><label>手上現金何時進場</label>
+            <select id="mech" style="width:100%;padding:8px;background:#fff;border:1px solid var(--line);border-radius:7px;color:var(--ink)">
+              <option value="both" selected>再平衡 + 崩盤加碼(預設,平衡)</option>
+              <option value="rebal">純偏離帶再平衡(最穩)</option>
+              <option value="reserve">純崩盤加碼 −12/−22/−32/−42(衝報酬)</option>
+              <option value="deep3">三段深觸發 −25/−35/−45(與「② 挑時機」同一張表)</option>
+              <option value="orig">深觸發原型(正二 −50/−80)</option>
+              <option value="bh">買進持有(完全不調整)</option>
+            </select>
+            <div class="hint">決定閒置現金怎麼回到市場:定期賣高買低再平衡、還是只在崩盤抄底?不確定就用預設,會直接改變模擬。</div>
+          </div>
+        </div>
+        <details style="margin-top:4px">
+          <summary>ⓘ 現金回市場沒有唯一正解:加碼賺最多、再平衡最穩、並用居中——不確定就用預設「並用」</summary>
+          <p><b>你手上的現金(再平衡的另一半 / 準備金),要用什麼規則放回市場?</b>核心是兩種相反哲學:<b>再平衡</b>(對稱、賣高買低、不預測,理論最扎實 Merton)vs <b>崩盤加碼</b>(不對稱、平時讓正二跑、只在崩盤抄底,賭「崩了會反彈」)。</p>
+          <p><b>📋 六種機制的實際操作手法(拿真錢怎麼做):</b></p>
+          <ol>
+            <li><b>再平衡 + 崩盤加碼(預設,平衡)</b>:平時<b>每半年~一年檢查一次</b>,任一部位偏離目標比例超過約 50% 就買賣拉回目標;另外保留的現金,當大盤<b>從高點回撤 −12 / −22 / −32 / −42%</b> 時,<b>分四批 1:2:3:4 買進正二</b>;之後大盤創新高,把超出目標的正二賣回現金、補足準備金。</li>
+            <li><b>純偏離帶再平衡(最穩、最省事)</b>:<b>只做再平衡</b>——每半年~一年檢查,偏離目標 &gt;50% 才動、買賣拉回。寬鬆即可、不必盯盤,常常數年才動一次。不另外留崩盤彈藥。</li>
+            <li><b>純崩盤加碼 −12/−22/−32/−42(衝報酬)</b>:多頭時<b>讓正二自由跑、不賣</b>;只在大盤回撤到那四個門檻時,用現金<b>分 1:2:3:4 買進</b>;創新高後補回現金。不做日常再平衡。</li>
+            <li><b>三段深觸發 −25/−35/−45(與「② 挑時機」同一張表)</b>:大盤自高點回撤 −25 / −35 / −45% 時,用準備金<b>分三批 1:2:3 買進</b>(愈深買愈重);創新高就把準備金補回來。這是<b>「② 挑時機」那一頁主策略「準備金 70/30」用的觸發表</b>,S8 起兩頁同源。<br>
+              <span class="warn">⚠ 這一頁的模擬是<b>月步</b>的,只看月底值 —— 盤中與月中的谷底看不見,所以會<b>低估</b>這種深觸發的開火次數與貢獻;而且沒有「② 挑時機」的 <b>63 日重置閘門</b>。這個策略真正的長期回測(26 年日線)在那一頁,兩邊數字對不起來是正常的。</span></li>
+            <li><b>深觸發原型712(正二 −50/−80)</b>:只在<b>跌很深</b>(正二自身 −50%、−80%,約等於大盤 −25%、−40%)才<b>分兩大批</b>重壓抄底。觸發次數少、單批很重。</li>
+            <li><b>買進持有(完全不調整)</b>:買了就放著,<b>不再平衡、不加碼</b>。僅供對照——長期通常輸給有紀律的再平衡。</li>
+          </ol>
+          <p><b>怎麼選</b>:想最穩、睡得著 → <b>純再平衡</b>;想兼顧 → <b>兩者並用(預設)</b>;想衝報酬、扛得住 −73% 回撤、相信會反彈 → <b>純崩盤加碼</b>(適合年輕、長年限)。<b>怕買高的你 → 偏再平衡那端。</b></p>
+          <p class="mut">各機制的報酬 / 回撤 / 壞情境<b>對照數據</b>,見下面的
+            <a href="#adv-mechcmp">換個現金進場機制會怎樣</a>。</p>
+        </details>
+        <!-- ↓ 原 tab4 觀念卡「正二+準備金 vs 純 0050」搬到它解釋的那個選項旁邊(IA §5.5)。 -->
+        <details style="margin-top:4px">
+          <summary>📌 正二+準備金 vs 純 0050:勝負只看年限內有沒有大崩盤——它賺的是崩盤保險,不是平時多賺</summary>
+          <p><b>歷史上(2003–2025)</b><span class="src fixed">回測值</span>:50% 正二+50% 現金的 Sharpe 0.73 &gt; 0050 的 0.69——避險版贏。但歐印版(100%正二)Sharpe 只有 0.66,是劣解。</p>
+          <p><b>前瞻(逆價差已反轉)</b>:這優勢大半是「免費逆價差」撐的,現在那塊沒了。沒大崩盤+逆價差壞時,純 0050 原始報酬反而可能贏。</p>
+          <p><b>決定勝負的唯一變數 → 你的年限內會不會遇到大崩盤?</b></p>
+          <ul>
+            <li>會崩 + 你有紀律照表抄底 → <b class="good">準備金版贏</b>(谷底買便宜正二,修復快)。</li>
+            <li>一路緩漲沒大崩 → <b class="warn">0050 贏</b>(準備金閒置、正二被逆價差拖)。</li>
+          </ul>
+          <p>結論:這套現在賺的是「<b>崩盤保險 + 抱得住的紀律</b>」,不是「平時多賺」。所以——正二要節制、核心要分散、準備金才是真核心。</p>
+        </details>
+
+    </div>
+  </details>
+
+  <details class="adv" id="adv-withdraw">
+    <summary>彈性提領=壞年份少花一點,是最便宜的退休保險——成功率通常直接高一截</summary>
+    <div class="body">
+        <div class="grid g3">
+          <div class="field"><label>退休後怎麼花</label>
+            <select id="flexW" style="width:100%;padding:8px;background:#fff;border:1px solid var(--line);border-radius:7px;color:var(--ink)">
+              <option value="0" selected>固定提領(每年花一樣,不管市場)</option>
+              <option value="1">彈性提領(跌時少花,最低花到目標 70%)</option>
+              <option value="2">攤銷式提領(每年重算,數學上花不完)</option>
+            </select>
+            <div id="abwBox" style="display:none;margin-top:10px">
+              <div class="grid g3">
+                <div class="field"><label>保守折扣(%/年)</label><input type="number" id="abwHair" value="1" min="0" max="4" step="0.5">
+                  <div class="hint">折現率壓得比預期報酬低多少。<b>設高一點 = 前期少花、留更多給後面</b>。
+                    這不是報酬預測,是「你願意多樂觀地預支未來」的旋鈕。不確定就用 1。</div></div>
+                <div class="field"><label>支出傾斜</label>
+                  <select id="abwTilt"><option value="-1">前期多花(每年 −1%)</option><option value="0" selected>平均(0%)</option><option value="1">後期多花(每年 +1%)</option></select>
+                  <div class="hint">多數人退休後花費會隨年紀遞減(旅遊變少),選「前期多花」比較貼近真實。</div></div>
+                <div class="field"><label>想留給後代(萬,實質)</label><input type="number" id="bequest" value="0" min="0" step="10">
+                  <div class="hint">會被當成期末必須留下的金額先扣掉,再把剩下的攤銷。填 0 = 花完為止。</div></div>
+              </div>
+            </div>
+            <div class="hint">「固定」每年花一樣;「彈性」跌時少花(目標的 70~120%);「攤銷式」每年用剩餘資產重算,
+              數學上花不完但金額會浮動。不確定就用預設。</div>
+          </div>
+        </div>
+        <details style="margin-top:4px">
+          <summary>ⓘ 彈性提領=壞年份少花一點,是最便宜的退休保險——成功率通常直接高一截</summary>
+          <p><b>固定提領</b>:不管市場好壞,每年都花一樣的錢(隨通膨調整)。這是 4% 法則的假設,但最危險——剛退休就碰崩盤、又照常花,本金會被加速掏空(序列風險)。</p>
+          <p><b>彈性提領(本工具做法)</b>:把每年支出綁在「當前資產的固定比例」,但設<b>地板 70%、上限 120%</b>。<b>市場跌 → 當年少花一點(最低花到目標的 70%);市場漲 → 多花一點(最高 120%)。</b></p>
+          <p><b>為什麼有效</b>:壞年份少花,等於不在谷底硬賣本金 → 本金撐得更久 → <b>退休成功率明顯提高</b>(實測例如 80%→86%、70%→80%,提領越激進、改善越大)。代價是壞年份要忍受少花(最多砍到目標的 70%)。</p>
+          <p class="mut">這是退休理財最有效、最便宜的保險——比多存錢、晚退休都划算。真實的人本來就會「手頭緊就少花」,固定提領反而不真實。</p>
+        </details>
+        <details style="margin-top:4px">
+          <summary>ⓘ 攤銷式提領=算房貸月付金的同一套數學,反過來用</summary>
+          <p><b>怎麼算的</b>:把「<b>現在的投資部位 ＋ 未來所有收入的現值</b>」加起來,再攤銷到剩下的每一個月——
+            就是銀行算你房貸月付金的那套公式,只是反過來問「這筆錢每個月能領多少」。每年重算一次,
+            所以資產漲了就多花、跌了就少花。</p>
+          <p><b>為什麼它花不完</b>:每一期都只花「剩餘財富的一小部分」,分母永遠大於 1,數學上不可能提早歸零。
+            所以在這個模式下,<b>「破產率」這個問題本身就消失了</b>——真正該看的是「必要支出撐不撐得住」
+            與「退休生活水準達成率」。這也是本工具把頭條指標換掉的原因。</p>
+          <p><b>代價</b>:金額會浮動。壞市場下它會誠實地叫你少花,而不是假裝沒事然後在第 20 年突然歸零。
+            風險沒有消失,只是<b>從「錢花光」換成「花得少」</b>——後者你至少還能提早反應。</p>
+          <p class="mut">中位支出線會微微往右上斜是<b>正常的</b>,不是 bug:折現率刻意比預期報酬保守
+            (預設低 1%),等於前期少花一點,錢就會愈滾愈多。把「保守折扣」調成 0 就會壓平。</p>
+        </details>
+    </div>
+  </details>
+  </section><!-- /#strategy -->
+
+  <details class="adv" id="cashflow">
+    <summary>📅 多數人可以整段跳過 —— 這裡只給有「房貸繳到 60 歲」「55 歲退休但勞保 65 才領得到」這種<b>時間差</b>的人</summary>
+    <div class="body">
+        <p class="small mut" style="margin-top:0">你在 1.1 填的「退休後一年生活費」與年金<b>已經算進去了</b>,不必在這裡再填一次。</p>
+
+        <div class="termhint" style="margin:2px 0 12px">
+          ⚠️ <b>別把生活費重複填一次。</b>你平常的生活費已經含在 1.1 的「每月可再投入」裡了(收入減掉支出才是能投入的錢),
+          退休後的生活費則是 1.1 的「<b>退休後</b>一年生活費」。這裡只填<b>那兩格沒涵蓋到的、有起訖時間的</b>額外收支。
+        </div>
+
+        <div class="catlabel first">快速新增(點一下就有,數字之後可以改)</div>
+        <div class="chips" id="flowChips"></div>
+
+        <div id="flowList"></div>
+        <div id="flowTimeline" class="tl"></div>
+        <div id="flowSummary" class="small mut" style="margin-top:8px"></div>
+
+        <div class="catlabel">退休後的支出上下限 <span class="pill opt">選填</span></div>
+        <div class="grid g3">
+          <div class="field"><label>支出下限(萬/年)</label><input type="number" id="floorA" value="0" min="0" step="1">
+            <div class="hint">不管市場多差,每年至少要花到這個數字。通常設成你的<b>必要支出</b>。不確定就填 0(不設限)。</div></div>
+          <div class="field"><label>支出上限(萬/年)</label><input type="number" id="ceilA" value="0" min="0" step="1">
+            <div class="hint">市場再好也不會花超過這個數字,多的留給後面的年份。填 0 = 不設限。</div></div>
+        </div>
+        <p class="small mut" style="margin-top:-2px">下限會擋在「買不起就只好少花」之前 ——
+          撐不起的下限會直接顯示成<b>必要支出缺口</b>,而不是靜默地算你成功。</p>
+
+        <details style="margin-top:12px">
+          <summary>ⓘ 「實質」跟「名目」差在哪?為什麼房貸要選名目?</summary>
+          <p><b>實質</b>=這筆錢的<b>購買力</b>固定,金額會跟著通膨長大。生活費、長照、勞保年金(有跟著調整的部分)都算這種——
+            今天 3 萬的長照,20 年後大概要 4.5 萬才買得到一樣的服務。</p>
+          <p><b>名目</b>=<b>金額</b>固定不動,購買力隨通膨慢慢變小。<b>房貸月付金就是最典型的例子</b>:
+            繳 20 年都是同一個數字,但 20 年後那筆錢的實際負擔已經輕很多了。選錯會高估房貸對你的壓力。</p>
+          <p class="mut">不確定就選「實質」——大多數的收支都是這種,而且它比較保守。</p>
+        </details>
+
+        <details style="margin-top:4px">
+          <summary>ⓘ 「必要」跟「彈性」為什麼要分?</summary>
+          <p><b>必要</b>=不能砍的(吃飯、房租、醫藥、長照)。<b>彈性</b>=市場不好時可以先緩一緩的(旅遊、換車、進修)。</p>
+          <p>分開之後,「退休金夠不夠」這個問題才問得準:一條把旅遊全砍掉、勉強沒破產的路徑,不該跟一條從頭到尾想花什麼就花什麼的路徑,
+            被算成同一種「成功」。</p>
+          <p class="mut">「★ 我的計畫」❻ 的頭條數字因此看的是<b>必要支出有沒有每個月都付得出來</b>,
+            而不是舊的「資產有沒有歸零」;彈性支出實際花到幾成,另外列成「退休生活水準達成率」。
+            兩者都還是照樣從資產扣 —— 差別在於<b>怎麼評分</b>,不是怎麼扣錢。</p>
+        </details>
+    </div>
+  </details>
+  <input type="hidden" id="flows" value="">
+
+  <!-- ══ 進階層 · 對照 ══════════════════════════════════════════════════
+       每一段**第一次打開時才計算**(改版前是切到「3 · 風險與對照」分頁時一次算 12 組
+       模擬,不看的人也要等)。開著的那幾段會被「▶ 重新計算」一起更新。 -->
+  <h2 class="layerhead">進階層 · 對照
+    <span class="small mut">想知道「換一個會怎樣」再打開;每一段第一次打開時才計算</span></h2>
+
+  <section class="advgroup" id="compare">
+
+  <details class="adv" id="adv-band">
+    <summary>📈 資產成長機率帶 —— P10 不是某一條路徑,是「每一年各自最差的十分之一」串起來的包絡線</summary>
+    <div class="body">
+      <div class="small mut" id="coreStatus" style="margin-bottom:8px"></div>
+      <canvas id="mainChart"></canvas>
+      <div class="legend">
+        <span><i style="background:#1b4b8f"></i>中位(P50)</span>
+        <span><i style="background:rgba(22,37,92,.12);height:10px"></i>P10–P90 區間</span>
+        <span><i style="background:#e2711d;border-top:2px dashed #e2711d;background:transparent"></i>FIRE 數字</span>
+        <span><i style="background:#7b4fa8;border-top:2px dashed #7b4fa8;background:transparent"></i>Coast 目標線</span>
+        <span><i style="background:#8b95a6;border-top:2px dashed #8b95a6;background:transparent"></i>純 0050 躺平(中位,基準)</span>
+      </div>
+      <div id="cagrReadout" class="sbox" style="margin-top:10px"></div>
+      <!-- 全期回撤(ddAll)。決議 D1 把它降為**進階指標**,而且顯示時必須標明
+           「含退休後照計畫花掉的部分,不是市場跌的」—— 少了那句話,預設配置會印出
+           「壞情境 −100%」而讀者會以為那是崩盤。使用者該看的累積期回撤在「★ 我的計畫」❺。 -->
+      <div class="sbox" id="ddAllBox" style="margin-top:10px"></div>
+      <p class="small mut" style="margin-top:8px;line-height:1.75">
+        縱軸為<b>對數刻度</b>;每次模擬 1500 條路徑、<b>月步</b>,含肥尾(Student-t)與資產相關性。<br>
+        <b>現金回市場機制</b>依你在上面「手上現金何時進場」的選擇。崩盤加碼的觸發基準 = 「1x 全市場指數」自高點回撤,按 1:2:3:4 倒進槓桿核心。<br>
+        <b>分批進場、生命週期降槓</b>(若啟用)也會反映在內;正二/SSO 以「2× 標的 − 波動耗損 − 內扣 − 逆價差/融資」近似建模。<br>
+        <b>⚠️ 未含「巨災尾部閘門」</b>:故最壞情境(P10)偏保守——純價格分不出「錯殺(會反彈)」與「結構衰退(價值陷阱)」,硬做閘門會誤觸發。真實策略在多年大蕭條會降槓、停止加碼,把最壞尾部從「滅頂」救成「存活」。
+      </p>
+    </div>
+  </details>
+
+  <details class="adv" id="adv-assets">
+    <summary>🔀 換個標的會怎樣 —— 正二在沒大崩盤時不一定贏,贏在崩盤修復;而它的回撤遠比 0050 深</summary>
+    <div class="body">
+      <table id="cmp"><thead><tr>
+        <th>配置</th><th>基準年化</th><th>Coast 年齡(中位)</th><th>退休時資產(中位)</th><th>壞情境 P10</th><th>退休前最深回撤(中位)</th><th>報酬÷回撤</th>
+      </tr></thead><tbody></tbody></table>
+      <p class="small mut" style="margin-top:8px">同樣的你(年齡 / 資產 / 月投入 / 現金流全部不動),只換標的,每列各跑 800 條路徑。<br>
+        「壞情境 P10」= 1/10 機率會更差的退休資產;「退休前最深回撤」= <b>累積期</b>過程中曾經的帳面最深跌幅
+        (決議 D1:不含退休後照計畫提領的那一段)。</p>
+    </div>
+  </details>
+
+  <details class="adv" id="adv-mechcmp">
+    <summary>⚖ 換個現金進場機制會怎樣 —— 沒有單一贏家:加碼賺最多但最痛、再平衡最穩但賺最少</summary>
+    <div class="body">
+      <table id="mcmp"><thead><tr>
+        <th>機制</th><th>退休時資產(中位)</th><th>壞情境 P10</th><th>好情境 P90</th><th>退休前最深回撤(中位)</th><th>報酬÷回撤</th><th>哲學</th>
+      </tr></thead><tbody></tbody></table>
+      <p class="small mut" style="margin-top:8px;line-height:1.75">
+        用你目前的配置,只換「手上現金怎麼回市場」的規則,各跑 1000 條路徑。<b>沒有單一贏家</b>:純加碼報酬最高但回撤最深、純再平衡最穩但報酬中等、兩者並用居中(加碼多賺來自平均曝險較高,非加碼魔法)。<br>
+        <b>👉 每種機制的「實際操作手法」與「怎麼選」寫在上面的<a href="#adv-mech">手上現金何時進場</a>。</b>
+      </p>
+      <!-- ↓ 原 tab4 觀念卡「加碼/再平衡/CPPI 沒有贏家」搬到它解釋的那張表旁邊(IA §5.5)。 -->
+      <details style="margin-top:8px">
+        <summary>📌 加碼/再平衡/CPPI 沒有贏家:加碼賺最多但最痛、再平衡最穩但賺最少——挑你抱得住的</summary>
+        <p>「手上的現金怎麼回到市場」有三種哲學。本工具用月步 Monte Carlo 跑過(都從 50%正二+50%現金、起點 100 萬、30 年、實質)<span class="src fixed">回測值</span>:</p>
+        <table style="font-size:12px">
+          <thead><tr><th>機制</th><th>中位</th><th>壞p10</th><th>回撤</th><th>哲學</th></tr></thead>
+          <tbody>
+            <tr><td>純偏離帶再平衡</td><td>417</td><td><b>90</b></td><td><b>−58%</b></td><td>不預測(Merton)</td></tr>
+            <tr><td>再平衡+崩盤加碼(預設)</td><td>455</td><td>76</td><td>−63%</td><td>平衡</td></tr>
+            <tr><td>純崩盤加碼 −12/−22/−32/−42</td><td><b>640</b></td><td>55</td><td>−73%</td><td>逆勢/賭反彈</td></tr>
+            <tr><td>深觸發原型(−50/−80)</td><td>617</td><td>53</td><td>−74%</td><td>逆勢/賭反彈</td></tr>
+            <tr><td>CPPI(順勢/保險)*</td><td>~100</td><td>69</td><td><b>−32%</b></td><td>賭趨勢</td></tr>
+            <tr><td>買進持有(不調整)</td><td>344</td><td>58</td><td>−70%</td><td>—</td></tr>
+          </tbody>
+        </table>
+        <p><b>三個結論:</b></p>
+        <ul>
+          <li><b>沒有單一贏家,是「報酬 vs 風險」的取捨</b>:純加碼報酬最高(640)但回撤最深(−73%)、壞情境最差;純再平衡報酬中等(417)但最穩(回撤 −58%、壞情境最好)。</li>
+          <li><b>加碼多賺的,主要是「平均曝險較高」(讓正二自由跑),不是加碼魔法</b>——高曝險=高報酬+高風險,沒有白吃的午餐。原型712 與新版幾乎一樣(新版略勝)。</li>
+          <li><b>CPPI(跌減碼、漲加碼)在這裡慘敗</b>(報酬幾乎沒成長)——因為正二高波動 + 市場會反彈,它一直在谷底賣、漲回才買,被洗死;只有回撤最淺(−32%)。<b>逆勢派(再平衡/加碼)勝、順勢派(CPPI)輸,前提是「崩盤會反彈」。</b>*本工具因此不提供 CPPI。</li>
+        </ul>
+        <p class="mut">⚠ 這張表的回撤是<b>那次回測的全期口徑</b>(30 年、含提領),與上面那張表的「退休前最深回撤」不是同一把尺,只能看<b>相對高低</b>、不要跨表比絕對值。</p>
+      </details>
+    </div>
+  </details>
+
+  <details class="adv" id="adv-scen">
+    <summary>📉 歷史崩盤壓測 —— 失落十年是槓桿的死穴,但要先看 0050 那列:連它都沒回本,就是劇本本身不反彈</summary>
+    <div class="body">
+      <p class="small mut" style="line-height:1.75;margin-top:0">
+        用你在 1.3 與上面進階層的權重與機制,確定性地走過四段歷史崩盤路徑(以「1x 大盤」為驅動,正二/SSO 以 2× 路徑自帶波動耗損)。每個情境都<b>並排「你的配置」與「純 0050 買進持有」</b>當錨點。<br>
+        <b>谷底</b> = 整段最深回撤;　<b>回本時間</b> = 帳戶漲回起點要幾年;　<b>走完後倍數</b> = 整段結束時的本金倍數。<br>
+        <b>看「回本」欄要先看 0050 那列</b>:若連 0050 都未回本,代表是這個<b>劇本本身不反彈</b>(市場的問題、非你的策略);只有「0050 已回本、你的配置卻仍虧損」才是槓桿配置的真風險(會標紅 ⚠️)。
+      </p>
+      <table id="scen">
+        <thead><tr><th style="text-align:left">歷史情境</th><th>配置</th><th>谷底最深跌幅</th><th>回本時間</th><th>走完後倍數</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <details style="margin-top:8px"><summary>ⓘ 總長度=崩跌+修復+尾段;「修復回前高」只是其中一段,所以總長度比它長</summary>
+        <p class="small mut" style="margin-top:8px">總長度 = <b>崩跌月數 ＋ 修復回前高月數 ＋ 尾段月數</b>。注意:<b>總長度 ≠ 修復回前高的時間</b>。「修復回前高」只是 1x 大盤從谷底漲回原起點要多久;後面還接一段<b>尾段</b>——模擬崩盤後的延續(歷史上大崩盤多半會創新高的多頭,或「失落十年」那種跌完盤整不回),用來觀察你的策略在「市場回到原點之後」是繼續賺、還是被波動耗損咬。各情境的長度依其真實歷史節奏設定,故彼此不同(COVID 只 2 年、2000 泡沫 9 年)。</p>
+        <table id="sceninfo">
+          <thead><tr><th style="text-align:left">情境</th><th>崩跌</th><th>修復回前高</th><th>尾段(多頭/盤整)</th><th>總長度</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </details>
+      <p class="small mut" style="margin-top:6px;line-height:1.75">
+        ⚠️ 這是<b>風格化</b>的代表性路徑(用「跌幅深度 × 崩跌月數 × 修復月數 × 尾段」生成平滑月路徑),非逐日真實報價;目的是比較「你的配置在不同形狀的崩盤下,相對純 0050 扛不扛得住」。<br>
+        <b>失落十年</b>(跌完盤整十年不回)是槓桿的真正死穴——但留意:它連純 0050 都收在虧損,那是「不反彈劇本」的本質,任何長期持有股票都會輸。此時要看的不是「有沒有回本」,而是<b>「你比 0050 多虧多少」</b>(槓桿在盤整盤會被耗損咬得更兇)。
+      </p>
+    </div>
+  </details>
+
+  <details class="adv" id="adv-stress">
+    <summary>🎓 有崩盤 vs 無崩盤 —— 準備金賺的是「崩盤保險」,不是平時多賺(教學示意,不是你的計畫)</summary>
+    <div class="body">
+      <!-- 差異 C6 / 決議 D9(S5 落地):這一段是**完全獨立的一套口徑** ——
+           年步、6 年、確定性、起點 100 萬、名目金額、不扣通膨。它是教學示意圖,
+           不是使用者的計畫數字,所以標題與說明必須明講這件事,而且不得出現在
+           「★ 我的計畫」或「📄 計劃書」(決議 D4)。
+           成本改成讀 LEV 表與滑桿,不再硬編 0.013。 -->
+      <div class="ap-risk soft" style="margin:0 0 12px">
+        <b>⚠ 這是教學示意圖,不是你的計畫。</b>它用的是完全獨立的一套口徑:固定 100 萬起點、6 年、
+        年步、確定性(沒有隨機抽樣)、<b>名目金額且不扣通膨</b>。
+        金額不要拿去跟上面任何一張表比 —— 它只想證明一件事:
+        <b>準備金賺的是崩盤保險,不是平時多賺。</b>
+      </div>
+      <p class="small">同樣 100 萬、6 年,比較三種做法。<b>準備金加碼版</b>會在大盤回撤 −12/−22/−32/−42 時,把現金分 1:2:3:4 投入正二。</p>
+      <div class="stressgrid" id="stress"></div>
+      <p class="small mut" style="margin-top:8px">看出來了嗎:<b class="good">無崩盤</b>時純 0050 與靜態版差不多、加碼版沒機會發揮;<b class="bad">有崩盤</b>時,在谷底加碼的準備金版把便宜的正二買進,修復後反超。這就是「正二+準備金」現在賺的東西——<b>崩盤保險,不是平時多賺</b>。</p>
+    </div>
+  </details>
+
+  </section><!-- /#compare -->
+
+  <details class="adv" id="snapshots">
+    <summary>⚖ 存快照與並排比較 —— 把幾組配置存起來,一次挑 3 組並排看誰比較適合你</summary>
+    <div class="body">
+      <p class="small mut" style="margin-top:0">把目前的設定<b>存成快照</b>(最多 20 組),之後可一次挑 3 組<b>並排比較</b>關鍵指標。快照只存在你這台瀏覽器,建議用「匯出」備份。</p>
+      <div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:6px">
+        <button class="btn" id="snapSaveBtn" type="button">💾 把目前設定存成快照</button>
+        <button class="btn ghost" id="snapExportBtn" type="button" style="padding:8px 12px">⬆ 匯出全部</button>
+        <button class="btn ghost" id="snapImportBtn" type="button" style="padding:8px 12px">⬇ 匯入</button>
+        <input type="file" id="snapImportFile" accept="application/json,.json" style="display:none">
+        <span class="small mut" id="snapCount"></span>
+      </div>
+      <div id="snapList" class="snaplist"></div>
+
+      <div class="catlabel" style="margin-top:18px">三方並排比較</div>
+      <p class="small mut" style="margin-top:0">選最多 3 組快照,按「開始比較」。指標皆取自核心模擬;<b>同一批隨機抽樣、實質購買力</b>,差異只反映配置本身。</p>
+      <div class="grid g3" id="cmpPickers">
+        <div class="field"><label>欄 1</label><select id="cmpSel0" class="cmpsel"></select></div>
+        <div class="field"><label>欄 2</label><select id="cmpSel1" class="cmpsel"></select></div>
+        <div class="field"><label>欄 3</label><select id="cmpSel2" class="cmpsel"></select></div>
+      </div>
+      <div class="row" style="gap:10px;margin:4px 0 2px">
+        <button class="btn" id="cmpRunBtn" type="button">▶ 開始比較</button>
+        <span class="small mut" id="cmpStatus"></span>
+      </div>
+      <div class="prog" id="cmpProg" style="max-width:none;margin:8px 0 0"><span></span></div>
+      <div id="cmpResult" style="margin-top:12px"></div>
+    </div>
+  </details>
+
+  <!-- ══ 頁尾:引用來源 + 辭典 + 免責 ═══════════════════════════════════
+       原 tab4「4 · 觀念與來源」的 9 張觀念卡已經拆散到它們解釋的東西旁邊
+       (docs/IA.md §5.5 的對照表);這裡只留 4.2 引用來源與辭典。 -->
+  <div class="panel" style="margin-top:26px">
+    <h2>引用／參考來源</h2>
+    <p class="small"><b>主要策略來源(兩位不同作者)</b>:</p>
+    <ul class="small" style="margin:4px 0 10px">
+      <li><b>大仁哥</b> (PTT 帳號 <b>Capufish</b>，即「正二哥」 /《槓桿 ETF 投資法》作者)：台股「正二槓桿投資法」本體 —— 50:50 槓桿配置、偏離帶再平衡、曝險刻度、生命週期投資法、行為層。</li>
+      <li><b>一貓人我的超人</b> (PTT 帳號 <b>onekoni</b> / 正二資金控管實戰版友)：台股「正二資金控管與加碼」框架 —— 準備金提列「<b>712</b>」法則 (7:1:2 切分)、崩盤漸進加碼正二 −50/−80 深觸發。</li>
+    </ul>
+    <details><summary>這些來源的核心操作理念(主要為大仁哥;準備金加碼框架取自 onekoni)</summary>
+      <ul>
+        <li><b>50:50 槓桿配置</b>:用一半資金買正二(2x)達到 100% 股票曝險,另一半留現金——「漲也有賺、跌也安心」。</li>
+        <li><b>以「曝險比例」為唯一風險刻度</b>:不擇時、不選股、不停損,只用曝險高低控制風險。</li>
+        <li><b>偏離帶再平衡</b>:漲多賣、跌多買,維持目標比例(賣高買低)。</li>
+        <li><b>崩盤逢低加碼</b>:手上現金在大跌時分批抄底(由淺到深漸進重壓);早期版本用「正二 −50/−80」深觸發。</li>
+        <li><b>生命週期投資法</b>:年輕多開槓桿(風險分散到整個投資週期、化解報酬順序風險),隨齡降槓守成。</li>
+        <li><b>行為層</b>:成本=當下市價(紅酒比喻)、心理帳戶、後悔最小化——幫人「抱得住」。<span class="mut">(這三張卡搬到 <a href="../report/">📄 計劃書</a>第 7 節的簽名欄前面 —— 那才是你真的需要它們的時刻。)</span></li>
+        <li><b>台股逆價差優勢</b>:台指期長期逆價差,讓台股 2x 相對美股 2x 成本更低(但近年壓縮、須監控)。</li>
+      </ul>
+    </details>
+    <details><summary>學術／理論基礎</summary>
+      <ul>
+        <li><b>安全提領率(4% 法則)</b>:Bengen(1994)、Trinity Study(1998)。</li>
+        <li><b>生命週期投資法</b>:Ayres &amp; Nalebuff《Lifecycle Investing》。</li>
+        <li><b>固定比例為最優</b>:Merton(1969,CRRA 投資人最優=固定比例連續再平衡);Perold-Sharpe(1988,constant-mix vs CPPI)。</li>
+        <li><b>50:50 後悔最小化</b>:Markowitz(現代投組理論)、Graham《智慧型股票投資人》、Bernstein《投資人宣言》。</li>
+        <li><b>投資組合保險(CPPI)</b>:Black-Jones(1987)、Perold-Sharpe(1988)。</li>
+        <li><b>數據</b>:Yahoo Finance(0050 / 00631L / VOO 等歷史價)、台灣證交所報酬指數(逆價差驗證)、Damodaran (NYU Stern) 1928–2024 美股與美債年報酬。</li>
+        <li><b>姊妹工具</b>:<span class="x2link"><b>2x 進場時機儀表板</b></span>——進場時機與準備金策略的原始研究,含「為什麼選 SSO 不選 QLD」的完整回測(us_overlap / us_reserve)。</li>
+      </ul>
+    </details>
+    <details class="x how" id="glossBox">
+      <summary>📖 名詞小辭典 —— 頁面上每個專有名詞的白話解釋(可搜尋)</summary>
+      <div class="body">
+        <input type="search" class="glosshunt" id="glossFilter" placeholder="輸入關鍵字篩選,例如「回撤」">
+        <div class="gloss" id="glossList"></div>
+      </div>
+    </details>
+    <p class="small mut" style="margin-top:8px"><b>免責聲明</b>:本工具為教育與試算用途,<b>非投資建議</b>;所有報酬皆為前瞻假設、非保證,過去績效不代表未來。槓桿投資可能造成重大虧損,請依自身狀況審慎評估。</p>
+  </div>
+</div>
+<div id="gpop" role="tooltip" aria-live="polite"></div>
+
+<script src="../assets/engine.js"></script>
+<script src="../assets/charts.js"></script>
+<script src="../assets/state.js"></script>
+<script src="../assets/shell.js"></script>
+<script>
+"use strict";
+/* ── 引擎來自 assets/engine.js ──────────────────────────────────────
+   S2 把所有純運算(標的參數、現金流排程、蒙地卡羅、里程碑)搬出這個檔案,
+   讓 /plan-result/(S4)不必依賴本頁先算過就能自己算,也讓測試腳本不必再用
+   正則從 HTML 切 <script>。**數學一行都沒有改。**
+
+   下面這一段只是把引擎的匯出綁成本頁原本的區域名稱 —— 本頁其餘 1500 行
+   一個字都不用動,S5 重排版面時比較容易看出哪些是真正的改動。 */
+const E = APEngine;
+const {ORDER, LEV, LEV_KEYS, DEFAULT_W, isLev, levMult,
+       ASSET_META, ASSET_COLOR, SHORT, DNAME, CATS,
+       blendedMuNom, netExposure, clamp, randn, studentT,
+       percentile, fracGE, fracGEdd, impliedCAGR,
+       FLOW_MAX, FLOW_VER, flowClean, parseFlows, serializeFlows, flowMonths,
+       buildFlowSchedule, buildPVTables, simulate, milestones,
+       HIST_SR, HIST_BR, HIST_N, sampleBlockYears, histAnnualReal} = E;
+
+// ---------- 工具 ----------
+const $=id=>document.getElementById(id);
+function fmtW(v){ // v in 萬
+  if(!isFinite(v))return '—';
+  if(Math.abs(v)>=10000)return (v/10000).toFixed(2)+'億';
+  return Math.round(v).toLocaleString()+'萬';
+}
+function pct(x){return (x*100).toFixed(1)+'%';}
+// escapeHtml() 宣告在下面的「暫存與比較」段落(function 宣告會提升,所以這裡取別名沒問題)。
+// 兩個名字並存是為了不動既有 40 幾個呼叫點;新程式碼一律用短的那個。
+const esc=escapeHtml;
+
+// ---------- 三個成本假設:表單 → 引擎 ----------
+// 引擎不讀 DOM,所以三支滑桿的值一律由這裡讀出來再傳進去。
+// 沒有滑桿時(理論上不會發生)退回 engine.js 的 DEFAULTS,兩邊是同一組數字。
+function getCarry(){return $('carry')?(+$('carry').value)/100:E.DEFAULTS.carryDrag;}
+function getVolDrag(){return $('voldrag')?(+$('voldrag').value)/100:E.DEFAULTS.volDrag;}
+function getFin(){return $('ssofin')?(+$('ssofin').value)/100:E.DEFAULTS.ssoFin;}
+// 本頁的呼叫端習慣「不傳參數 = 用目前滑桿的值」,所以包一層薄的預設。
+function l2muNom(carryDrag,volDrag){return E.l2muNom(carryDrag==null?getCarry():carryDrag, volDrag==null?getVolDrag():volDrag);}
+function ssoMuNom(financing,volDrag){return E.ssoMuNom(financing==null?getFin():financing, volDrag==null?getVolDrag():volDrag);}
+function assetDefs(carryDrag,volDrag,ssoFin){
+  return E.assetDefs(carryDrag==null?getCarry():carryDrag,
+                     volDrag==null?getVolDrag():volDrag,
+                     ssoFin==null?getFin():ssoFin);
+}
+
+// ---------- 權重 UI ----------
+function buildWeights(){
+  const host=$('weights');host.innerHTML='';
+  const cd=(+($('carry')?$('carry').value:3))/100;
+  const defs=assetDefs(cd);
+  CATS.forEach((cat,ci)=>{
+    const lab=document.createElement('div');lab.className='catlabel'+(ci===0?' first':'');lab.textContent=cat.label;host.appendChild(lab);
+    const grid=document.createElement('div');grid.className='grid g2';host.appendChild(grid);
+    cat.keys.forEach(k=>{
+      const d=defs[k],m=ASSET_META[k];
+      const div=document.createElement('div');div.className='asset';
+      div.innerHTML=`
+        <div class="top">
+          <span class="nm"><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${ASSET_COLOR[k]};margin-right:5px;vertical-align:middle"></i>${m.tag} ${DNAME[k]}</span>
+          <span class="small"><input type="number" class="numw" id="n_${k}" min="0" max="100" step="1" value="${DEFAULT_W[k]}">%</span>
+        </div>
+        <div class="ameta">年化 <b id="amu_${k}">${pct(defs[k].muNom)}</b> · 模擬波動 <b>${pct(d.sigma)}</b> · 歷史最深 <b title="歷史實測,不是模擬輸入">${(m.dd*100).toFixed(0)}%</b> · <span class="rolehint">ⓘ 理由</span></div>
+        <div class="roletext">${m.role}</div>`;
+      grid.appendChild(div);
+      const nm=div.querySelector('#n_'+k);
+      nm.addEventListener('input',updateWsum);
+      nm.addEventListener('change',()=>{nm.value=clamp(+nm.value||0,0,100);updateWsum();markDirty();});
+      const hint=div.querySelector('.rolehint'),rt=div.querySelector('.roletext');
+      hint.addEventListener('click',()=>rt.classList.toggle('show'));
+    });
+  });
+  updateWsum();
+}
+function getWeights(){const w={};ORDER.forEach(k=>w[k]=(+$('n_'+k).value||0)/100);return w;}
+function updateWsum(){
+  let s=0;ORDER.forEach(k=>s+=(+$('n_'+k).value||0));
+  const sr=Math.round(s*10)/10, ok=Math.abs(s-100)<0.05;
+  $('wsum').textContent=sr;
+  $('wsum').className=ok?'good':'totbad';
+  $('wnote').textContent=ok?'✓ 圖例即實際配置':`合計 ${sr}% → 計算時自動正規化成 100%(圖例 % 為正規化後)`;
+  drawPie();
+  // 淨曝險(主風險刻度)
+  const neb=$('netExpBox');
+  if(neb){
+    // 差異 C3(S5 落地):改版前這裡自己算一個「有正規化」的淨曝險,而 netExposure()
+    // 沒有正規化 —— 權重合計 ≠ 100% 時,同一頁上的兩個「淨曝險」會打架,
+    // 而 1.3 明白允許不湊到 100。現在全站只剩 E.netExposure() 一個定義。
+    const w=getWeights();
+    const ne=netExposure(w), p=Math.round(ne*100);
+    const cap=+($('net')?$('net').value:0)||0; // 換成使用者的錢,數字才有感覺(2x 的寫法)
+    const col=ne>1.5?'var(--bad)':(ne>1.2?'var(--warn-ink)':(ne>=0.9?'var(--good)':'var(--mut)'));
+    const lvl=ne>1.5?'積極(高風險)':ne>1.2?'溫和槓桿':ne>=0.9?'約等於全押大盤':'保守(低於大盤)';
+    neb.innerHTML=`<div style="flex:none"><div class="small mut">🎯 淨曝險(你真正的風險刻度)</div><div style="font-size:clamp(24px,2.6vw,30px);font-weight:700;color:${col}">${p}%</div></div>`+
+      `<div class="small mut" style="flex:1;min-width:190px"><b style="color:${col}">${lvl}</b>。換算:100% ≈ 全押 0050;120–140% = 溫和槓桿;>150% 積極。${cap>0?`<br>白話:大盤動 1 元,你這份錢會動 <b>${ne.toFixed(2)}</b> 元;以你填的 <b>${cap}萬</b>,大盤跌 10% ≈ 帳面先少 <b>${Math.round(cap*ne*0.1)}萬</b>。`:''}<br>= 各標的權重 × 倍率(正二/SSO 算 2x,現金與債券算 0)。這量的是<b>市場 beta</b>,不是總風險 —— 債券自己的利率風險由回撤數字負責。</div>`;
+  }
+}
+function drawPie(){
+  const cv=$('pieChart');if(!cv)return;
+  const w=getWeights();let tot=0;ORDER.forEach(k=>tot+=w[k]);
+  let legHTML='';
+  if(tot<=0){
+    // 全零權重:畫一個灰圈當空狀態(共用 donut 對空資料只會清空畫布)。
+    const ctx=cv.getContext('2d'),dpr=window.devicePixelRatio||1,S=120;
+    cv.width=S*dpr;cv.height=S*dpr;cv.style.width=S+'px';cv.style.height=S+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,S,S);
+    ctx.beginPath();ctx.arc(S/2,S/2,S/2-3,0,2*Math.PI);ctx.fillStyle='#e4e8f0';ctx.fill();
+  }else{
+    // 甜甜圈本體改用共用 APCharts.donut(S11)—— 白色分隔縫(色弱靠縫隙分片)、
+    // DPR、正規化都在裡面。圖例與下方的原始權重長條仍是本頁自己的。
+    if(window.APCharts)APCharts.donut(cv,ORDER.map(k=>({key:k,value:w[k],color:ASSET_COLOR[k]})),{size:120,hole:.68});
+    ORDER.forEach(k=>{
+      if(w[k]<=0)return;
+      legHTML+=`<span><i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${ASSET_COLOR[k]};margin-right:5px;vertical-align:middle"></i>${SHORT[k]} ${Math.round(w[k]/tot*100)}%</span>`;
+    });
+  }
+  if($('pieLegend'))$('pieLegend').innerHTML=legHTML;
+  // 原始權重長條(可超過/不足 100%,白線為基準)
+  const rb=$('rawBar');
+  if(rb){
+    const totPct=tot*100, scaleMax=Math.max(100,totPct);
+    if(tot<=0){rb.innerHTML='';}
+    else{
+      let left=0,seg='';
+      ORDER.forEach(k=>{if(w[k]<=0)return;const wp=w[k]*100/scaleMax*100;seg+=`<div title="${SHORT[k]} ${Math.round(w[k]*100)}%" style="position:absolute;top:0;bottom:0;left:${left}%;width:${wp}%;background:${ASSET_COLOR[k]};border-right:2px solid #fff"></div>`;left+=wp;});
+      const mk=(100/scaleMax*100).toFixed(1);
+      rb.innerHTML=`<div style="position:absolute;inset:0;border-radius:3px;overflow:hidden">${seg}</div>`+
+        `<div style="position:absolute;top:-3px;bottom:-3px;left:${mk}%;width:2px;background:#16255c;box-shadow:0 0 0 1px #fff"></div>`;
+    }
+  }
+}
+
+/* 混合報酬、歷史 block-bootstrap、現金流排程、ABW 現值表、simulate()、
+   percentile/impliedCAGR、milestones —— 全部搬到 assets/engine.js,
+   由檔案開頭的解構賦值綁進來。這裡刻意留白當書籤:找引擎請開 assets/engine.js。 */
+
+// ---------- 主流程(展開器懶算 + 重新計算)----------
+let chartData=null, lastCore=null, mouseX=null;
+let inputsVer=0, coreVer=-1, busy=false;
+
+/* ── readForm():DOM → input 物件(唯一讀表單的地方)────────────────
+   舊的 gatherInputs() 一路從 $('age').value 讀到 opts,所以引擎跟表單黏死了。
+   S2 把它切成兩半:
+     readForm()          DOM → input(留在本頁,型別與 ap_state_v2.input 一致)
+     E.deriveOpts(input) input → opts(純函式,在 assets/engine.js)
+   /plan-result/(S4)只需要後半段,不必有任何表單就能算。
+
+   欄位清單走 APState.FIELDS,新增輸入欄位時只要改那一張表 —— 漏改的話
+   存檔、雜湊、遷移會一起漏掉同一個欄位,比較容易一次發現。 */
+function readForm(){
+  const input={};
+  APState.FIELDS.forEach(f=>{
+    const el=$(f.id);
+    input[f.key]=APState.parseField(f, el?el.value:null);
+  });
+  input.w=getWeights();   // 已經是小數(0.30 = 30%)
+  return input;
+}
+// 從輸入欄位蒐集所有衍生參數(便宜、純讀 DOM)
+function gatherInputs(){
+  refreshL2Display();
+  return E.deriveOpts(readForm(), {paths:1500});
+}
+
+/* 任何輸入改動 → 標記結果過期(不自動重算)。
+   docs/IA.md §6.2:這一頁的使用者正在調參數,自動重算會很吵 ——
+   /plan-result/ 才是「自己重算」的那一頁。這裡只把摘要列標成過期。 */
+function markDirty(){
+  inputsVer++;
+  renderSummary();
+  if($('status'))$('status').textContent='';
+}
+function setProg(el,frac){if(!el)return;el.classList.add('show');el.querySelector('span').style.width=Math.round(frac*100)+'%';}
+function hideProg(el){if(el){el.classList.remove('show');el.querySelector('span').style.width='0';}}
+
+/* ══ 常駐摘要列(S5)═══════════════════════════════════════════════════
+   docs/IA.md §5.5:「/plan/ 只留頂部摘要一行」。完整的結果(里程碑、把握度、
+   最壞會有多壞)在「★ 我的計畫」—— 兩頁各印一次同一組數字,正是改版前
+   「不像同一個網站」的來源之一。
+
+   資料來源刻意是 **ap_state_v2.result**(不是 lastCore):
+   一進頁面就看得到上次算的結果,不必先按一次按鈕;而且它與「★ 我的計畫」
+   讀的是同一個物件,兩頁不可能不一致。 */
+function renderSummary(){
+  const box=$('sumText'); if(!box)return;
+  const w=getWeights();
+  const ne=netExposure(w), mu=blendedMuNom(w,assetDefs());
+  let head=`目前設定:淨曝險 <b>${(ne*100).toFixed(0)}%</b> · 混合名目年化 <b>${pct(mu)}</b><span class="src fixed">假設值</span>`;
+  const R=APState.getResult();
+  if(!R||!R.risk){
+    box.innerHTML=head+`<br>還沒算過。填好 <b>1.1 基本財務</b> 與 <b>1.3 投資組合</b>,按「▶ 重新計算」。`;
+    if($('adviceBox'))$('adviceBox').style.display='none';
+    return;
+  }
+  const K=R.risk, I=R.in;
+  const dd=(K.ddAccumP90!=null)?K.ddAccumP90:null;
+  const stale=APState.isStale();
+  const age=(v)=>v==null?'未達成':(v<=I.age0?'已達成':v+' 歲');
+  box.innerHTML=head
+    +`<br><span class="mut" style="color:#b9c4e4">上次計算 ${esc(R.updated||'')}:</span>`
+    +` Coast <b>${age(R.ms&&R.ms.coastAge)}</b> · FIRE <b>${age(R.ms&&R.ms.fireAge)}</b>`
+    +` · 退休時中位 <b>${fmtW(K.medRetire)}</b>`
+    +(K.essOK!=null?` · 必要支出撐得住 <b>${pct(K.essOK)}</b>`:'')
+    +(dd!=null?` · ${I.retire<=I.age0?'進場後頭 3 年':'退休前'}最深回撤 P90 <b>−${(dd*100).toFixed(0)}%</b>`:'')
+    +(stale?`<br><span class="stale">⚠ 設定改過了,上面這一行還是舊的 —— 按「▶ 重新計算」更新。</span>`:'');
+}
+
+/* ══ 主結果:主模擬 + 純 0050 基準線(共 2 次模擬)═══════════════════════
+   差異 C5(S5 落地):setTimeout 內整段包 try/catch。改版前引擎一丟例外
+   (最常見是非整數年齡),busy 就永遠停在 true、按鈕永久 disabled ——
+   畫面看起來像當掉,而且**沒有任何訊息**。現在一律解鎖並說人話。 */
+function computeCore(done){
+  if(busy)return;busy=true;
+  if($('startBtn'))$('startBtn').disabled=true;
+  setProg($('coreProg'),0.12);if($('status'))$('status').textContent='計算中…';
+  setTimeout(()=>{
+    try{
+      const ci=gatherInputs();
+      const {defs,w,opts,age0,retire,net0,annualContrib,infl,fireNum,dcaMonths}=ci;
+      const sim=simulate(w,defs,opts);
+      setProg($('coreProg'),0.6);
+      const ms=milestones(sim,opts,fireNum);
+      const benchW={};ORDER.forEach(k=>benchW[k]=0);benchW.TW50=1;
+      const benchSim=simulate(benchW,defs,Object.assign({},opts,{mech:'bh',dcaMonths:0,dcaTranches:1,glide:0,paths:1000}));
+      setProg($('coreProg'),0.9);
+      lastCore={ci,sim,benchSim,ms};
+
+      buildAdvice(ci,w,sim,ms,fracGE(sim.VatRetire,fireNum)); // 規則式理財體檢
+      saveReport(ci,sim,ms);   // 落地 ap_state_v2.result:/plan-result/ 與 /report/ 都讀它
+      coreVer=inputsVer;
+      renderSummary();
+      applyDisplayMode();      // 建 chartData +(若機率帶展開中)畫圖
+      renderCagrReadout();
+      saveSettings();
+      if($('status'))$('status').textContent='完成 · 淨曝險 '+(netExposure(w)*100).toFixed(0)+'% · 混合名目年化 '+pct(blendedMuNom(w,defs));
+      if($('coreStatus')){
+        $('coreStatus').innerHTML=ci.opts.engine==='hist'
+          ? '📈 <b>引擎:歷史重抽</b>(美股+美債 1928–2024 真實序列)— 此投影含真實的失落十年/序列風險,<b>槓桿風險會比參數化更明顯</b>。'
+          : '📊 引擎:參數化抽樣(平滑假設)。想壓力測真實多年逆境 → 到上面「模擬方式」切「歷史重抽」。';
+      }
+    }catch(err){
+      if(window.console)console.error(err);
+      // 說得出「哪裡不對、怎麼修」,而不是留一個永遠轉不完的進度條。
+      if($('sumText'))$('sumText').innerHTML=
+        '<span class="stale">⚠ 算不出來:'+esc(err&&err.message?err.message:String(err))+'</span>'
+        +'<br>最常見的原因是<b>年齡或退休年齡填了奇怪的值</b>。檢查一下 1.1 的前兩格,再按一次「▶ 重新計算」。';
+      if($('status'))$('status').textContent='失敗';
+    }finally{
+      hideProg($('coreProg'));
+      if($('startBtn'))$('startBtn').disabled=false;
+      busy=false;
+      done&&done();
+    }
+  },30);
+}
+
+/* ══ 進階對照的懶算(S5)═════════════════════════════════════════════════
+   改版前:切到「3 · 風險與對照」分頁時一口氣跑 12 次模擬,不看的人也要等。
+   現在:**每一段第一次展開時才算**,而且只有展開中的段落會被「▶ 重新計算」更新。
+   ver 記的是算它時的 inputsVer —— 對不上就代表這張表是舊設定算的。 */
+const LAZY={
+  'adv-band':   {ver:-1, need:'core', run:()=>{applyDisplayMode();renderCagrReadout();drawChart();}},
+  'adv-assets': {ver:-1, run:ci=>buildCompare(ci)},
+  'adv-mechcmp':{ver:-1, run:ci=>buildMechCompare(ci.opts,ci.defs)},
+  'adv-scen':   {ver:-1, run:ci=>buildScenarios(ci.carryDrag)},
+  'adv-stress': {ver:-1, run:ci=>buildStress(ci.carryDrag,ci.volDrag)},
+};
+let lazyQueue=[], lazyPumping=false;
+function lazyRefresh(id){
+  const L=LAZY[id]; if(!L)return;
+  if(L.ver===inputsVer)return;
+  if(lazyQueue.indexOf(id)<0)lazyQueue.push(id);
+  pumpLazy();
+}
+function pumpLazy(){
+  if(lazyPumping)return;
+  const id=lazyQueue.shift(); if(id==null)return;
+  const L=LAZY[id], el=$(id);
+  if(!L||!el||!el.open){pumpLazy();return;}   // 使用者中途收起來就別算了
+  lazyPumping=true;
+  const body=el.querySelector('.body');
+  if(body&&!body.dataset.busy){body.dataset.busy='1';body.style.opacity='.45';}
+  const finish=()=>{
+    L.ver=inputsVer;
+    if(body){delete body.dataset.busy;body.style.opacity='';}
+    lazyPumping=false;
+    setTimeout(pumpLazy,0);
+  };
+  setTimeout(()=>{
+    try{
+      if(L.need==='core'&&(coreVer!==inputsVer||!lastCore)){
+        // 機率帶要有主模擬才畫得出來。算完之後 computeCore 會自己回來跑這一段。
+        lazyPumping=false;
+        ensureCore(()=>{lazyRefresh(id);});
+        if(body){delete body.dataset.busy;body.style.opacity='';}
+        return;
+      }
+      L.run(L.need==='core'?null:gatherInputs());
+    }catch(err){
+      if(window.console)console.error(err);
+      if(body)body.insertAdjacentHTML('afterbegin',
+        '<div class="ap-risk soft">⚠ 這一段算不出來:'+esc(err&&err.message?err.message:String(err))+'</div>');
+    }
+    finish();
+  },30);
+}
+// 展開時算一次;之後設定改了要再展開(或按「▶ 重新計算」)才更新。
+function bindLazy(){
+  Object.keys(LAZY).forEach(id=>{
+    const el=$(id); if(!el)return;
+    el.addEventListener('toggle',()=>{ if(el.open)lazyRefresh(id); });
+    if(el.open)lazyRefresh(id);   // shell.js 還原成展開狀態的那幾段
+  });
+}
+// 「▶ 重新計算」:主模擬一定跑;展開中的對照表跟著更新(收起來的留到下次展開)。
+function refreshOpenLazy(){
+  Object.keys(LAZY).forEach(id=>{const el=$(id);if(el&&el.open)lazyRefresh(id);});
+}
+
+function ensureCore(done){
+  if(coreVer===inputsVer && lastCore){done&&done();return;}
+  if(busy){setTimeout(()=>ensureCore(done),200);return;}
+  computeCore(done);
+}
+
+/* 依顯示模式(實質/名目)重建主圖資料 —— 不需要重新模擬。
+   S5 之後這裡只管圖:里程碑卡片、FIRE 目標金額那幾張卡已經搬到「★ 我的計畫」,
+   /plan/ 只留摘要一行(docs/IA.md §5.5)。 */
+function applyDisplayMode(){
+  if(!lastCore)return;
+  const {sim,benchSim,ms,ci}=lastCore;
+  const {infl,fireNum,retire,age0}=ci;
+  const mode=$('dispmode')?$('dispmode').value:'real';
+  const ages=[];for(let y=0;y<=sim.nYears;y++)ages.push(age0+y);
+  const conv=(v,y)=>mode==='nom'?v*Math.pow(1+infl,y):v;
+  chartData={
+    ages,
+    p10:sim.p10.map((v,y)=>conv(v,y)),
+    p50:sim.p50.map((v,y)=>conv(v,y)),
+    p90:sim.p90.map((v,y)=>conv(v,y)),
+    bench:benchSim.p50.map((v,y)=>conv(v,y)),
+    coast:ms.coastLine.map((v,y)=>isFinite(v)?conv(v,y):NaN),
+    fire:ages.map((a,y)=>conv(fireNum,y)),
+    retire, coastAge:ms.coastAge, fireAge:ms.fireAge, age0
+  };
+  drawChart();
+}
+
+/* 機率帶底下的兩塊讀數(進階層,#adv-band 內)。
+   ── 差異 C9(S5 落地):實質→名目改成**加法**。
+      引擎的月漂移、ABW 折現率、blendedReal 全部是減法(實質 = 名目 − 通膨),
+      只有這裡用 Fisher 精確式 —— 同一個站台兩種換算,而且是往回換的那一次。
+      減法的代價(系統性高估約 mu×infl/(1+infl) ≈ 0.14pp/年)寫在 docs/SPEC.md §1.2,
+      是刻意接受的偏樂觀;要改就四處一起改,不是只改這一處。
+   ── 決議 D1:Calmar 的分母改用**累積期**回撤中位,與 buildResult 一致。 */
+function renderCagrReadout(){
+  const box=$('cagrReadout'); if(!box||!lastCore)return;
+  const {sim,ci}=lastCore;
+  const {net0,annualContrib,infl,age0,retire,dcaMonths,w,defs}=ci;
+  const yrs=retire-age0;
+  if(yrs<=0){box.innerHTML='<span class="small mut">已屆退休年齡,無累積期年化可計算。</span>';return;}
+  const medV=percentile(sim.VatRetire,0.5),p10V=percentile(sim.VatRetire,0.10),p90V=percentile(sim.VatRetire,0.90);
+  const realMed=impliedCAGR(net0,annualContrib,yrs,medV);
+  const ddCalmar=percentile(sim.ddAccum,0.5), calmar=ddCalmar>1e-6?realMed/ddCalmar:null;
+  const nomMed=realMed+infl;                                        // ← C9:加法,不是 Fisher
+  const nomP10=impliedCAGR(net0,annualContrib,yrs,p10V)+infl;
+  const nomP90=impliedCAGR(net0,annualContrib,yrs,p90V)+infl;
+  const inputMu=blendedMuNom(w,defs);
+  const edMed=percentile(sim.early3,0.5), edP90=percentile(sim.early3,0.90);
+  const dcaTxt=dcaMonths>0?`分批 ${dcaMonths} 月(每月一筆)`:'一次全投';
+  box.innerHTML=`📊 <b>中位路徑(P50)隱含年化:名目 ${pct(nomMed)} ／ 實質 ${pct(realMed)}</b>`
+    +`　<span class="small mut">區間 P10 ${pct(nomP10)} ～ P90 ${pct(nomP90)}(名目)</span><br>`
+    +`<span class="small"><b>這是報酬率,不含你每月新投入的錢</b> —— 圖上的資產成長=報酬+新投入,前十年通常是新投入佔大頭,所以帶圖逐年的漲幅會遠大於這個數字。</span><br>`
+    +(ci.opts.engine==='hist'
+      ? `<span class="small mut">📈 <b>歷史重抽模式</b>:報酬來自<b>美股+美債 1928–2024 真實年報酬</b>整段抽樣,中位數<b>由歷史決定</b>(不等於你設的假設 ${pct(inputMu)})。台股/QQQ 以美股史代理、年內已平滑,槓桿/債/現金各依規則套用。</span><br>`
+      : `<span class="small mut">各標的「基準年化」當作<b>幾何(中位)報酬</b>,以對數常態模擬:<b>單一標的</b>時中位會貼齊該標的假設;<b>多標的組合</b>的中位通常會<b>略高於</b>加權平均 <b>${pct(inputMu)}</b>(組合層級的幾何效應)。槓桿波動耗損已內含在基準年化裡,不再重複扣。此為累積期<b>資金加權報酬(IRR,月投入口徑)</b>。</span><br>`)
+    +`<span class="small">📉 <b>進場頭 3 年最大回撤</b>(${dcaTxt}):中位 <b class="warn">${pct(edMed)}</b> ／ 壞情境 P90 <b class="bad">${pct(edP90)}</b>。<span class="mut">把「分批進場」的月數拉長 → 這個數字變小(降低買在頂部的進場風險),代價是長期中位報酬略降。</span></span><br>`
+    +`<span class="small">⚖ <b>報酬÷回撤(Calmar式):${calmar==null?'—':calmar.toFixed(2)}</b> <span class="mut">中位實質年化 ${pct(realMed)} ÷ <b>退休前</b>最深回撤中位 ${pct(ddCalmar)};越高代表每承受 1 單位回撤換到的報酬越多。</span></span>`;
+
+  /* 全期回撤 ddAll —— 決議 D1 把它降為進階指標,而且**顯示時必須標明**
+     「含退休後照計畫花掉的部分,不是市場跌的」。少了那句話,預設配置會印出
+     「壞情境 −100%」而讀者會以為那是崩盤。使用者該看的在「★ 我的計畫」❺。 */
+  const ddb=$('ddAllBox');
+  if(ddb){
+    const ddMed=percentile(sim.maxDDarr,0.5), ddP90=percentile(sim.maxDDarr,0.9);
+    const ddAcc90=percentile(sim.ddAccum,0.9);
+    const c=v=>v>0.7?'var(--bad)':(v>0.5?'var(--warn-ink)':'var(--good)');
+    ddb.innerHTML=`<div class="small mut">📉 最大回撤(<b>全期</b>,含退休後的提領)<span class="src fixed">進階指標</span></div>`
+      +`<div style="font-size:15px;font-weight:600;margin-top:3px">中位 <b style="font-size:22px;color:${c(ddMed)}">−${(ddMed*100).toFixed(0)}%</b>　│　壞情境(P90)<b style="font-size:22px;color:${c(ddP90)}">−${(ddP90*100).toFixed(0)}%</b></div>`
+      +`<div class="small mut" style="margin-top:6px">⚠ 這個數字<b>含退休後照計畫把錢花掉的部分,不是市場跌的</b> —— 照計畫提領本來就會讓資產一路往下,所以它天生偏大(攤銷式提領下中位會是 −100%,那是計畫完成,不是破產)。`
+      +`<br>想知道<b>市場會讓你痛多深</b>,看<b>退休前(累積期)的回撤:壞情境 −${(ddAcc90*100).toFixed(0)}%</b> —— 那才是「你抱不抱得住」的那把尺,完整說明在<a href="../plan-result/">★ 我的計畫</a>❺。</div>`;
+  }
+}
+
+/* (computeRisk / ensureRisk / showTab / loadSafeExample 隨 S5 的兩層改版一起刪除:
+     · 對照表改成「展開時才算」—— 見上面的 LAZY / lazyRefresh,
+       不再有「切到 3 分頁就一口氣跑 12 次模擬,不看的人也要等」這件事;
+     · 分頁沒了,showTab 也沒了;深連結改由檔案最後的 jump() 負責;
+     · 「安全範例」按鈕併進範本卡,而範本卡唯一的家是「★ 我的計畫」❷
+       的「▸ 想換一個風險等級?」(docs/IA.md §5.5)。
+     · 地基自測的 updatePreflight 早在 S4 就隨那 4 個 checkbox 刪掉了 ——
+       唯一的家是「🚀 快速開始」第 5 題。 ) */
+
+// ---------- 圖 ----------
+function drawChart(){
+  const d=chartData;if(!d)return;
+  const cv=$('mainChart');const ctx=cv.getContext('2d');
+  const dpr=window.devicePixelRatio||1;const W=cv.clientWidth,H=360;
+  cv.width=W*dpr;cv.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+  const ml=66,mr=14,mt=14,mb=30,pw=W-ml-mr,ph=H-mt-mb;
+  // y range (log)
+  let yMin=Infinity,yMax=-Infinity;
+  const all=d.p10.concat(d.p90,d.fire,d.bench||[]);
+  all.forEach(v=>{if(isFinite(v)&&v>0){yMin=Math.min(yMin,v);yMax=Math.max(yMax,v);}});
+  d.coast.forEach(v=>{if(isFinite(v)&&v>0)yMax=Math.max(yMax,Math.min(v,yMax*3||v));});
+  yMin=Math.max(1,yMin*0.8);yMax=yMax*1.15;
+  const lyMin=Math.log10(yMin),lyMax=Math.log10(yMax);
+  const xs=a=>ml+(a-d.age0)/(d.ages[d.ages.length-1]-d.age0)*pw;
+  const ys=v=>mt+(1-(Math.log10(Math.max(v,yMin))-lyMin)/(lyMax-lyMin))*ph;
+  // grid (log decades + 2,5)
+  ctx.font='11.5px "Noto Sans TC",system-ui';ctx.fillStyle='#5b6478';ctx.strokeStyle='#eef1f6';ctx.lineWidth=1;
+  for(let e=Math.floor(lyMin);e<=Math.ceil(lyMax);e++){
+    [1,2,5].forEach(mant=>{
+      const v=mant*Math.pow(10,e);if(v<yMin||v>yMax)return;
+      const y=ys(v);ctx.beginPath();ctx.moveTo(ml,y);ctx.lineTo(ml+pw,y);ctx.stroke();
+      ctx.fillText(fmtW(v),6,y+3);
+    });
+  }
+  // x ticks every 5 yrs
+  for(let a=d.age0;a<=d.ages[d.ages.length-1];a+=5){
+    const x=xs(a);ctx.fillText(a+'歲',x-10,H-10);
+    ctx.strokeStyle='#f2f4f9';ctx.beginPath();ctx.moveTo(x,mt);ctx.lineTo(x,mt+ph);ctx.stroke();
+  }
+  ctx.strokeStyle='#c9d0dd';ctx.strokeRect(ml,mt,pw,ph); // 繪圖區外框(同 2x)
+  // band P10-P90
+  ctx.fillStyle='rgba(22,37,92,.10)';ctx.beginPath();
+  d.ages.forEach((a,i)=>{const x=xs(a),y=ys(d.p90[i]);i?ctx.lineTo(x,y):ctx.moveTo(x,y);});
+  for(let i=d.ages.length-1;i>=0;i--){const x=xs(d.ages[i]),y=ys(d.p10[i]);ctx.lineTo(x,y);}
+  ctx.closePath();ctx.fill();
+  // line helper
+  const line=(arr,color,dash)=>{ctx.strokeStyle=color;ctx.lineWidth=2;ctx.setLineDash(dash||[]);ctx.beginPath();
+    let started=false;d.ages.forEach((a,i)=>{const v=arr[i];if(!isFinite(v))return;const x=xs(a),y=ys(v);started?ctx.lineTo(x,y):ctx.moveTo(x,y);started=true;});ctx.stroke();ctx.setLineDash([]);};
+  line(d.coast,'#7b4fa8',[6,5]);
+  line(d.fire,'#e2711d',[6,5]);
+  if(d.bench)line(d.bench,'#8b95a6',[2,3]); // 純0050躺平基準(刻意低調:它是參考,不是主角)
+  line(d.p50,'#1b4b8f');
+  // retire vertical
+  ctx.strokeStyle='#9aa4b8';ctx.setLineDash([3,4]);ctx.beginPath();ctx.moveTo(xs(d.retire),mt);ctx.lineTo(xs(d.retire),mt+ph);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#9aa4b8';ctx.fillText('退休 '+d.retire,xs(d.retire)-18,mt+10);
+  // markers(白圈描邊:淺底上小圓點要有邊才浮得出來)
+  const mark=(age,arr,label,color)=>{if(!age)return;const i=age-d.age0;if(i<0||i>=d.ages.length)return;const x=xs(age),y=ys(arr[i]);
+    ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,4,0,7);ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();ctx.fillText(label+age+'歲',x+6,y-6);};
+  mark(d.coastAge,d.p50,'Coast ','#7b4fa8');
+  mark(d.fireAge,d.p50,'FIRE ','#e2711d');
+
+  // Tooltip
+  if(mouseX!==null && mouseX>=ml && mouseX<=ml+pw){
+    const age = Math.round(((mouseX-ml)/pw) * (d.ages[d.ages.length-1]-d.age0) + d.age0);
+    const idx = age - d.age0;
+    if(idx>=0 && idx<d.ages.length){
+      const x=xs(age);
+      ctx.strokeStyle='rgba(22,37,92,.25)';ctx.setLineDash([2,2]);
+      ctx.beginPath();ctx.moveTo(x,mt);ctx.lineTo(x,mt+ph);ctx.stroke();ctx.setLineDash([]);
+
+      const v50=d.p50[idx], v10=d.p10[idx], v90=d.p90[idx], vF=d.fire[idx];
+      const ty=mt+20, tx=x+(x>W-130?-125:10);
+      ctx.fillStyle='rgba(22,37,92,.95)';ctx.fillRect(tx-5,ty-15,120,85); // 深藍 tooltip(同 2x .tip)
+      ctx.strokeStyle='rgba(255,255,255,.18)';ctx.lineWidth=1;ctx.strokeRect(tx-5,ty-15,120,85);
+      ctx.fillStyle='#f7c948';ctx.font='bold 12px "Noto Sans TC",system-ui';ctx.fillText(age+'歲',tx,ty);
+      ctx.font='11.5px "Noto Sans TC",system-ui';
+      ctx.fillStyle='#cfe0ff';ctx.fillText('中位: '+fmtW(v50),tx,ty+18);
+      ctx.fillStyle='#a9bce8';ctx.fillText('P90: '+fmtW(v90),tx,ty+33);
+      ctx.fillStyle='#a9bce8';ctx.fillText('P10: '+fmtW(v10),tx,ty+48);
+      ctx.fillStyle='#ffd9a8';ctx.fillText('目標: '+fmtW(vF),tx,ty+63);
+    }
+  }
+}
+window.addEventListener('resize',()=>drawChart());
+
+// ---------- 標的對照 ----------
+// 吃整個 ci(gatherInputs 的產物),不再自己從 exp/pension 重算 fireNum ——
+// 目標金額的定義只能有一處(gatherInputs),否則兩邊算法一有分歧,對照表就會拿另一把尺量。
+function buildCompare(ci){
+  const baseOpts=ci.opts, carryDrag=ci.carryDrag, fireNum=ci.fireNum;
+  const defs=assetDefs(carryDrag);
+  const mode=$('dispmode').value;
+  const rIdx=baseOpts.retire-baseOpts.age0;
+  const conv=(v)=>mode==='nom'?v*Math.pow(1+baseOpts.infl,rIdx):v;
+
+  const presets=[
+    {n:'100% VT',w:{VT:1}},
+    {n:'100% VTI',w:{VTI:1}},
+    {n:'100% 0050',w:{TW50:1}},
+    {n:'100% QQQ',w:{QQQ:1}},
+    {n:'100% 正二(歐印)',w:{L2:1}},
+    {n:'50%正二+50%現金',w:{L2:0.5,CASH:0.5}},
+    {n:'35%正二+65%現金',w:{L2:0.35,CASH:0.65}},
+    {n:'★ 你目前配置',w:getWeights()},
+  ];
+  const o=Object.assign({},baseOpts,{paths:800});
+  const tb=$('cmp').querySelector('tbody');tb.innerHTML='';
+  presets.forEach(pr=>{
+    const w={};ORDER.forEach(k=>w[k]=pr.w[k]||0);
+    const br=blendedMuNom(w,defs);
+    const oo=Object.assign({},o,{blendedReal:br-baseOpts.infl});
+    const sim=simulate(w,defs,oo);
+    const ms=milestones(sim,oo,fireNum);
+    const rawMed=percentile(sim.VatRetire,0.5);
+    const vMed=conv(rawMed),vP10=conv(percentile(sim.VatRetire,0.10));
+    // 決議 D1(S5 落地):對照表的回撤欄與 Calmar 分母一律用**累積期**回撤。
+    // 用全期的話「100% 正二(歐印)」那一列會印出 −100%(退休後照計畫花光),
+    // 讀者會以為那是市場跌的 —— 全站只能有一把尺。
+    const ddMed=percentile(sim.ddAccum,0.5);
+    const cagrR=(rIdx>0)?impliedCAGR(baseOpts.net0,baseOpts.annualContrib,rIdx,rawMed):null;
+    const calmar=(cagrR!=null&&ddMed>1e-6)?cagrR/ddMed:null;
+    const tr=document.createElement('tr');
+    const isYou=pr.n.startsWith('★');
+    tr.innerHTML=`<td>${isYou?'<b>'+pr.n+'</b>':pr.n}</td><td>${pct(br)}</td>
+      <td>${ms.coastAge?ms.coastAge+'歲':'—'}</td><td>${fmtW(vMed)}</td>
+      <td class="${vP10<conv(fireNum)?'bad':''}">${fmtW(vP10)}</td>
+      <td class="${ddMed>0.6?'bad':(ddMed>0.45?'warn':'')}">${pct(ddMed)}</td>
+      <td>${calmar==null?'—':calmar.toFixed(2)}</td>`;
+    if(isYou)tr.style.background='#eef4ff';
+    tb.appendChild(tr);
+  });
+}
+
+// ---------- 機制對照(同配置,換不同現金回市場機制)----------
+function buildMechCompare(baseOpts,defs){
+  const w=getWeights();
+  const br=blendedMuNom(w,defs);
+  const mode=$('dispmode').value;
+  const rIdx=baseOpts.retire-baseOpts.age0;
+  const conv=(v)=>mode==='nom'?v*Math.pow(1+baseOpts.infl,rIdx):v;
+  const o=Object.assign({},baseOpts,{paths:1000,blendedReal:br-baseOpts.infl});
+  const mechs=[
+    {n:'純偏離帶再平衡',m:'rebal',ph:'不預測(Merton)'},
+    {n:'再平衡 + 崩盤加碼',m:'both',ph:'平衡'},
+    {n:'純崩盤加碼 −12/−22/−32/−42',m:'reserve',ph:'逆勢/賭反彈'},
+    {n:'深觸發原型(正二 −50/−80)',m:'orig',ph:'逆勢/賭反彈'},
+    {n:'買進持有(不調整)',m:'bh',ph:'—'},
+  ];
+  const curMech=$('mech')?$('mech').value:'both';
+  const tb=$('mcmp').querySelector('tbody');tb.innerHTML='';
+  mechs.forEach(mc=>{
+    const sim=simulate(w,defs,Object.assign({},o,{mech:mc.m}));
+    const rawMed=percentile(sim.VatRetire,0.5);
+    // 同 3.1:回撤欄與 Calmar 分母都用累積期(決議 D1)。
+    const vMed=conv(rawMed),vP10=conv(percentile(sim.VatRetire,0.10)),vP90=conv(percentile(sim.VatRetire,0.90)),ddMed=percentile(sim.ddAccum,0.5);
+    const cagrR=(rIdx>0)?impliedCAGR(baseOpts.net0,baseOpts.annualContrib,rIdx,rawMed):null;
+    const calmar=(cagrR!=null&&ddMed>1e-6)?cagrR/ddMed:null;
+    const isCur=mc.m===curMech;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${isCur?'<b>▸ '+mc.n+'(目前)</b>':mc.n}</td><td>${fmtW(vMed)}</td>`+
+      `<td>${fmtW(vP10)}</td><td>${fmtW(vP90)}</td>`+
+      `<td class="${ddMed>0.65?'bad':(ddMed>0.5?'warn':'')}">${pct(ddMed)}</td>`+
+      `<td>${calmar==null?'—':calmar.toFixed(2)}</td><td class="small mut">${mc.ph}</td>`;
+    if(isCur)tr.style.background='#eef4ff';
+    tb.appendChild(tr);
+  });
+}
+
+// ---------- 歷史情境壓測(確定性,套到使用者配置)----------
+// depth=谷底跌幅, down=崩跌月數, up=修復回到前高月數, tail=之後月數, tailAnn=尾段年化(模擬崩盤後創新高多頭;失落十年設0=盤整不回)
+function scenPath(depth,down,up,tail,tailAnn){const r=[];const dD=Math.pow(1-depth,1/down)-1;for(let i=0;i<down;i++)r.push(dD);if(up>0){const dU=Math.pow(1/(1-depth),1/up)-1;for(let i=0;i<up;i++)r.push(dU);}const dT=Math.pow(1+(tailAnn||0),1/12)-1;for(let i=0;i<tail;i++)r.push(dT);return r;}
+// 依年份由久到近排序(1990 → 2000 → 2008 → 2020)
+const SCEN=[
+  {n:'1990 失落十年(日本式)',sub:'日本 1989 見頂、1990 泡沫破裂後盤整數十年不回(槓桿死穴)',depth:0.50,down:18,up:0,tail:102,tailAnn:0},
+  {n:'2000 網路泡沫',sub:'大盤 −49%、慢崩慢回(QQQ最慘)',depth:0.49,down:30,up:60,tail:18,tailAnn:0.07},
+  {n:'2008 金融海嘯',sub:'大盤 −50%、約1年崩、2年回、後續多頭',depth:0.50,down:14,up:24,tail:24,tailAnn:0.08},
+  {n:'2020 COVID',sub:'大盤 −34%、急崩 V 轉、後續急漲',depth:0.34,down:2,up:5,tail:17,tailAnn:0.10},
+];
+SCEN.forEach(function(s){s.r=scenPath(s.depth,s.down,s.up,s.tail,s.tailAnn);s.months=s.down+s.up+s.tail;});
+function scenRun(w,defs,p){
+  let tot=0;ORDER.forEach(k=>tot+=w[k]);const wn={};ORDER.forEach(k=>wn[k]=tot>0?w[k]/tot:0);
+  const active=ORDER.filter(k=>wn[k]>1e-9);const mech=p.mech||'both',carry=p.carryDrag||0.03,fin=p.fin||0.04;
+  const leverKeys=active.filter(isLev);let leverW=0;leverKeys.forEach(k=>leverW+=wn[k]);
+  // 加碼水位吃引擎的單一真相(E.mechBands),不再在這裡抄一份會漂移的常數。
+  const _b=E.mechBands(mech), THR=_b.THR, POR=_b.POR;
+  const net0=100,h={};active.forEach(k=>h[k]=wn[k]*net0);
+  /* 差異 C7(S5 落地):CASH / BOND / GOLD 的月報酬改成從 assetDefs() 換算,
+     不再硬編 0 / +0.3% / +0.2%。舊值換算成年化是 0% / 3.66% / 2.43%,
+     而 assetDefs 說的是 1.5% / 4.0% / 4.5% —— 同一個站台兩套債券報酬,
+     而且沒有任何地方說得出為什麼。這段是名目口徑,所以直接用 muNom 開 1/12 次方。 */
+  const mo=k=>Math.pow(1+defs[k].muNom,1/12)-1;
+  const ret=(k,rm)=>{
+    if(k==='L2') return Math.pow(1+rm,2)-1-(LEV.L2.er+carry)/12;
+    if(k==='SSO')return Math.pow(1+rm,2)-1-(LEV.SSO.er+fin)/12;
+    if(k==='CASH'||k==='BOND'||k==='GOLD')return mo(k);
+    return rm;
+  };
+  let mkt=1,peak=1,reserveBase=h['CASH']||0,fired=[0,0,0,0],pV=net0,trough=0,recM=-1;
+  for(let i=0;i<p.mr.length;i++){const rm=p.mr[i];
+    active.forEach(k=>h[k]*=(1+ret(k,rm)));mkt*=(1+rm);
+    let V=0;active.forEach(k=>V+=h[k]);
+    if(mech==='rebal'||mech==='both'){let dev=0;active.forEach(k=>{const tw=wn[k];if(tw>0.02){const d=Math.abs(h[k]/V-tw)/tw;if(d>dev)dev=d;}});if(dev>0.5)active.forEach(k=>h[k]=wn[k]*V);}
+    if(E.mechHasReserve(mech)){
+      if(mkt>=peak){peak=mkt;fired=[0,0,0,0];if(mech!=='both')active.forEach(k=>h[k]=wn[k]*V);reserveBase=h['CASH']||0;}
+      else if(leverW>0&&(h['CASH']||0)>0){const dd=mkt/peak-1;for(let j=0;j<THR.length;j++)if(dd<=THR[j]&&!fired[j]){const amt=Math.min(POR[j]*reserveBase,h['CASH']);if(amt>0){h['CASH']-=amt;leverKeys.forEach(k=>h[k]+=amt*(wn[k]/leverW));}fired[j]=1;}}
+    }else{if(mkt>peak)peak=mkt;}
+    V=0;active.forEach(k=>V+=h[k]);if(V>pV)pV=V;const dd=(pV-V)/pV;if(dd>trough)trough=dd;
+    if(recM<0&&i>2&&V>=net0)recM=i;
+  }
+  let endV=0;active.forEach(k=>endV+=h[k]);
+  return{trough,endMult:endV/net0,recovYears:recM<0?null:recM/12};
+}
+function ddCls(t){return t>0.6?'bad':(t>0.4?'warn':'');}
+// perm=此情境連純0050都回不了(=市場本身不反彈,非策略的錯)
+function recCell(r,perm,isBench){
+  if(r.recovYears!=null)return r.recovYears.toFixed(1)+' 年';
+  if(perm)return '<span class="mut">—(市場本身不反彈)</span>';
+  return '<b class="bad">⚠️ 仍虧損(0050已回本)</b>'; // 只有你的槓桿配置回不了→真警訊
+}
+function buildScenarios(carryDrag){
+  const w=getWeights(),defs=assetDefs(carryDrag),bw={};ORDER.forEach(k=>bw[k]=0);bw.TW50=1;
+  const p={mech:$('mech')?$('mech').value:'both',carryDrag,fin:getFin()};
+  const tb=$('scen').querySelector('tbody');if(!tb)return;tb.innerHTML='';
+  SCEN.forEach(sc=>{
+    const ru=scenRun(w,defs,Object.assign({},p,{mr:sc.r}));
+    const r0=scenRun(bw,defs,{mech:'bh',carryDrag,fin:getFin(),mr:sc.r});
+    const perm=(r0.recovYears==null),yrs=(sc.months/12).toFixed(1);
+    const tr1=document.createElement('tr');
+    tr1.innerHTML=`<td rowspan="2"><b>${sc.n}</b><br><span class="small mut">總長 ${yrs} 年 · ${sc.sub}</span></td>`+
+      `<td class="cfgcell">你的配置</td><td class="${ddCls(ru.trough)}">−${(ru.trough*100).toFixed(0)}%</td>`+
+      `<td>${recCell(ru,perm,false)}</td><td class="${ru.endMult<1?'bad':''}">${ru.endMult.toFixed(2)}×</td>`;
+    const tr2=document.createElement('tr');
+    tr2.innerHTML=`<td class="mut cfgcell">純0050 基準</td><td class="mut">−${(r0.trough*100).toFixed(0)}%</td>`+
+      `<td class="mut">${recCell(r0,perm,true)}</td><td class="mut">${r0.endMult.toFixed(2)}×</td>`;
+    tb.appendChild(tr1);tb.appendChild(tr2);
+  });
+  const ib=$('sceninfo')?$('sceninfo').querySelector('tbody'):null;
+  if(ib){ib.innerHTML='';SCEN.forEach(sc=>{
+    const tl=sc.tailAnn>0?('多頭 +'+(sc.tailAnn*100).toFixed(0)+'%/年'):'盤整 0%(不回)';
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${sc.n}</td><td>${sc.down} 月</td><td>${sc.up===0?'—(不回)':sc.up+' 月'}</td><td>${sc.tail} 月 · ${tl}</td><td><b>${sc.months} 月 ≈ ${(sc.months/12).toFixed(1)} 年</b></td>`;
+    ib.appendChild(tr);
+  });}
+}
+
+/* ---------- 教學示意:有崩盤 vs 無崩盤(確定性)----------
+   差異 C6 / 決議 D9(S5 落地)。這一段是**完全獨立的一套口徑**:年步、6 年、
+   確定性、起點 100 萬、**名目金額、不扣通膨**。它是教學示意圖(證明「準備金賺的是
+   崩盤保險,不是平時多賺」),不是使用者的計畫數字 —— 版面上已經標明,
+   而且它不得出現在「★ 我的計畫」或「📄 計劃書」(決議 D4)。
+
+   D9②:三層成本改成讀 LEV 表與滑桿,不再硬編 0.013。0050 的內扣是這一段自己的
+   假設(引擎裡沒有「0050 內扣」這個參數),所以提成具名常數 + 就地標明。 */
+const T50_FEE=0.003;   // 0050 內扣,教學示意用的假設值(引擎的 assetDefs 不含此項)
+const CASH_NOM=0.015;  // 名目現金利率(= assetDefs().CASH.muNom,這段不扣通膨)
+function l2year(mkt,carryDrag,volDrag){return Math.pow(1+mkt,2)-1-LEV.L2.er-carryDrag-(volDrag||0);}
+function runStrategy(mkts,mode,carryDrag,volDrag){
+  // start 100萬
+  let cash,l2,t50;
+  if(mode==='t50'){t50=100;cash=0;l2=0;}
+  else{l2=50;cash=50;t50=0;} // static 50/50 or reserve
+  const reserve0=50;let peak=1,cum=1;
+  const bands=E.mechBands('both'), thresholds=bands.THR, portions=bands.POR;
+  const fired=thresholds.map(()=>false);
+  mkts.forEach((mkt)=>{
+    // grow assets
+    if(mode==='t50')t50*=(1+(mkt-T50_FEE));
+    else{l2*=(1+l2year(mkt,carryDrag,volDrag));cash*=(1+CASH_NOM);}
+    cum*=(1+mkt);if(cum>peak)peak=cum;
+    const dd=(cum-peak)/peak;
+    if(mode==='reserve'){
+      // 大盤回撤跨過門檻 → 把初始準備金按 1:2:3:4 分批投入正二(每格只觸發一次)
+      for(let j=0;j<thresholds.length;j++){
+        if(dd<=thresholds[j] && !fired[j]){
+          const amt=reserve0*portions[j];
+          const take=Math.min(amt,cash);cash-=take;l2+=take;fired[j]=true;
+        }
+      }
+    }
+  });
+  return (mode==='t50')?t50:(l2+cash);
+}
+function buildStress(carryDrag,volDrag){
+  const noCrash=[0.08,0.08,0.08,0.08,0.08,0.08];
+  const crash=[0.08,-0.45,0.20,0.20,0.15,0.10];
+  const host=$('stress');host.innerHTML='';
+  [['無崩盤(一路緩漲)',noCrash,'good'],['有崩盤(第2年 −45% 後復甦)',crash,'bad']].forEach(([title,mkts,cls])=>{
+    const a=runStrategy(mkts,'t50',carryDrag,volDrag);
+    const b=runStrategy(mkts,'static',carryDrag,volDrag);
+    const c=runStrategy(mkts,'reserve',carryDrag,volDrag);
+    const max=Math.max(a,b,c,100);
+    const row=(label,val,color)=>{
+      const wd=clamp(val/max*100,2,100);
+      return `<div class="small">${label} → <b>${val.toFixed(0)}萬</b>(${((val/100-1)*100).toFixed(0)}%)</div>
+        <div class="bar"><span style="width:${wd}%;background:${color}"></span></div>`;
+    };
+    const div=document.createElement('div');div.className='sbox';
+    div.innerHTML=`<h4 class="${cls}">${title}</h4>`+
+      row('純 0050',a,'#2159a5')+
+      row('50%正二+50%現金(靜態)',b,'#8b95a6')+
+      row('正二+準備金(照表加碼)',c,'#1b4b8f');
+    host.appendChild(div);
+  });
+}
+
+// ---------- 讀取自動估算的逆價差(GitHub Action 每月更新的 carry.json)----------
+async function loadCarry(applyToSlider){
+  const info=$('carryInfo');if(!info)return;
+  info.textContent='讀取中…';
+  try{
+    const res=await fetch('carry.json?t='+Date.now());
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const c=await res.json();
+    if(applyToSlider && typeof c.recommendedCarry==='number'){
+      $('carry').value=clamp(c.recommendedCarry,-1,5);
+    }
+    refreshL2Display();
+    const w=c.windows||{};
+    info.innerHTML=`✓ 預設 = 近5年平均拖累 <b>≈ +${c.recommendedCarry}%/年</b>`+
+      (w['1y']&&w['5y']?` · <span title="當年明顯高於近5年 = 逆價差正在惡化/反轉,可考慮手動把滑桿拉高一點">當年(近1年) +${w['1y'].carry}% ／ 近5年 +${w['5y'].carry}%</span>`:'')+
+      ` · 更新於 ${c.dataAsOf} · 每月自動 · <span class="warn" title="${(c.note||'').replace(/"/g,'')}">ⓘ粗估</span>`;
+    info.className='mut';
+    markDirty();
+    // 逆價差變了 = 設定變了 → markDirty 已經把摘要列標成過期。
+    // 不自動重算:這一頁的使用者正在調參數,自動重算會很吵(docs/IA.md §6.2)。
+  }catch(e){
+    info.innerHTML='<span class="mut">(本機 file:// 讀不到 carry.json — 部署到 GitHub Pages 後會自動載入。目前用手動預設值。)</span>';
+  }
+}
+
+// ---------- 設定的持久化:走 ap_state_v2(assets/state.js)----------
+// S2 之前這裡自己讀寫 firePlanner_v1 / ap_shared_v1 / ap_report_v1 三個鍵。
+// 現在改成呼叫 APState —— 它負責型別正名(字串→數字、% →小數)、輸入雜湊,
+// 以及把資料**鏡射回舊鍵**(舊版與尚未改寫的頁面照樣讀得到)。
+const LS_KEY=APState.LEGACY_KEYS.plan;
+// LS_IDS 仍是單一真相(快照、參數雜湊、結果過期監聽由它導出),但清單本身
+// 已經移到 APState.FIELDS —— 新增欄位只改那一張表。
+const LS_IDS=APState.FIELDS.map(f=>f.id);
+const KEY_MIGRATIONS=APState.KEY_MIGRATIONS;
+const migrateParams=APState.migrateParams;
+const migrateValues=APState.migrateValues;
+
+// 把目前表單寫進 ap_state_v2(順帶更新給 ../timing/ 用的可投資資產)。
+function saveSettings(){ APState.setInput(readForm()); }
+
+// 結果摘要 → ap_state_v2.result(APState 會鏡射回 ap_report_v1 給 ../report/ 用)。
+// 刻意只存數字,不存任何圖片 dataURL —— 圖表由 report 端用同樣的資料自己重畫,
+// localStorage 空間有限,一張 base64 圖就能把整個鍵撐爆。
+// APState.setResult 另外補上 computedAt 與 inputHash,讓任何一頁都能判斷
+// 「這份結果是不是這份輸入算的」(docs/SPEC.md §8.3)。
+/* 結果落地。物件本體由 E.buildResult() 產生 —— /plan-result/ 自己重算時走的是同一個
+   函式,所以兩頁的 result 逐欄相同(S4 的「同源」就是這件事)。
+   這裡只負責寫入與吞掉隱私模式的例外。 */
+function saveReport(ci,sim,ms){
+  try{ APState.setResult(E.buildResult(ci,sim,ms)); }
+  catch(e){/* 隱私模式或空間不足:報告頁會顯示「還沒算過」*/}
+}
+/* 把 ap_state_v2.input 寫回表單。
+   回傳「這是不是一份真的存檔」—— 首次造訪(沒有任何舊鍵、也沒有 v2)要回 false,
+   loadCarry(!hadSaved) 才會把自動估算的逆價差套進滑桿(SPEC §2.2:新使用者 4.5%、
+   老使用者留在自己存的值)。 */
+function loadSettings(){
+  try{
+    const had=!!(localStorage.getItem(APState.KEY)||localStorage.getItem(LS_KEY));
+    applyInput(APState.getInput());
+    return had;
+  }catch(e){return false;}
+}
+// input 物件 → 表單(設 .value 不觸發 change → 不誤標 dirty)
+function applyInput(input){
+  APState.FIELDS.forEach(f=>{const el=$(f.id);if(el)el.value=APState.formatField(f,input[f.key]);});
+  ORDER.forEach(k=>{const el=$('n_'+k);if(el)el.value=String(Math.round(((input.w&&input.w[k])||0)*100*1e6)/1e6);});
+}
+
+// ================= 暫存與比較 =================
+const SNAP_KEY='firePlanner_snapshots_v1';
+const SNAP_MAX=20;
+const _cmpCache=new Map(); // paramsHash -> metrics(同 session 快取,避免重算)
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function genId(){return 's'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+
+function snapLoadAll(){try{const r=localStorage.getItem(SNAP_KEY);if(!r)return [];const a=JSON.parse(r);if(!Array.isArray(a))return [];a.forEach(x=>{if(x&&x.params)migrateParams(x.params);});return a;}catch(e){return [];}}
+function snapSaveAll(arr){try{localStorage.setItem(SNAP_KEY,JSON.stringify(arr));}catch(e){alert('儲存失敗:瀏覽器空間不足或處於隱私模式。');}}
+
+// 目前表單狀態(格式同 saveSettings)
+function currentParams(){
+  const s={};LS_IDS.forEach(id=>{const el=$(id);if(el)s[id]=el.value;});
+  ORDER.forEach(k=>{const el=$('n_'+k);if(el)s['n_'+k]=el.value;});
+  return s;
+}
+// 把參數寫回表單(設 .value 不觸發 change → 不誤標 dirty)
+function applyParams(p){
+  LS_IDS.forEach(id=>{const el=$(id);if(el&&p[id]!=null)el.value=p[id];});
+  ORDER.forEach(k=>{const el=$('n_'+k);if(el&&p['n_'+k]!=null)el.value=p['n_'+k];});
+  refreshL2Display();updateWsum();
+  // #flows 只是字串,畫面上的列要重建 —— computeMetrics() 比較跑完的還原也會走到這裡。
+  if(typeof flowsFromInput==='function')flowsFromInput();
+}
+// 自動命名:用配置特徵組字
+function autoName(p){
+  const wt=k=>Math.round(+(p['n_'+k]||0));
+  const seg=[];
+  const lev=LEV_KEYS.reduce((a,k)=>a+wt(k),0);
+  if(lev>0)seg.push('槓桿'+lev+'%');
+  ['VT','VTI','VOO','TW50','QQQ','BOND','GOLD'].forEach(k=>{if(wt(k)>0)seg.push(SHORT[k]+wt(k)+'%');});
+  if(wt('CASH')>0)seg.push('現金'+wt('CASH')+'%');
+  let nm=seg.slice(0,3).join('·')||'自訂配置';
+  const tags=[];
+  if((+(p.glide||0))===1)tags.push('降槓');
+  if(p.engine==='hist')tags.push('歷史');
+  const _wm=+(p.flexW||0);
+  if(_wm===1)tags.push('彈性');else if(_wm===2)tags.push('攤銷');
+  if(tags.length)nm+='('+tags.join('/')+')';
+  return nm.slice(0,30);
+}
+
+function snapSaveCurrent(){
+  const arr=snapLoadAll();
+  if(arr.length>=SNAP_MAX){alert('已達 '+SNAP_MAX+' 組上限,請先刪除一組再存。');return;}
+  const p=currentParams();
+  const def=autoName(p);
+  const name=(prompt('快照名稱(可改):',def)||'').trim()||def;
+  arr.push({id:genId(),name:name.slice(0,30),createdAt:Date.now(),v:1,params:p});
+  snapSaveAll(arr);renderSnapshots();
+  if($('cmpStatus'))$('cmpStatus').textContent='已存「'+name.slice(0,30)+'」。';
+}
+function snapRename(id){
+  const arr=snapLoadAll(),s=arr.find(x=>x.id===id);if(!s)return;
+  const nm=(prompt('改名:',s.name)||'').trim();if(!nm)return;
+  s.name=nm.slice(0,30);snapSaveAll(arr);renderSnapshots();
+}
+function snapDuplicate(id){
+  const arr=snapLoadAll(),s=arr.find(x=>x.id===id);if(!s)return;
+  if(arr.length>=SNAP_MAX){alert('已達 '+SNAP_MAX+' 組上限。');return;}
+  arr.push({id:genId(),name:(s.name+' 複本').slice(0,30),createdAt:Date.now(),v:1,params:Object.assign({},s.params)});
+  snapSaveAll(arr);renderSnapshots();
+}
+function snapDelete(id){snapSaveAll(snapLoadAll().filter(x=>x.id!==id));renderSnapshots();}
+function snapLoadToForm(id){
+  const s=snapLoadAll().find(x=>x.id===id);if(!s)return;
+  applyParams(s.params);markDirty();
+  const b=$('basics');if(b&&b.scrollIntoView)b.scrollIntoView({block:'start'}); // 載入後捲回設定檢視
+}
+
+function snapExport(){
+  const arr=snapLoadAll();
+  if(!arr.length){alert('目前沒有快照可匯出。');return;}
+  const data=JSON.stringify({app:'fire-planner',type:'snapshots',v:1,exportedAt:new Date().toISOString(),snapshots:arr},null,2);
+  const blob=new Blob([data],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download='fire-planner-snapshots.json';
+  document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+}
+function snapImport(file){
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const obj=JSON.parse(rd.result);
+      const incoming=Array.isArray(obj)?obj:(obj&&Array.isArray(obj.snapshots)?obj.snapshots:null);
+      if(!incoming){alert('檔案格式不符(找不到 snapshots 陣列)。');return;}
+      const arr=snapLoadAll();
+      const have=new Set(arr.map(x=>x.id));
+      let added=0,skipped=0;
+      incoming.forEach(s=>{
+        if(!s||!s.params){skipped++;return;}
+        if(arr.length>=SNAP_MAX){skipped++;return;}
+        const id=(s.id&&!have.has(s.id))?s.id:genId();have.add(id);
+        arr.push({id,name:(s.name||autoName(s.params)).slice(0,30),createdAt:s.createdAt||Date.now(),v:1,params:migrateParams(s.params)});
+        added++;
+      });
+      snapSaveAll(arr);renderSnapshots();
+      alert('匯入完成(合併):新增 '+added+' 組'+(skipped?(',略過 '+skipped+' 組(達上限或格式不符)'):'')+'。');
+    }catch(e){alert('匯入失敗:無法解析 JSON。');}
+  };
+  rd.readAsText(file);
+}
+
+function renderSnapshots(){
+  const arr=snapLoadAll();
+  if($('snapCount'))$('snapCount').textContent=arr.length+'/'+SNAP_MAX+' 組';
+  const list=$('snapList');
+  if(list){
+    if(!arr.length){list.innerHTML='<div class="empty">還沒有快照。到「1 · 設定」調好後,按「💾 把目前設定存成快照」。</div>';}
+    else{
+      list.innerHTML='';
+      arr.forEach(s=>{
+        const lev=Math.round(LEV_KEYS.reduce((a,k)=>a+(+(s.params['n_'+k]||0)),0));
+        const div=document.createElement('div');div.className='snap';
+        div.innerHTML=`<span class="nm" title="${escapeHtml(s.name)}">${escapeHtml(s.name)}</span>`+
+          `<span class="meta">槓桿 ${lev}% · ${new Date(s.createdAt).toLocaleDateString()}</span>`+
+          `<span class="acts">`+
+          `<button data-act="load">載入</button>`+
+          `<button data-act="rename">改名</button>`+
+          `<button data-act="dup">複製</button>`+
+          `<button data-act="del">刪除</button></span>`;
+        div.querySelector('[data-act="load"]').onclick=()=>snapLoadToForm(s.id);
+        div.querySelector('[data-act="rename"]').onclick=()=>snapRename(s.id);
+        div.querySelector('[data-act="dup"]').onclick=()=>snapDuplicate(s.id);
+        div.querySelector('[data-act="del"]').onclick=()=>{if(confirm('刪除「'+s.name+'」?'))snapDelete(s.id);};
+        list.appendChild(div);
+      });
+    }
+  }
+  for(let i=0;i<3;i++){
+    const sel=$('cmpSel'+i);if(!sel)continue;
+    const prev=sel.value;
+    sel.innerHTML='<option value="">— 不選 —</option>'+arr.map(s=>`<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+    if(arr.some(s=>s.id===prev))sel.value=prev;
+    else if(arr[i])sel.value=arr[i].id;
+  }
+}
+
+function paramsHash(p){
+  // 由 LS_IDS 導出,不另抄一份 —— 這裡漏掉任何一個會影響結果的欄位,_cmpCache 就會
+  // 把兩組「只差在該欄位」的快照當成同一組,靜默回傳過期指標。dispmode 只是顯示單位,不影響模擬。
+  const keys=LS_IDS.filter(k=>k!=='dispmode').concat(ORDER.map(k=>'n_'+k));
+  return keys.map(k=>k+'='+(p[k]==null?'':p[k])).join('|');
+}
+// 用既有引擎、給定參數跑核心指標(暫存/還原表單,複用 gatherInputs/simulate/milestones)
+function computeMetrics(params){
+  const key=paramsHash(params);
+  if(_cmpCache.has(key))return _cmpCache.get(key);
+  const saved=currentParams();
+  let m;
+  try{
+    applyParams(params);
+    const ci=gatherInputs();
+    const opts=Object.assign({},ci.opts,{paths:800}); // 比較用降路徑數求快
+    const sim=simulate(ci.w,ci.defs,opts);
+    const ms=milestones(sim,opts,ci.fireNum);
+    const surv=sim.survive.reduce((s,v)=>s+v,0)/sim.survive.length;
+    const medRetire=percentile(sim.VatRetire,0.5);
+    // 決議 D1(S5 落地):比較表的回撤欄與 Calmar 分母改用累積期回撤 ——
+    // 全期含退休提領,固定提領的 P90 就是 −100%,三欄並排全是 −100% 等於沒有資訊。
+    const ddMed=percentile(sim.ddAccum,0.5);
+    const yrs=ci.retire-ci.age0;
+    const cagr=(yrs>0)?impliedCAGR(ci.net0,ci.annualContrib,yrs,medRetire):null; // 中位實質年化
+    const calmar=(cagr!=null&&ddMed>1e-6)?cagr/ddMed:null;                       // 報酬÷回撤
+    m={netExp:netExposure(ci.w),muNom:blendedMuNom(ci.w,ci.defs),
+       retire:ci.retire,   // ← 差異 C2:列標籤要用它,不能硬編 65
+       coastAge:ms.coastAge,fireAge:ms.fireAge,baristaAge:ms.baristaAge,
+       pFire:fracGE(sim.VatRetire,ci.fireNum),survive:surv,
+       essOK:sim.essOK?sim.essOK.reduce((s,v)=>s+v,0)/sim.essOK.length:surv,
+       lifeRat:sim.lifeRat?percentile(sim.lifeRat,0.5):1,
+       medRetire,p90:percentile(sim.VatRetire,0.90),p10:percentile(sim.VatRetire,0.10),
+       ddMed,ddP90:percentile(sim.ddAccum,0.90),
+       early3:percentile(sim.early3,0.5),
+       cagr,calmar};
+  } finally { applyParams(saved); } // 還原表單,使用者無感
+  _cmpCache.set(key,m);
+  return m;
+}
+function runCompare(){
+  const ids=[0,1,2].map(i=>$('cmpSel'+i)?$('cmpSel'+i).value:'').filter(Boolean);
+  if(ids.length<2){if($('cmpStatus'))$('cmpStatus').textContent='請至少選 2 組快照。';return;}
+  const arr=snapLoadAll();
+  const chosen=ids.map(id=>arr.find(s=>s.id===id)).filter(Boolean);
+  if($('cmpRunBtn'))$('cmpRunBtn').disabled=true;
+  if($('cmpStatus'))$('cmpStatus').textContent='計算中…';
+  setProg($('cmpProg'),0.05);
+  const results=[];let i=0;
+  function step(){
+    if(i>=chosen.length){
+      hideProg($('cmpProg'));
+      if($('cmpRunBtn'))$('cmpRunBtn').disabled=false;
+      if($('cmpStatus'))$('cmpStatus').textContent='完成。';
+      renderCompare(chosen,results);return;
+    }
+    results[i]=computeMetrics(chosen[i].params);i++;
+    setProg($('cmpProg'),0.05+0.9*(i/chosen.length));
+    setTimeout(step,0); // 讓出主執行緒、刷新進度,避免卡頓
+  }
+  setTimeout(step,0);
+}
+function renderCompare(snaps,res){
+  const fmtAge=a=>a==null?'未達成':a+' 歲';
+  const fmtPct0=v=>(v*100).toFixed(0)+'%';
+  const fmtNeg=v=>'−'+(v*100).toFixed(0)+'%';
+  const rets=res.map(r=>r.retire).filter(v=>v!=null);
+  const retireLabel=(rets.length&&rets.every(v=>v===rets[0]))?(rets[0]+' 歲時已存到'):'各自設定的退休年齡';
+  const rows=[
+    {group:'⚙️ 配置'},
+    {label:'淨曝險',get:r=>r.netExp,fmt:fmtPct0,better:'low',hint:'>150% 偏積極'},
+    {label:'混合年化(名目假設)',get:r=>r.muNom,fmt:v=>pct(v),better:'high',hint:'你設定的前瞻假設、非結果'},
+    {group:'🎯 幾歲達成(越早越好)'},
+    {label:'Coast FIRE 達成',get:r=>r.coastAge,fmt:fmtAge,better:'lowAge'},
+    {label:'Full FIRE 達成',get:r=>r.fireAge,fmt:fmtAge,better:'lowAge'},
+    {label:'Barista 半退休 達成',get:r=>r.baristaAge,fmt:fmtAge,better:'lowAge'},
+    {group:'✅ 把握度(越高越好)'},
+    // 差異 C2(S5 落地):改版前這裡硬編「65前存到」,實際算的是各自設定的 retire。
+    // 三欄的 retire 可能不同 —— 一樣就寫出那個歲數,不一樣就明講「各自設定的退休年齡」。
+    {label:'退休目標達成把握('+retireLabel+')',get:r=>r.pFire,fmt:fmtPct0,better:'high'},
+    {label:'必要支出全程撐得住',get:r=>r.essOK,fmt:fmtPct0,better:'high',hint:'每個月都付得出必要支出的比例(頭條指標)'},
+    {label:'退休後撐到老存活率',get:r=>r.survive,fmt:fmtPct0,better:'high',hint:'真實提領模擬不破產的比例'},
+    {label:'退休生活水準達成率(中位)',get:r=>r.lifeRat,fmt:fmtPct0,better:'high',hint:'退休後實際花掉 ÷ 原本想花;彈性提領砍支出會反映在這'},
+    {group:'💰 退休時資產(越高越好)'},
+    {label:'中位(P50)',get:r=>r.medRetire,fmt:fmtW,better:'high'},
+    {label:'好情境(P90)',get:r=>r.p90,fmt:fmtW,better:'high'},
+    {label:'壞情境(P10)',get:r=>r.p10,fmt:fmtW,better:'high',hint:'1/10 機率會更差'},
+    {group:'📉 風險:回撤(越小越好)'},
+    {label:'退休前最深回撤(中位)',get:r=>r.ddMed,fmt:fmtNeg,better:'low',hint:'累積期,不含退休後照計畫提領的那一段'},
+    {label:'退休前最深回撤(壞情境P90)',get:r=>r.ddP90,fmt:fmtNeg,better:'low'},
+    {label:'進場頭3年回撤(中位)',get:r=>r.early3,fmt:fmtNeg,better:'low',hint:'剛進場就重傷的風險'},
+    {group:'⚖ 風險調整後(越高越好)'},
+    {label:'中位實質年化(模擬)',get:r=>r.cagr,fmt:v=>v==null?'—':pct(v),better:'high',hint:'累積期資金加權報酬'},
+    {label:'報酬÷回撤(Calmar式)',get:r=>r.calmar,fmt:v=>v==null?'—':v.toFixed(2),better:'high',hint:'每承受1單位回撤換到的年化,越高越划算'}
+  ];
+  const ncol=1+snaps.length;
+  let html='<table class="cmptbl"><thead><tr><th>指標</th>'+snaps.map(s=>`<th>${escapeHtml(s.name)}</th>`).join('')+'</tr></thead><tbody>';
+  rows.forEach(row=>{
+    if(row.group){html+=`<tr class="grp"><td colspan="${ncol}">${row.group}</td></tr>`;return;}
+    const lowerBetter=(row.better!=='high');
+    const scored=res.map((r,idx)=>{let v=row.get(r);let sc=(v==null)?Infinity:(lowerBetter?v:-v);return {idx,sc,v};});
+    let bestIdx=-1,worstIdx=-1;
+    if(res.length>=2){
+      const scs=scored.map(o=>o.sc),minS=Math.min(...scs),maxS=Math.max(...scs);
+      if(minS!==maxS){bestIdx=scored.find(o=>o.sc===minS).idx;worstIdx=scored.slice().reverse().find(o=>o.sc===maxS).idx;}
+    }
+    const lab=row.label+(row.hint?` <span class="small mut">(${row.hint})</span>`:'');
+    html+=`<tr><td>${lab}</td>`;
+    scored.forEach(o=>{const cls=o.idx===bestIdx?'best':(o.idx===worstIdx?'worst':'');html+=`<td class="${cls}">${row.fmt(o.v)}</td>`;});
+    html+='</tr>';
+  });
+  html+='</tbody></table>';
+  html+='<p class="small mut" style="margin-top:8px;line-height:1.7">🟢=該列最佳　🔴=該列最差。<br>'+
+    '金額一律為<b>實質購買力(現在的錢)</b>,<b>不受「金額顯示方式」影響</b>——三組各自的通膨假設可能不同,都用實質才能公平並排。<br>'+
+    '比較用核心模擬(路徑數較少求快),數值為<b>相對參考</b>;精細數字以上方摘要列與「★ 我的計畫」為準。</p>';
+  if($('cmpResult'))$('cmpResult').innerHTML=html;
+}
+
+// ================= 1.5 時間軸現金流 UI =================
+// 真相只有一個:隱藏欄位 #flows 的字串。這樣 currentParams/applyParams/快照存還原/
+// paramsHash 全部自動吃到 —— 若改用模組層陣列,computeMetrics() 比較跑完的還原步驟
+// 不會還原它,別人的現金流會靜默漏進使用者的表單。
+let FLOWS=[];
+const FLOW_CHIPS=[
+  {t:'勞保年金(65起)',f:{n:'勞保年金',amt:18,freq:'y',kind:'inc',cat:'ess',real:1,s:65,e:'max'}},
+  {t:'勞退月退(60起)',f:{n:'勞退月退',amt:12,freq:'y',kind:'inc',cat:'ess',real:1,s:60,e:'max'}},
+  {t:'房貸(名目)',    f:{n:'房貸',    amt:24,freq:'y',kind:'exp',cat:'ess', real:0,s:'now',e:60}},
+  // 育兒的迄點依現在年齡動態算(養到 18 歲),而不是硬綁退休 —— 小孩會長大,退休不會提前。
+  {t:'育兒(18年)',    f:{n:'育兒',    amt:20,freq:'y',kind:'exp',cat:'ess', real:1,s:'now',e:'ret'},
+   dyn:f=>{f.e=clamp((+$('age').value||30)+18,0,120);}},
+  {t:'長照(70起)',    f:{n:'長照',    amt:36,freq:'y',kind:'exp',cat:'ess', real:1,s:70,e:'max'}},
+  {t:'房租收入',      f:{n:'房租收入',amt:12,freq:'y',kind:'inc',cat:'ess', real:1,s:'now',e:'max'}},
+  {t:'兼職(半退休)',  f:{n:'兼職',    amt:30,freq:'y',kind:'inc',cat:'ess', real:1,s:'ret',e:'max'}},
+  {t:'一次性大支出',  f:{n:'買房頭期',amt:300,freq:'y',kind:'exp',cat:'disc',real:1,s:45,e:'once'}},
+];
+function flowNewId(){return 'f'+Math.random().toString(36).slice(2,7);}
+function syncFlows(){const el=$('flows');if(el)el.value=serializeFlows(FLOWS);markDirty();renderFlowTimeline();}
+function anchorSel(v,cls,isEnd){
+  const isNum=!(v==='now'||v==='ret'||v==='max'||v==='once');
+  const o=(val,txt)=>`<option value="${val}"${(!isNum&&v===val)?' selected':''}>${txt}</option>`;
+  return `<select class="${cls}">`
+    +(isEnd?'':o('now','現在'))
+    +o('ret',isEnd?'退休為止':'退休起')
+    +(isEnd?o('max','到最後'):'')
+    +(isEnd?o('once','一次性'):'')
+    +`<option value="age"${isNum?' selected':''}>指定歲數</option></select>`
+    +`<input type="number" class="fv ${cls}v" min="0" max="120" step="1" value="${isNum?v:''}" `
+    +`placeholder="歲" ${isNum?'':'style="display:none"'}>`;
+}
+function renderFlows(){
+  const box=$('flowList');if(!box)return;
+  if(!FLOWS.length){
+    box.innerHTML='<p class="small mut" style="margin:6px 0">還沒有額外的收支事件 —— '
+      +'多數人不需要,直接按上面的「▶ 重新計算」就好。</p>';
+    renderFlowTimeline();return;
+  }
+  box.innerHTML=FLOWS.map((f,i)=>`
+    <div class="flowrow ${f.kind}" data-i="${i}">
+      <input class="fn" value="${escapeHtml(f.n)}" maxlength="12" placeholder="名稱">
+      <input class="fa" type="number" value="${f.amt}" min="0" step="1">
+      <select class="fg"><option value="y"${f.freq==='y'?' selected':''}>萬/年</option><option value="m"${f.freq==='m'?' selected':''}>萬/月</option></select>
+      <select class="fk"><option value="exp"${f.kind==='exp'?' selected':''}>支出</option><option value="inc"${f.kind==='inc'?' selected':''}>收入</option></select>
+      ${anchorSel(f.s,'fs',false)}<span class="mut" style="font-size:12px">→</span>${anchorSel(f.e,'fe',true)}
+      <button class="x more" type="button" title="更多設定">⋯</button>
+      <button class="x del" type="button" title="刪除">🗑</button>
+      <div class="flowmore" style="display:none">
+        ${f.kind==='exp'?`<label><input type="checkbox" class="fd"${f.cat==='disc'?' checked':''}> 這是<b>彈性</b>支出(市場不好時可以先緩)</label>`:'<span>收入不分必要/彈性</span>'}
+        <label><input type="checkbox" class="fnom"${f.real?'':' checked'}> 這是<b>名目</b>金額(數字固定,購買力隨通膨變小,例如房貸)</label>
+      </div>
+    </div>`).join('');
+  renderFlowTimeline();
+}
+function renderFlowTimeline(){
+  const box=$('flowTimeline');if(!box)return;
+  if(!FLOWS.length){box.innerHTML='';renderFlowSummary();return;}
+  const age0=+$('age').value||30,retire=+$('retire').value||65;
+  const maxAge=Math.max(retire+25,90),nM=Math.round((maxAge-age0)*12);
+  const pos=mo=>(mo/nM*100);
+  let html='';
+  FLOWS.forEach(f=>{
+    const r=flowMonths(f,age0,retire,nM);
+    if(!r){html+=`<div class="lane" title="${escapeHtml(f.n)}:時間區間是空的"></div>`;return;}
+    const L=pos(r[0]-1),W=Math.max(f.e==='once'?0.6:1.2,pos(r[1])-pos(r[0]-1));
+    html+=`<div class="lane"><i class="${f.kind}${f.e==='once'?' once':''}" style="left:${L}%;width:${W}%" `
+      +`title="${escapeHtml(f.n)}">${W>13?escapeHtml(f.n):''}</i></div>`;
+  });
+  // 年齡刻度 + 退休標記
+  const rMo=Math.round((retire-age0)*12);
+  let axis='';
+  for(let a=Math.ceil(age0/10)*10;a<=maxAge;a+=10)axis+=`<span style="left:${pos((a-age0)*12)}%">${a}</span>`;
+  html+=`<div style="position:relative"><div class="rmark" style="left:${pos(rMo)}%"></div>`
+    +`<div class="axis">${axis}</div></div>`
+    +`<div class="mut" style="font-size:11px;margin-top:2px">虛線 = 退休(${retire} 歲)　`
+    +`<span style="color:var(--core)">■</span> 收入　<span style="color:var(--res)">■</span> 支出</div>`;
+  box.innerHTML=html;
+  renderFlowSummary();
+}
+function renderFlowSummary(){
+  const box=$('flowSummary');if(!box)return;
+  const age0=+$('age').value||30,retire=+$('retire').value||65;
+  const maxAge=Math.max(retire+25,90);
+  const exp=+$('exp').value||0,pension=+$('pension').value||0,infl=(+$('infl').value||0)/100;
+  const contribA=(+$('mon').value||0)*12; // 每月可再投入 → 年化
+  const S=buildFlowSchedule(FLOWS,{age0,retire,maxAge,infl,exp,pension});
+  const rMo=Math.round((retire-age0)*12);
+  const sum=(from,to)=>{let o=0,i=0;for(let mo=from;mo<=Math.min(S.nMonths,to);mo++){o+=S.ess[mo]+S.disc[mo];i+=S.inc[mo];}return{o,i};};
+
+  // 退休後第一年
+  const R=sum(rMo+1,rMo+12),net=R.o-R.i;
+  let html=`退休當年(${retire} 歲):支出 <b>${fmtW(R.o)}</b> − 收入 <b>${fmtW(R.i)}</b> = `
+    +(net>0?`需從資產提領 <b>${fmtW(net)}</b>/年`:`<b style="color:var(--down)">收入已足夠,還多 ${fmtW(-net)}/年</b>`)
+    +`。<span class="mut">(之後每一年會隨時間軸變動,完整影響看「★ 我的計畫」❻ 的退休提領模擬。)</span>`;
+
+  // 退休前:找出淨流出最兇的那一年 —— 這是「重複計算」最容易現形的地方。
+  let worstNet=0,worstAge=null;
+  for(let mo=1;mo+11<=rMo;mo+=12){
+    const P=sum(mo,mo+11),n=P.o-P.i;
+    if(n>worstNet){worstNet=n;worstAge=Math.round(age0+mo/12);}
+  }
+  if(worstNet>0){
+    const eff=contribA-worstNet;
+    html+=`<br>退休前最吃緊的一年(${worstAge} 歲):你每年投入 <b>${fmtW(contribA)}</b>,`
+      +`這裡的支出吃掉 <b>${fmtW(worstNet)}</b> → 實際`
+      +(eff>=0?`還能投入 <b>${fmtW(eff)}</b>/年`:`<b class="warn">倒扣資產 ${fmtW(-eff)}/年</b>`)+`。`;
+    if(eff<0){
+      html+=`<div class="termhint" style="margin-top:8px">⚠️ <b>這裡的退休前支出比你能投入的錢還多,資產會被一路吃掉。</b>`
+        +`最常見的原因是<b>重複計算</b>:房貸、育兒這類支出通常<b>本來就已經從薪水扣掉</b>,`
+        +`也就是已經反映在 1.1 的「每月可再投入」裡了。<br>`
+        +`規則很簡單 —— <b>要嘛在這裡填,要嘛已經扣在「每月可再投入」裡,只能擇一</b>。`
+        +`若要在這裡填,1.1 就要改成「<b>沒有這筆支出時</b>你每月能投入多少」。`
+        +`(真的想模擬「拿投資的錢去付」就忽略這則提醒。)</div>`;
+    }
+  }
+  box.innerHTML=html;
+}
+function bindFlowRow(){
+  const box=$('flowList');if(!box)return;
+  box.addEventListener('input',e=>{
+    const row=e.target.closest('.flowrow');if(!row)return;
+    const i=+row.dataset.i,f=FLOWS[i];if(!f)return;
+    const t=e.target;
+    if(t.classList.contains('fn'))f.n=t.value;
+    else if(t.classList.contains('fa'))f.amt=Math.max(0,+t.value||0);
+    else if(t.classList.contains('fsv'))f.s=clamp(Math.round(+t.value||0),0,120);
+    else if(t.classList.contains('fev'))f.e=clamp(Math.round(+t.value||0),0,120);
+    syncFlows();
+  });
+  box.addEventListener('change',e=>{
+    const row=e.target.closest('.flowrow');if(!row)return;
+    const i=+row.dataset.i,f=FLOWS[i];if(!f)return;
+    const t=e.target;
+    if(t.classList.contains('fg'))f.freq=t.value;
+    else if(t.classList.contains('fk')){f.kind=t.value;renderFlows();}
+    else if(t.classList.contains('fd'))f.cat=t.checked?'disc':'ess';
+    else if(t.classList.contains('fnom'))f.real=t.checked?0:1;
+    else if(t.classList.contains('fs')||t.classList.contains('fe')){
+      const isEnd=t.classList.contains('fe');
+      const num=row.querySelector(isEnd?'.fev':'.fsv');
+      if(t.value==='age'){num.style.display='';if(!num.value)num.value=isEnd?retireGuess()+10:retireGuess();
+        f[isEnd?'e':'s']=clamp(Math.round(+num.value||0),0,120);}
+      else{num.style.display='none';f[isEnd?'e':'s']=t.value;}
+    }
+    syncFlows();
+  });
+  box.addEventListener('click',e=>{
+    const row=e.target.closest('.flowrow');if(!row)return;
+    const i=+row.dataset.i;
+    if(e.target.classList.contains('del')){FLOWS.splice(i,1);renderFlows();syncFlows();}
+    else if(e.target.classList.contains('more')){
+      const m=row.querySelector('.flowmore');
+      m.style.display=m.style.display==='none'?'flex':'none';
+    }
+  });
+}
+function retireGuess(){return +$('retire').value||65;}
+function renderFlowChips(){
+  const box=$('flowChips');if(!box)return;
+  box.innerHTML=FLOW_CHIPS.map((c,i)=>`<button type="button" data-c="${i}" title="先帶一組常見的預設值進來,金額跟年齡都可以再改">＋ ${c.t}</button>`).join('');
+  box.addEventListener('click',e=>{
+    const b=e.target.closest('button[data-c]');if(!b)return;
+    if(FLOWS.length>=FLOW_MAX){alert('最多 '+FLOW_MAX+' 筆現金流事件。');return;}
+    const c=FLOW_CHIPS[+b.dataset.c];
+    const nf=Object.assign({id:flowNewId()},c.f);
+    if(c.dyn)c.dyn(nf); // 依目前年齡/退休年齡調整預設起訖
+    FLOWS.push(nf);
+    renderFlows();syncFlows();
+    const box2=$('flowList');if(box2)box2.scrollIntoView({block:'nearest'});
+  });
+}
+// 從隱藏欄位重建陣列 —— loadSettings/applyParams/快照載入之後都要呼叫。
+function flowsFromInput(){FLOWS=parseFlows($('flows')?$('flows').value:'');renderFlows();}
+
+/* ================= 起點範本 =================
+   S5 刪除。範本卡的**唯一的家**是「★ 我的計畫」❷ 的「▸ 想換一個風險等級?」——
+   資料本體一直只有一份,重複的只是 renderer(docs/HANDOFF.md「兩份暫時的重複」之一)。
+   原本 tab0 的「🐣 安全範例」按鈕也一起併進去了:它本來就是一張無槓桿範本。
+   **S8:資料本體從 E.PRESETS(5 張卡 × TW/US)換成 E.LADDER(統一風險階梯九階)**,
+   同一份表現在也是「🚀 快速開始」最後一題與校準腳本的來源。 */
+
+
+// ================= 結果頁:規則式理財體檢 =================
+/* 理財體檢(規則式,不是模擬輸出)。
+   留在 /plan/ 而不是搬去「★ 我的計畫」,是因為它每一條講的都是**這一頁的旋鈕**
+   (「開隨齡降槓」「開彈性提領」「加點債」)—— 那是調參數時的回饋,不是結果。
+   IA §5.5 說「/plan/ 只留頂部摘要一行」,所以它壓縮成摘要列底下的幾行小字。
+
+   ── 決議 D1(S5 落地):兩處門檻改用**累積期**回撤 P90。
+      改版前用全期,而全期含退休後照計畫提領 —— 預設配置的全期 P90 就是 −100%,
+      於是「壞情境回撤可能達 −100%」會**無條件對每一個人跳出來**,
+      一條永遠成立的警告等於沒有警告。 */
+function buildAdvice(ci,w,sim,ms,pFire){
+  const box=$('adviceBox');if(!box)return;
+  const netExp=netExposure(w);
+  const ddP90=percentile(sim.ddAccum,0.9);
+  const age0=ci.age0,retire=ci.retire,bondW=w.BOND||0;
+  const items=[];
+  if(netExp>1.5) items.push(['🔴',`你的淨曝險偏高(<b>${(netExp*100).toFixed(0)}%</b>,>150% 算積極)。先確認退休前一度 <b>−${(ddP90*100).toFixed(0)}%</b> 也抱得住,或到<a href="#adv-glide">隨年齡自動降低槓桿</a>打開它。`]);
+  if(pFire<0.5) items.push(['📌',`達標把握偏低(<b>${(pFire*100).toFixed(0)}%</b>)。最有效的三個調整:<b>提高每月投入</b>、<b>延後退休年齡</b>、<b>降低年支出</b>;加槓桿不是首選(它同時放大回撤)。`]);
+  else if(pFire>=0.85 && netExp>1.2) items.push(['✅',`你已很可能達標(<b>${(pFire*100).toFixed(0)}%</b>),其實不必冒這麼高的槓桿風險。可考慮<b>降低曝險守成</b>,把成果保住。`]);
+  if(ms.coastAge!=null && ms.coastAge<=retire) items.push(['🟢',`你約 <b>${ms.coastAge} 歲</b>達成 Coast FIRE:之後就算不再為退休加碼存錢,光複利也能在退休時達標。`]);
+  if(ddP90>0.7) items.push(['⚠️',`退休前的壞情境回撤可能達 <b>−${(ddP90*100).toFixed(0)}%</b>。上槓桿前先誠實問自己:「真的跌成這樣,我抱得住、不會砍在最低嗎?」`]);
+  if(!ci.flexWithdraw && ci.wMode!=='abw' && netExp>1.0) items.push(['💡','到<a href="#adv-withdraw">退休後怎麼花</a>改成『彈性提領』(跌時少花),是最便宜的退休保險,能明顯提高撐住的機率。']);
+  if((retire-age0)<=10 && netExp>1.0 && bondW<0.05) items.push(['💡','已接近退休卻仍有槓桿、且幾乎沒有債券:建議開<a href="#adv-glide">隨齡降槓</a>或加點債,壓低「退休前夕碰崩盤」的順序風險。']);
+  if(!items.length) items.push(['🟢','你的計畫看起來相當平衡。可到<a href="#snapshots">存快照與並排比較</a>把這版存起來,再試幾組配置並排比較。']);
+  box.style.display='block';
+  box.innerHTML='<div style="font-weight:700;margin-bottom:5px">🩺 理財體檢(依你輸入的數字,規則式提醒、非投資建議)</div>'+
+    items.slice(0,4).map(it=>`<div style="margin:4px 0">${it[0]} ${it[1]}</div>`).join('');
+}
+
+// ================= 名詞小辭典 =================
+// 辭典本體搬到 assets/shell.js:全站只有一份(本頁 32 條 + /timing/ 60 條 → 合併成 75 條;
+// 14 個重複鍵以 /timing/ 的版本為準,三對同概念不同鍵名的合併成一條)。
+// 本頁只負責告訴殼「要掃哪幾個分頁」與「哪些容器會被 innerHTML 重繪」—— 見檔案最後的 APShell.init。
+
+// ---------- init ----------
+buildWeights();
+const hadSaved=loadSettings();
+// 攤銷式提領的三個參數只在選了該模式時才有意義,平常收起來別佔版面。
+function refreshAbwBox(){const b=$('abwBox');if(b)b.style.display=(+$('flexW').value===2)?'':'none';}
+if($('flexW'))$('flexW').addEventListener('change',refreshAbwBox);
+refreshAbwBox();
+
+// 1.5 時間軸:先建快速新增鈕與事件代理,再由隱藏欄位重建列(loadSettings 之後才有值)。
+renderFlowChips();bindFlowRow();flowsFromInput();
+// 時間軸與摘要吃 age/retire/exp/pension/infl/mon,這些一改就要重畫(只重畫,不重算模擬)。
+['age','retire','exp','pension','infl','mon'].forEach(id=>{const el=$(id);if(el)el.addEventListener('input',renderFlowTimeline);});
+function refreshL2Display(){
+  const cd=(+$('carry').value)/100, vd=getVolDrag(), fin=getFin();
+  if($('carryv'))$('carryv').textContent=(cd*100).toFixed(1);
+  if($('voldragv'))$('voldragv').textContent=(vd*100).toFixed(1);
+  if($('ssofinv'))$('ssofinv').textContent=(fin*100).toFixed(1);
+  const l2=l2muNom(cd,vd), sso=ssoMuNom(fin,vd);
+  if($('amu_L2'))$('amu_L2').textContent=pct(l2);
+  if($('amu_SSO'))$('amu_SSO').textContent=pct(sso);
+  const cs=cd>=0?`− ${(cd*100).toFixed(1)}%逆價差`:`+ ${(-cd*100).toFixed(1)}%逆價差順風`;
+  if($('l2formula'))$('l2formula').innerHTML=`<b>正二</b> = 2×7% − ${(vd*100).toFixed(1)}%波動耗損 − ${(LEV.L2.er*100).toFixed(1)}%內扣 ${cs} = <b class="warn">${pct(l2)}</b><span class="src fixed">假設值</span>`;
+  if($('ssoformula'))$('ssoformula').innerHTML=`<b>SSO</b> = 2×7% − ${(vd*100).toFixed(1)}%波動耗損 − ${(LEV.SSO.er*100).toFixed(2)}%內扣 − ${(fin*100).toFixed(1)}%融資 = <b class="warn">${pct(sso)}</b><span class="src fixed">假設值</span>`;
+}
+// 三支滑桿要即時更新槓桿公式的顯示(input),標記結果過期則走下面的統一迴圈(change)。
+['carry','voldrag','ssofin'].forEach(id=>$(id).addEventListener('input',refreshL2Display));
+/* change→markDirty 由 LS_IDS 統一導出,新增輸入欄位時不必記得回來補一行(漏補=結果過期指示燈說謊)。
+   **排除清單直接吃 APState.HASH_SKIP** —— 那張表本來就是「不影響任何運算的欄位」的定義,
+   改版前這裡硬編 `!== 'dispmode'`,於是 S9 新增 spendNow 時漏了它:
+   改一個不進模擬的欄位卻把結果標成髒的,指示燈就說謊了。兩處用同一份真相才不會再漏。 */
+LS_IDS.filter(id=>!APState.HASH_SKIP[APState.FIELD_BY_ID[id].key])
+  .forEach(id=>{const el=$(id);if(el)el.addEventListener('change',markDirty);});
+$('dispmode').addEventListener('change',()=>{if(lastCore)applyDisplayMode();}); // 只切實質/名目顯示,不重新模擬
+
+const mc=$('mainChart');
+if(mc){
+  mc.addEventListener('mousemove',e=>{
+    const rect=mc.getBoundingClientRect();
+    mouseX=(e.clientX-rect.left);
+    drawChart();
+  });
+  mc.addEventListener('mouseleave',()=>{mouseX=null;drawChart();});
+}
+
+// ▶ 重新計算:強制重新抽樣主模擬,並更新**展開中**的對照表(收起來的留到下次展開)。
+$('startBtn').addEventListener('click',()=>{coreVer=-1;ensureCore(refreshOpenLazy);});
+// 暫存與比較
+if($('snapSaveBtn'))$('snapSaveBtn').addEventListener('click',snapSaveCurrent);
+if($('snapSaveBtn2'))$('snapSaveBtn2').addEventListener('click',snapSaveCurrent);
+if($('snapExportBtn'))$('snapExportBtn').addEventListener('click',snapExport);
+if($('snapImportBtn'))$('snapImportBtn').addEventListener('click',()=>$('snapImportFile').click());
+if($('snapImportFile'))$('snapImportFile').addEventListener('change',e=>{if(e.target.files&&e.target.files[0]){snapImport(e.target.files[0]);e.target.value='';}});
+if($('cmpRunBtn'))$('cmpRunBtn').addEventListener('click',runCompare);
+renderSnapshots();
+refreshL2Display();
+updateWsum(); // 還原設定後刷新圓餅/淨曝險顯示
+if(APState.migrationHit){
+  saveSettings(); // 遷移後的鍵立刻寫回,下次載入不再重複
+  // 不用 #status:它會被計算流程/markDirty 覆寫。專用列放頂部。
+  const mig=$('migNote');
+  if(mig){mig.style.display='block';mig.innerHTML='ⓘ 你之前存的 <b>QLD</b> 部位已自動改成 <b>SSO(2× 標普500)</b>:權重數字照舊,但標的與報酬假設不同(為什麼換?見 1.3 裡 SSO 那一格的「ⓘ 理由」)。請再確認一次配置。 <button type="button" style="font:inherit;font-size:11.5px;border:1px solid #ecd79a;background:#fff;border-radius:6px;padding:0 7px;cursor:pointer" onclick="this.parentNode.style.display=\'none\'">知道了</button>';}
+}
+$('reloadCarry').addEventListener('click',()=>loadCarry(true));
+// 「重設為預設值」要把兩個鍵一起清掉 —— 只清舊鍵的話,ap_state_v2 還在,重載後又被還原。
+if($('resetBtn'))$('resetBtn').addEventListener('click',()=>{try{localStorage.removeItem(APState.KEY);localStorage.removeItem(LS_KEY);}catch(e){}location.reload();});
+// 姊妹工具「2x 進場時機儀表板」——同站台的相對路徑(同網域才能共用 localStorage 互通)。
+const X2_URL='../timing/';
+if(X2_URL)document.querySelectorAll('.x2link').forEach(el=>{el.innerHTML='<a href="'+X2_URL+'">'+el.textContent+'</a>';});
+// 共用殼:導覽 + 名詞氣泡 + 頁尾辭典 + 進階展開器的收合記憶。
+// S5 之後本頁是單頁,掃整個 .wrap 就好(改版前是分頁式,要逐個分頁掃)。
+APShell.init({page:'plan', glossary:{roots:['.wrap']}});
+// 可及性補綁(S11):欄位標籤大多寫成 <label>文字</label><input id>,沒有 for ——
+// 讀屏唸不出欄位名、點標籤也不會聚焦。用結構補上,不動任何 id。
+document.querySelectorAll('.field label,.f label').forEach(l=>{
+  if(l.htmlFor||l.querySelector('input,select'))return;
+  const i=l.parentElement&&l.parentElement.querySelector('input[id],select[id]');
+  if(i)l.htmlFor=i.id;
+});
+// 摘要列與對照表的懶算要在 shell.js 還原展開狀態之後才綁 ——
+// 否則 initAdv() 把某一段設成 open 時,toggle 監聽器還沒裝上,那一段就不會算。
+renderSummary();
+bindLazy();
+/* ── 快速開始精靈(../start/)的交棒 ─────────────────────────────────
+   S3 起精靈**直接寫進 ap_state_v2.input** 並轉去「★ 我的計畫」,不再經過
+   sessionStorage['ap_wizard_v1'] 也不再落在本頁 —— 所以本頁原本那段接收器整段刪掉了。
+   從精靈過來的設定,是由上面的 loadSettings() 一起讀進來的(它讀的就是 ap_state_v2)。 */
+
+/* ── 深連結錨點(docs/IA.md §6.3)────────────────────────────────────
+   「★ 我的計畫」的每個「⚙ 去改這一段」都跳進這一頁的某個 id。
+   S5 之前本頁是分頁式的,錨點元素在別的分頁時 display:none,所以需要一張
+   HASH_TAB 對照表先切分頁。**兩層改版之後那張表不需要了** —— 全部在同一頁,
+   剩下的工作只有「把收合的展開器打開再捲過去」。
+
+   八個 id 一個都不能弄丟(HANDOFF 的硬性前提):
+     #basics #economy #portfolio #leverage #strategy #cashflow #compare #snapshots
+   其中 #strategy 與 #compare 是**群組**(<section class="advgroup">),
+   它們本身不是 <details>,所以要自己把群組裡第一個展開器打開 ——
+   不然點過去只看到一排收合的標題,那正是「不像同一個網站」的感覺來源。
+   另外新增了精準錨點:#adv-dca / #adv-glide / #adv-engine / #adv-mech /
+   #adv-withdraw / #adv-band / #adv-assets / #adv-mechcmp / #adv-scen / #adv-stress。 */
+function jumpToHash(){
+  const t=$(location.hash.slice(1)); if(!t)return;
+  // 目標本身是展開器 → 展開它;是群組(#strategy / #compare)→ 展開群組裡的第一個。
+  let d=(t.tagName==='DETAILS')?t:(t.querySelector?t.querySelector('details.adv'):null);
+  if(!d&&t.closest)d=t.closest('details');
+  while(d){d.open=true;d=d.parentElement&&d.parentElement.closest?d.parentElement.closest('details'):null;}
+  if(t.scrollIntoView)t.scrollIntoView({block:'start'});
+}
+/* hashchange 也要接:同一頁內按 <a href="#leverage"> 不會重新載入,
+   shell.js 的 openHash 只認 closest('details'),對群組錨點(<section>)無效。 */
+window.addEventListener('hashchange',jumpToHash);
+loadCarry(!hadSaved); // 第一次造訪→套用自動逆價差;有存檔→沿用你存的
+if(location.hash.slice(1)){
+  // 跳兩次:第一次讓瀏覽器自己的片段捲動有東西可捲,load 之後再補一次
+  // (圖表/表格撐開之後版面高度會變,只跳一次會落在錯的位置)。
+  setTimeout(jumpToHash,0);
+  if(document.readyState==='complete')setTimeout(jumpToHash,120);
+  else window.addEventListener('load',()=>setTimeout(jumpToHash,120));
+}
+</script>
+</body>
+</html>

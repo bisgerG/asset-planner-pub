@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>我的計畫 — 資產規劃指南</title>
+<meta name="description" content="一頁看完你該做的事:錢怎麼分、每個月做什麼、跌下來怎麼辦、最壞會有多壞。">
+<link rel="stylesheet" href="../assets/ui.css">
+<style>
+/* 本頁專屬版面。token、body、.wrap、.sitenav、.btn、details.x/.adv、.src、.ap-risk
+   與 S11 的 .ap-hero/.ap-stat/.ap-statrow/.ap-bar/.ap-confirm/.ap-chart
+   全部來自 assets/ui.css。
+
+   ── 這一頁是什麼(docs/IA.md §5.3)──────────────────────────────────
+   整個重構的主要交付:**一頁看完「你該怎麼做」**,不用捲三次才看到結論。
+   S11 版面:答案卡(幾歲) → 三件事行動條(兼頁內目錄) → ① 現在該做什麼
+   → ② 最壞會有多壞 → 退休以後夠不夠(次級) → 地基。
+   大題編號 ①② 是真實的行動順序,不是裝飾;原本 ❶~❼ 七塊視覺等重,
+   新手分不出「要照做的」與「要理解的」。
+   分層規則(docs/IA.md §3):
+     L0 動作 —— 他明天要做什麼、做多少        → 永遠可見
+     L1 代價 —— 這個動作最壞會怎樣            → 永遠可見,壓縮成一句話 + 一個金額
+     L2 為什麼 —— 數字怎麼來的、其他選項如何  → 預設收合的「看細節」
+     L3 全部 —— 完整參數與所有對照表          → 另一頁(/plan/、/timing/)
+   **風險揭露即使不是「動作」也不准折疊**(§3.3 的例外條款)——
+   本站的核心價值是「看清楚最壞會有多壞」,把 −52% 收進「看細節」等於把它刪掉。
+   同一個數字這一頁最多出現兩次:行動條預覽一次 + 完整脈絡一次(S11 新規)。
+
+   刻意不叫 .card / .panel:那兩個名字在 /plan/ 與 /timing/ 是同名不同物,
+   在共用 CSS 裡定義任何一個都會弄壞其中一頁(見 assets/ui.css 開頭)。
+
+   S11 起本頁樣式為 mobile-first:基準 = 手機,640px 以上疊加。 */
+:root{ --wrap:760px }
+.wrap{padding:12px 12px 56px}
+
+/* ── 區塊 ─────────────────────────────────────────────── */
+.sec{background:var(--card); border:1px solid var(--line); border-radius:14px;
+  padding:15px 14px; margin:12px 0 0}
+.sec > h2{font-size:17px; margin:0 0 10px; color:var(--navy); display:flex; align-items:baseline; gap:8px}
+.sec > h2 .n{font-size:15px; color:var(--core); font-weight:800; flex:none}
+.sec > h2.minor{font-size:15px; color:var(--ink)}
+/* ① 底下的小節:細虛線分隔,不與大題搶層級 */
+.sec .sub-h{font-size:15px; color:var(--navy); font-weight:800; margin:18px 0 8px;
+  padding-top:14px; border-top:1px dashed var(--line);
+  display:flex; align-items:baseline; gap:8px}
+.sec .sub-h:first-of-type{margin-top:2px; padding-top:0; border-top:0}
+.sec .sub-h .tag{margin-left:auto; font-size:11.5px; font-weight:600; color:var(--muted)}
+.lead{margin:0 0 10px; font-size:14px; line-height:1.8}
+.mut{color:var(--muted)}
+.small{font-size:13px; line-height:1.75}
+
+/* ── 答案卡(共用 .ap-hero)的頁內補充 ──────────────────── */
+.ap-hero .jargon{color:rgba(255,255,255,.62)}
+.ap-hero .sub a{color:#dbe3f6}
+/* 機率帶圖鑲在答案卡裡的白色內襯 —— 圖的線是 navy 系,深底上看不見 */
+.bandbox{background:#fff; border-radius:9px; padding:10px 10px 8px; margin-top:14px; color:var(--ink)}
+.bandbox details.x{margin:2px 0 0}
+.bandbox details.x > summary{font-size:12.5px}
+
+/* ── 表 ───────────────────────────────────────────────── */
+table{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+th,td{padding:6px 9px; border-bottom:1px solid var(--line); text-align:left}
+th{color:var(--muted); font-weight:600; font-size:12.5px; background:var(--panel)}
+td.n,th.n{text-align:right; font-variant-numeric:tabular-nums}
+tfoot th{background:transparent; color:var(--navy); font-size:13px}
+
+/* ── 圓餅 + 圖例 ────────────────────────────────────────
+   canvas 尺寸由 APCharts.donut 以 inline style 定死(148px,DPR 對齊),
+   這裡只管排版:手機置中、寬屏靠左。 */
+.alloc{display:flex; gap:18px; align-items:flex-start; flex-wrap:wrap}
+.alloc canvas{flex:none; margin:0 auto}
+.alloc .tbl{flex:1; min-width:230px}
+.sw{display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:6px; vertical-align:middle}
+
+/* ── 一句話結論框(白話為主、術語為輔:docs/IA.md §7.1)─── */
+.oneline{background:var(--panel); border:1px solid var(--line); border-radius:9px;
+  padding:10px 13px; margin:10px 0 0; font-size:14.5px}
+.oneline b{color:var(--navy); font-size:17px}
+
+.note{border-left:3px solid var(--gold); background:#fffdf5; padding:9px 13px; margin:10px 0; font-size:13.5px; line-height:1.75}
+.note.warn{border-left-color:var(--warn); background:#fdf5ec; color:var(--warn-ink)}
+.note.ok{border-left-color:var(--good); background:#f2f9f4}
+
+/* ── 每月投入的標的金額 chips ─────────────────────────── */
+.chips{display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 6px}
+.chips .chip{background:var(--panel); border:1px solid var(--line); border-radius:999px;
+  padding:3px 11px; font-size:12.5px; font-variant-numeric:tabular-nums}
+
+/* ── ② 最壞會有多壞:比例條 ───────────────────────────── */
+.worstbar{margin:10px 0 4px}
+.worstbar .cap{display:flex; justify-content:space-between; gap:8px; font-size:12.5px;
+  color:var(--muted); margin-top:4px; font-variant-numeric:tabular-nums}
+
+/* ── 退休以後夠不夠:指標列表(S10)──────────────────────
+   「名稱 ＋ 數字 ＋ 一行白話定義」擺在一起 —— 窄卡塞得下數字塞不下定義。 */
+.mlist{margin:10px 0; border:1px solid var(--line); border-radius:8px; overflow:hidden}
+.mlist>div{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;
+  padding:9px 12px; background:var(--panel); border-top:1px solid var(--line)}
+.mlist>div:first-child{border-top:0}
+.mlist .k{font-size:13.5px; font-weight:700; color:var(--navy)}
+.mlist .v{font-size:18px; font-weight:800; color:var(--navy);
+  font-variant-numeric:tabular-nums; margin-left:auto}
+.mlist .d{flex-basis:100%; font-size:12px; color:var(--muted); line-height:1.65}
+
+/* ── 地基 ─────────────────────────────────────────────── */
+.chk{display:block; font-size:14px; line-height:1.6; margin:7px 0; cursor:pointer}
+.chk input{margin-right:8px; transform:translateY(1px)}
+#foundMsg{margin-top:10px; font-size:13.5px; font-weight:700}
+
+/* ── 換一個風險等級的範本卡 ───────────────────────────── */
+.famtoggle{display:flex; gap:6px; margin:2px 0 10px; flex-wrap:wrap}
+.famtoggle button{font:inherit; font-size:13px; font-weight:700; padding:5px 13px; border-radius:999px;
+  border:1px solid var(--line); background:#fff; color:var(--muted); cursor:pointer}
+.famtoggle button.active{background:var(--navy); color:#fff; border-color:var(--navy)}
+.pcards{display:grid; grid-template-columns:repeat(auto-fill,minmax(215px,1fr)); gap:9px}
+.pcard{border:1px solid var(--line); border-radius:10px; padding:11px 13px; background:#fff; cursor:pointer}
+.pcard:hover{border-color:var(--core); background:var(--panel)}
+.pcard:focus-visible{outline:2px solid var(--core); outline-offset:2px}
+.pcard.here{border-color:var(--navy); box-shadow:inset 0 0 0 1px var(--navy)}
+.pcard .pt{font-weight:800; color:var(--navy); font-size:14px}
+.pcard .herepill{margin-left:6px; font-size:10.5px; background:var(--navy); color:#fff;
+  border-radius:999px; padding:1px 7px; vertical-align:2px; font-weight:700}
+.pcard .pw{font-size:12.5px; color:var(--muted); margin-top:2px; font-variant-numeric:tabular-nums}
+.pcard .ap-bar{margin:7px 0 5px}
+.pcard .pm{font-size:12.5px; margin-top:4px}
+.pcard .pwho{font-size:12px; color:var(--muted); margin-top:4px; line-height:1.6}
+
+/* ── 底部 / 空狀態 / 載入中 ───────────────────────────── */
+.bottom{display:flex; gap:9px; flex-wrap:wrap; margin:18px 0 0}
+.empty{text-align:center; padding:52px 20px}
+.empty h2{font-size:21px; color:var(--navy); margin:0 0 8px}
+.empty p{color:var(--muted); margin:0 0 20px}
+.loading{text-align:center; padding:52px 20px; color:var(--muted)}
+.spin{display:inline-block; width:22px; height:22px; border:3px solid var(--line);
+  border-top-color:var(--core); border-radius:50%; animation:sp .8s linear infinite; vertical-align:-5px; margin-right:9px}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+@media (min-width:640px){
+  .wrap{padding:14px 16px 56px}
+  .sec{padding:18px 20px}
+  .alloc canvas{margin:0}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav id="apNav"></nav>
+  <div id="apSteps"></div>
+  <div id="resultRoot"><div class="loading"><span class="spin"></span>讀取你的計畫…</div></div>
+</div>
+
+<script src="../assets/engine.js"></script>
+<script src="../assets/charts.js"></script>
+<script src="../assets/state.js"></script>
+<script src="../assets/shell.js"></script>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const E=APEngine;
+// 整頁由 JS 一次寫進 #resultRoot,所以名詞註解要等填完才掃(先掃會全部漏掉)。
+APShell.init({page:'result', glossary:false});
+
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pct=(v,d)=>(v==null||!isFinite(v))?'—':(v*100).toFixed(d==null?0:d)+'%';
+// 萬 → 億自動換算。與 /plan/ 的 fmtW、/report/ 的 wan 同口徑。
+const wan=v=>{
+  if(v==null||!isFinite(v))return '—';
+  const a=Math.abs(v);
+  if(a>=10000)return (v/10000).toFixed(2)+'億';
+  return (a>=100?Math.round(v):Math.round(v*10)/10)+'萬';
+};
+const MECHNAME={both:'再平衡 ＋ 崩盤加碼',rebal:'只做再平衡',reserve:'只做崩盤加碼',
+  deep3:'三段深觸發 −25/−35/−45(與「② 挑時機」同源)',
+  orig:'深觸發原型(−25/−40)',bh:'買進持有,完全不動'};
+
+/* ═══════════════════════════════════════════════════════════════════
+   0. 有沒有計畫可看
+   ═══════════════════════════════════════════════════════════════════ */
+const st=APState.load();
+let stored=false;
+try{ stored=!!(localStorage.getItem(APState.KEY)||localStorage.getItem(APState.LEGACY_KEYS.plan)); }catch(e){}
+// input.net 的預設值就是 50,所以「有沒有填過」不能只看它 —— 要先確認 localStorage 真的有東西。
+const hasPlan=!!st.result || (stored && Number(st.input&&st.input.net)>0);
+
+if(!hasPlan){
+  // 沒有資料時不要顯示空的區塊或一堆「—」(docs/IA.md §5.3)。
+  $('resultRoot').innerHTML=`<div class="empty">
+    <h2>還沒有計畫。</h2>
+    <p>回答九個白話問題,大約三分鐘,你就會在這一頁看到「你該做什麼」。</p>
+    <p><a class="btn" href="../start/">開始(約 3 分鐘)　→</a></p>
+    <p class="small mut" style="margin-top:22px">已經自己填過參數?到
+      <a href="../plan/">⚙ 配資金</a>按一次「▶ 重新計算」,結果也會出現在這裡。</p>
+  </div>`;
+  return;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   1. 取得結果 —— 過期就自己重算
+   docs/IA.md §6.2:這一頁的使用者不該「按了按鈕才看到自己的計畫」。
+   用 isStale()(不確定就算過期)而不是 isProvablyStale():重算很便宜、
+   使用者無感,寧可多算一次也不要顯示對不上設定的數字。
+   ═══════════════════════════════════════════════════════════════════ */
+function compute(){
+  const ci=E.deriveOpts(APState.getInput(),{paths:1500});
+  const sim=E.simulate(ci.w,ci.defs,ci.opts);
+  const ms=E.milestones(sim,ci.opts,ci.fireNum);
+  // buildResult 是引擎裡的純函式,/plan/ 按「▶ 重新計算」走的是同一個 —— 兩頁逐欄相同。
+  APState.setResult(E.buildResult(ci,sim,ms));
+  return APState.getResult();
+}
+
+function boot(){
+  if(!APState.isStale()){ render(APState.getResult()); return; }
+  $('resultRoot').innerHTML='<div class="loading"><span class="spin"></span>正在算你的計畫…(上千條市場路徑,約 2~3 秒)</div>';
+  // 讓瀏覽器先把 loading 畫出來再進 1500 條路徑的迴圈,否則畫面會整個凍住。
+  setTimeout(()=>{
+    let R=null;
+    try{ R=compute(); }catch(err){
+      if(window.console)console.error(err);
+      // 算不出來時要說人話並留一條出路 —— 不能只留一顆轉圈的圈圈。
+      // (C5 落地後,非整數年齡已經在 deriveOpts 取整,引擎也改丟可讀的 RangeError;
+      //  這個分支現在是最後一道防線,不是常見路徑。)
+      $('resultRoot').innerHTML=`<div class="empty"><h2>算不出來 🙇</h2>
+        <p class="small">你的設定裡有引擎處理不了的值。<br>
+        到「⚙ 配資金」檢查 1.1 的年齡與退休年齡,再按一次「▶ 重新計算」。</p>
+        <p><a class="btn" href="../plan/#basics">去改設定　→</a></p></div>`;
+      return;
+    }
+    render(R);
+  },30);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   2. 畫面
+   ═══════════════════════════════════════════════════════════════════ */
+let R=null,I=null,K=null,MS=null,W=null,WK=null;
+
+function render(res){
+  R=res; I=R.in; K=R.risk||{}; MS=R.ms||{}; W=R.w||{}; WK=Object.keys(W);
+  const NAMES=(()=>{const d=E.assetDefs(I.carry,I.volDrag,I.ssoFin),m={};
+    E.ORDER.forEach(k=>m[k]=d[k].name);return m;})();
+
+  const net0=+I.net0||0, monthly=+I.mon||0;
+  // 決議 D1:給使用者看的一律是**累積期**回撤(退休前),不是全期。
+  // 全期回撤含「退休後照計畫把錢花掉」,預設配置下壞情境就是 −100% —— 那不是市場跌的。
+  const ddP90=(K.ddAccumP90!=null)?K.ddAccumP90:null;
+  const retired=(I.retire<=I.age0);            // 已屆退休 → 累積期是空的,引擎退回「前 36 個月」
+  const ddLabel=retired?'進場後頭 3 年':'退休前';
+  const worstLeft=(ddP90!=null)?net0*(1-ddP90):null;
+  const hasLev=(W.L2||0)+(W.SSO||0)>1e-9;
+  const mAge=MS.fireAge;
+
+  let H='';
+
+  /* ── 答案卡 ──────────────────────────────────────────
+     手機上這一塊必須是第一屏 —— /timing/ 踩過這個坑(塌成單欄後行動指令被推到第二屏)。
+     主答案=生活結果(lifeP50/lifeP10,見下方 S11-P7e 註解);pFire 降到 bandbox 展開器,
+     fireAge 只留帶圖交叉點與深層說明 —— 兩者都當過主答案,演進理由見各分支註解。
+     S11:最壞金額從這裡移出(行動條 + ② 各一次);印/調按鈕移到頁底(剛答完的人
+     下一步是「讀」,不是「印」,底部本來就有同兩顆)。 */
+  let heroK,heroV,heroSub,pfireHow='';
+  /* S11-P7e:主角第三度換人(歲數→把握度→生活結果)。歲數與機率都是引擎的詞彙,
+     使用者四輪回饋的共同點是「這對我的生活是什麼意思?」。答案卡改回答精靈
+     自己問過的問題(cash 步驟:「退休以後,你想過什麼樣的生活?每月 __ 萬」):
+     大字=中位情境過不過得到(lifeP50),副標=最不順十分之一縮到多少(lifeP10)
+     +提領機制的代價;存不到/已達成/一般三種狀態統一同一版型,句型不再隨狀態跳動。
+     存到目標把握(pFire)降到 bandbox 展開器;fireAge 只留在帶圖交叉點與深層說明。
+     lifeP50 缺席(舊快照等罕見情況)時退回 P7c 的把握版型當 fallback。 */
+  const mExp=I.exp/12;
+  if(K.lifeP50!=null&&mExp>0){
+    const flexLike=(I.wMode==='abw')||I.flexW;
+    const p50m=mExp*K.lifeP50, p10m=(K.lifeP10!=null)?mExp*K.lifeP10:null;
+    heroK=retired?`照這個做,你想過的「每月 ${wan(mExp)}」退休生活 —— 中位情境`
+                 :`照這個做,${I.retire} 歲退休後,你想過的「每月 ${wan(mExp)}」生活 —— 中位情境`;
+    heroV=K.lifeP50>=1.05?`過得到,還有餘裕`
+         :(K.lifeP50>=0.95?`大致過得到`
+         :`只過得到約 ${Math.max(1,Math.round(K.lifeP50*10))} 成`);
+    heroSub=`中位情境下實際每月約 <b>${wan(p50m)}</b>(原訂的 ${pct(K.lifeP50)})`
+      +(K.legacyMed!=null?`,${I.maxAge} 歲還剩約 ${wan(K.legacyMed)}`:'')
+      +`<span class="jargon">(術語:中位=成敗大約各半,不是保證)</span>。`
+      +(p10m!=null?(flexLike
+        ?`但<b>最不順的十分之一</b>,壞年份得縮到約 <b>${wan(p10m)}／月</b>(原訂的 ${pct(K.lifeP10)}) ——
+          ${I.wMode==='abw'?'攤銷式提領(每年按剩餘資產重算)':'彈性提領(跌時少花)'}在壞年份會自動少花:
+          保住的是<b>資產不歸零</b>(${pct(K.survive)}),代價是生活縮水。`
+        :`但<b>最不順的十分之一</b>,實際只花到原訂的 <b>${pct(K.lifeP10)}</b> ——
+          固定提領不會自動縮,壞情境的真面目是<b>錢提早見底</b>(資產未歸零 ${pct(K.survive)})。`)
+      :'');
+  }else if(mAge==null){
+    heroK=`照這個做,到 ${I.maxAge} 歲`;
+    heroV=`還存不到目標`;
+    heroSub=`到你設定的 ${I.retire} 歲退休,存夠目標的把握約 ${pct(K.pFire)}。這是<b>中位情境</b>的試算<span class="jargon">(術語:中位=成敗大約各半)</span>。最有效的三個調整寫在下面。`
+      +(K.essOK!=null?`(退休後基本生活撐不撐得住是另一題:把握 ${pct(K.essOK)},看下面「退休以後夠不夠」。)`:'');
+  }else if(mAge<=I.age0){
+    heroK=`照這個做`;
+    heroV=`現在就已達成目標`;
+    heroSub=`以<b>中位情境</b>計<span class="jargon">(術語:中位=成敗大約各半)</span>,不是保證。下面是維持它的做法。`;
+  }else{
+    // S11-P7:不講「不用工作」—— fireAge 只是錢的里程碑,投入/提領全程按 retire 模擬
+    // (SPEC §5.9「那個歲數從來沒有被模擬過」),且輸入欄位當時也叫「不用再為錢工作」,同句兩義。
+    // S11-P7b:「錢到位」被讀成「完成了,不用再存」→ 改「存到目標」+安全邊際敘事。
+    // S11-P7c(使用者三度回饋):mAge 早於 retire 時,那個歲數之後照樣要投入,拿它當
+    // 主答案沒有行動意義 ——「幹嘛用這個年紀出來」—— 換動詞救不了,根因是拿錯數字。
+    // 主角改成 pFire(存夠把握),mAge 降副標一句:認領帶圖交叉點+提早退休的行動出口。
+    const early=mAge<I.retire, late=mAge>I.retire;
+    heroK=`照這個做,到你設定的 ${I.retire} 歲退休,存夠目標的把握是`;
+    heroV=`約 ${pct(K.pFire)}`;
+    heroSub=`「存夠」=資產達到你的目標金額 ${wan(R.fireNum)} —— <b>不是保證</b>,是 1500 條模擬裡約 ${pct(K.pFire)} 到得了。`
+      +(late?`<b>中位情境</b><span class="jargon">(術語:中位)</span>要到 <b>${mAge} 歲</b>才第一次碰到目標(比設定晚 ${mAge-I.retire} 年),所以把握低於一半 —— 想拉高:多投入、晚點退、降開銷。`
+        :(early?`<b>中位情境</b><span class="jargon">(術語:中位)</span> <b>${mAge} 歲</b>會先碰到目標,但那只是五五波的中間點 —— 之後繼續投入的 ${I.retire-mAge} 年,才把把握從一半推到 ${pct(K.pFire)}。真想 ${mAge} 歲退休:先到 ⚙ 配資金把退休年齡改成 ${mAge} 再算一次。`
+          :`<b>中位情境</b><span class="jargon">(術語:中位)</span>剛好在 ${I.retire} 歲碰到目標,所以把握大約就是一半。`))
+      +(K.essOK!=null?`(退休後基本生活撐不撐得住是另一題:把握 ${pct(K.essOK)},看下面「退休以後夠不夠」。)`:'');
+  }
+  /* S11-P7d:光溜溜的 62% 會被拿「考試 62 分」的直覺讀(使用者回饋「看起來就很擔心」)。
+     展開器給錨點、不發明及格線:50%=中位剛好準時;沒趕上多半只是晚幾年(fireNum 內建
+     兩層保守);網路上講的 75~90% 目標帶是給 essOK 這類「撐不撐得住」指標用的。
+     放 bandbox 裡(白底)—— details.x 的字色在深色 hero 上會看不見。已達成分支不顯示。 */
+  if(K.pFire!=null && !(mAge!=null&&mAge<=I.age0)){
+    pfireHow=`<details class="x how" data-remember id="how-pfire"><summary>存到目標的把握 ${pct(K.pFire)} —— 這個數字怎麼讀?(它沒有及格線)</summary>
+      <div class="body">
+        <p><b>「存到目標」= 資產達到目標金額 ${wan(R.fireNum)}</b>,就是圖上那條水平虛線。
+          <b>50% = 中位情境剛好在 ${I.retire} 歲準時達標</b>(五五波);每高一分,都是「提早碰到目標」的安全邊際;
+          低於 50% 代表連中位都會遲到 —— 那時 ⚙ 配資金的檢查清單會亮「達標把握偏低」。</p>
+        <p>沒趕上的 ${pct(1-K.pFire)} 情境,多半也不是災難:目標金額本身內建保守
+          (提領率用「永遠不動本金」的口徑,而且計畫一路算到 ${I.maxAge} 歲),
+          差一點的情境通常是<b>晚幾年才到、或退休後略減支出</b>,不是歸零。</p>
+        <p class="mut">網路或理財顧問常講的「把握度抓 75%~90%」,說的是<b>退休後撐不撐得住</b>這類指標 ——
+          對應下面「退休以後夠不夠」的<b>必要支出全程撐得住</b>${K.essOK!=null?`(你的是 ${pct(K.essOK)})`:''};
+          超過 90% 通常代表存得比需要多、或退得比需要晚 —— 過度保守也有代價。</p>
+      </div></details>`;
+  }
+  /* S11-P7(Q3):一次性大額支出(買房頭期)在帶圖上是一個沒有名字的凹口 ——
+     「錢留在市場、到期才賣」是刻意設計(/start/ 第 3 題有揭露),圖旁要認領它,
+     並把「買房前夕遇到大跌」的風險講明。沒有一次性支出的人看不到這行。 */
+  const onceFlows=E.parseFlows((APState.getInput()||{}).flows||'')
+    .filter(f=>f.kind==='exp'&&f.e==='once'&&typeof f.s==='number'&&f.s>I.age0);
+  const onceNote=onceFlows.length?`<p class="mut small" style="margin:6px 0 0">`
+    +onceFlows.map(f=>`圖上 ${f.s} 歲那個往下的缺口=「${esc(f.n)} ${f.amt} 萬」`).join(';')
+    +`:這筆錢會一直留在投資裡漲跌,到時候才賣掉支付 —— 若那之前剛好遇到大跌,可能得延後或調整預算。</p>`:'';
+
+  H+=`<div class="ap-hero">
+    <div class="k">${heroK}</div>
+    <div class="v">${heroV}</div>
+    <p class="sub" style="margin-top:6px">${heroSub}</p>
+    <div class="bandbox" id="bandBox">
+      <div class="ap-chart"><canvas id="bandCv" height="190"></canvas></div>
+      <div class="ap-probe" id="bandProbe"></div>
+      ${onceNote}
+      <details class="x how" data-remember id="how-band"><summary>這張圖怎麼讀?——三條線是 1500 條模擬的包絡線,不是三條真實路徑</summary>
+        <div class="body">
+          <p>模擬跑了上千條市場路徑,這張圖畫的是它們的<b>包絡線</b>:一半的情境落在「普通情境」上下;
+            每 10 種情境有 1 種比「壞情境」更差、也有 1 種比「好情境」更好。
+            <b>真實世界只會走出其中一條</b>,大多數時候不會貼著任何一條線走。</p>
+          <p class="mut">水平虛線是你的目標金額,直的虛線是你設定的退休年齡 ——
+            <b>退休線之後的走勢已經含每月提領</b>(退休後年支出−年金,逐月從資產扣,
+            所以「剛退休就遇到崩盤」的壞運氣也算在內)。金額都是實質購買力(已扣通膨)。</p>
+          <p class="mut">縱軸是對數刻度,<b>畫不出 0</b>:真的歸零的路徑會貼著圖的下緣走,
+            所以別拿這張圖目測破產率 ——「壞情境」是 P10,每 10 種情境還有 1 種比它更差。
+            精確數字請看下面「退休以後夠不夠」的<b>資產未歸零</b>,以及頭條的<b>必要支出撐得住</b>。</p>
+        </div>
+      </details>
+      ${pfireHow}
+    </div>
+  </div>`;
+
+  if(mAge==null){
+    H+=`<div class="note warn"><b>還差一段。</b>最有效的三個調整依序是:<b>提高每月投入</b>、
+      <b>延後退休年齡</b>、<b>降低退休後年支出</b>。加槓桿不是首選 —— 它把回撤一起放大。
+      想試不同組合就到「⚙ 配資金」改一格、按一次「▶ 重新計算」。</div>`;
+  }
+
+  /* ── 三件事行動條(兼頁內目錄)──────────────────────────
+     hero 回答「結果」(幾歲自由),這一條回答「行動」(現在做什麼)。
+     每格都是連結,點了跳到對應段落 —— 結構本身承載資訊。 */
+  let crashCell;
+  const hasReserve=E.mechHasReserve(I.mech) && (W.CASH||0)>1e-9 && hasLev;
+  const bands=E.mechBands(I.mech);
+  if(hasReserve){
+    crashCell=`<span class="k">跌到就加碼</span><span class="v">−${Math.abs(bands.THR[0]*100).toFixed(0)}%<small> 起</small></span>`;
+  }else if(I.mech==='bh'){
+    crashCell=`<span class="k">跌下來的時候</span><span class="v">什麼都不做</span>`;
+  }else{
+    crashCell=`<span class="k">跌下來的時候</span><span class="v">不加碼</span>`;
+  }
+  // id=actionRow:整條跳過名詞註解 —— <a> 裡塞 .term 按鈕是「連結包按鈕」的
+  // 無效巢狀,點名詞會跟著跳頁;預覽格的字要自己白話,不靠氣泡。
+  H+=`<div class="ap-statrow" id="actionRow">
+    <a href="#sec-monthly"><span class="ap-stat">
+      ${monthly>0?`<span class="k">每月投入</span><span class="v">${wan(monthly)}</span>`
+                 :`<span class="k">每月要做的</span><span class="v">看一眼就好</span>`}
+    </span></a>
+    <a href="#sec-crash"><span class="ap-stat">${crashCell}</span></a>
+    ${ddP90!=null?`<a href="#sec-worst"><span class="ap-stat warn">
+      <span class="k">最壞一度剩</span><span class="v">${wan(worstLeft)}</span>
+    </span></a>`:''}
+  </div>`;
+
+  // 有名詞氣泡的頁面就要有這個提示 —— 使用者測試顯示沒有人會自己發現虛線＋問號代表可點,
+  // 少了它整份辭典等於白做(docs/HANDOFF.md「三樣不准弄丟的東西」第 3 項)。
+  H+=`<div class="termhint">💡 這頁凡是<span class="fakedot">有虛線的字</span>都可以點開看白話解釋,不懂的名詞先點一下再往下讀。</div>`;
+
+  /* ══ ① 現在該做什麼(原 ❷❸❹,內容完整保留)═══════════════ */
+  H+=`<div class="sec" id="sec-do"><h2><span class="n">①</span>現在該做什麼</h2>`;
+
+  /* ── 錢怎麼分 ────────────────────────────────────────── */
+  const ne=+R.netExp||0;
+  H+=`<div class="sub-h" id="sec-alloc">錢怎麼分</div>
+    <div class="alloc">
+      <canvas id="pie" width="296" height="296" aria-hidden="true"></canvas>
+      <div class="tbl">
+        <table><thead><tr><th>標的</th><th class="n">比重</th><th class="n">金額</th></tr></thead><tbody>`
+    +WK.map(k=>`<tr><td><span class="sw" style="background:${E.ASSET_COLOR[k]||'#888'}"></span>${esc(NAMES[k]||k)}</td>
+      <td class="n">${pct(W[k])}</td><td class="n">${wan(net0*W[k])}</td></tr>`).join('')
+    +`</tbody><tfoot><tr><th>合計</th><th class="n">100%</th><th class="n">${wan(net0)}</th></tr></tfoot></table>
+      </div>
+    </div>
+    <div class="oneline">大盤動 1 元,你這份錢會動 <b>${ne.toFixed(2)}</b> 元
+      <span class="jargon">(術語:淨曝險 ${pct(ne)})</span></div>`;
+
+  /* ▸ 為什麼是這個比例?
+     S8:改讀 ap_state_v2.ladder(九階風險階梯的落點)。舊的 wizard 記錄
+     (S3 的 {tier:'穩健'})由 APState.getLadder() 自動讀成 rung:null 的相容形式。 */
+  const lad=APState.getLadder();
+  const curRung=lad&&lad.rung!=null?E.LADDER_BY_RUNG[lad.rung]:null;
+  H+=`<details class="x" id="why-alloc" data-remember><summary>為什麼是這個比例?`
+    +(curRung?`(風險階梯第 ${lad.rung} 階:${esc(curRung.name)})`
+      :(lad&&lad.tier?`(舊版風險測驗:${esc(lad.tier)}型)`:`(由淨曝險 ${pct(ne)} 決定)`))
+    +`</summary><div class="body">`;
+  if(curRung){
+    H+=`<p>你在「🚀 快速開始」最後一題選的是<b>第 ${lad.rung} 階「${esc(curRung.name)}」</b>
+      (${lad.market==='TW'?'台股為主':(lad.market==='US'?'美股(全球)為主':'兩邊都要')}${
+        // levMkt 只會出現在 S10 以前的存檔(那時槓桿階沒有 BOTH,要另外挑一邊)。
+        // 對那些記錄它仍然是正確的描述,所以照印;新記錄不再寫入這個欄位。
+        lad.levMkt?`,槓桿押${lad.levMkt==='TW'?'台股':'美股'}`:''})。</p>`;
+    if(lad.suggested!=null&&lad.suggested!==lad.rung){
+      H+=`<p class="mut">問卷依你的答案建議的是第 <b>${lad.suggested}</b> 階
+        ${lad.binding&&lad.binding.length?`(綁住你的是:${lad.binding.map(esc).join('、')})`:''} ——
+        <b>你選了第 ${lad.rung} 階</b>,那是你自己的決定。</p>`;
+    }else if(lad.binding&&lad.binding.length){
+      H+=`<p class="mut">問卷取三項條件<b>最嚴格</b>的那一項(不是平均):
+        目前綁住你的是 <b>${lad.binding.map(esc).join('、')}</b>。</p>`;
+    }
+    if(lad.foundNote)H+=`<p class="mut">另外:${esc(lad.foundNote)} → 再降一階。</p>`;
+  }else if(lad&&lad.tier){
+    H+=`<p>這份配置來自<b>舊版</b>的三檔風險測驗(${esc(lad.tier)}型)。
+      現在的風險等級改成九階的梯子 —— 重跑一次「🚀 快速開始」就會對應到新的階。</p>`;
+  }
+  H+=`<p><b>真正決定結果的是淨曝險,不是你買了幾檔。</b>把每個標的的比重乘上它的倍率再加總:
+      正二/SSO 算 2,現金與債券算 0,其餘算 1。你的是 <b>${pct(ne)}</b> ——
+      ${ne>1.5?'超過 150%,是積極槓桿。':(ne>1.2?'120~150%,是溫和槓桿。':(ne>=0.9?'約等於把錢全押大盤。':'低於 90%,比全押大盤更緩和。'))}</p>
+    <p class="mut">淨曝險量的是<b>市場 beta</b>(大盤動 1 元你動幾元),<b>不是總風險</b>——
+      債券自己的利率風險不在裡面,那份由下面的回撤數字負責。</p>
+    <p class="mut">混合名目年化假設 <b>${pct(R.muNom,1)}</b><span class="src fixed">假設值</span>,
+      通膨假設 ${pct(I.infl,1)}。這是<b>前瞻假設</b>,不是預測。</p>
+    </div></details>`;
+
+  // ▸ 想換一個風險等級?(統一風險階梯,資料來自 assets/engine.js 的 E.LADDER)
+  H+=`<details class="x" id="switch-tier" data-remember><summary>想換一個風險等級?——九階全部攤開,最壞情況都先寫在上面</summary>
+    <div class="body">
+      <p>點一階就會<b>換掉投資組合與策略</b>並立刻重算。你的年齡、資產、每月投入<b>不會被改</b>。</p>
+      <div class="famtoggle" id="famToggle">
+        <button type="button" data-fam="TW">🇹🇼 純台股(免複委託)</button>
+        <button type="button" data-fam="US">🌐 美股 / 全球(需複委託)</button>
+        <button type="button" data-fam="BOTH">🌍 兩邊都要(各一半)</button>
+      </div>
+      <div class="pcards" id="tierCards"></div>
+      <p class="small mut" style="margin-top:8px">「最壞」= 4000 次模擬裡第 90 差的那一次,<b>退休前</b>的最深帳面跌幅<span class="src fixed">回測值</span>。
+        那是模擬,不是承諾 —— <b>連最保守的一階都約 −10%,沒有零回撤的股票組合</b>。<br>
+        第 6 階以上要開<b>槓桿</b>;那幾階的執行細節與 26 年日線回測在
+        <a href="../timing/">「② 挑時機」</a>,這裡的月步模擬會低估它的加碼效果。</p>
+    </div></details>`;
+
+  /* ── 每個月做什麼 ────────────────────────────────────── */
+  H+=`<div class="sub-h" id="sec-monthly">每個月做什麼</div>`;
+  if(monthly>0){
+    H+=`<div class="ap-stat"><span class="k">每月投入</span><span class="v">${wan(monthly)}</span></div>
+      <div class="chips">${WK.map(k=>`<span class="chip">${esc(E.SHORT[k]||k)} ${wan(monthly*W[k])}</span>`).join('')}</div>
+      <p class="small mut">金額不必抓剛好,零股湊個整數就行;<b>持續比精準重要得多</b>。
+        每月投入本身就有再平衡效果 —— 它是按目標比重買的,會自動把跌多的那格補回來。</p>`;
+  }else{
+    H+=`<p class="lead">你設定為<b>不再新增投入</b>。既有部位照下面的規則維護就好。</p>`;
+  }
+  if(I.dcaMonths>0){
+    H+=`<div class="note">現有資金<b>分 ${I.dcaMonths} 個月</b>投入(每月一筆,約 ${wan(net0/I.dcaMonths)}/月),不是一次全壓。
+      <b>現金準備金第一天就到位、不分批</b> —— 它的用途是崩盤時有彈藥,晚到就沒意義了。</div>`;
+  }
+  H+=`<details class="x" id="why-rebal" data-remember><summary>有沒有再平衡差很多(回撤 69%→56%),但多勤做幾乎沒差 —— 偏離 50% 才動,數年一次就好</summary>
+    <div class="body">
+      <p><b>再平衡 = 定期把配置拉回目標</b>(賣掉漲多的、補買跌多的),自動「賣高買低」。
+        本工具實測 50% 正二 + 50% 現金、30 年<span class="src fixed">回測值</span>:</p>
+      <ul>
+        <li><b>有沒有做,差很多</b>:完全不動 → 槓桿部位長期壓過現金、變成幾乎全槓桿 → 回撤 69%;
+          有再平衡 → 中位更高、壞情境更好、<b>回撤降到 56%</b>。</li>
+        <li><b>但做得多勤幾乎沒差</b>:偏離 50% 才拉回(30 年只做約 4 次)vs 每月都拉回(360 次)
+          → 中位與回撤幾乎一樣,差別只在交易次數。加上手續費與稅,勤做反而更差。</li>
+      </ul>
+      <p><b>所以規則是:每個月看一眼,只有當任一標的偏離目標比重超過 50%</b>
+        (例如目標 30%、實際變成 45% 或 15%)<b>,才把全部拉回上面的目標比重。</b>沒超過就什麼都不要動。</p>
+    </div></details>`;
+
+  /* ── 跌下來的時候做什麼 ──────────────────────────────── */
+  // 「會不會加碼」的判斷收在引擎(E.mechHasReserve)—— 這一份漏掉 deep3 的話,
+  // 選槓桿階的人會看到「跌的時候不加碼」,而那正是那幾階的核心。
+  H+=`<div class="sub-h" id="sec-crash">跌下來的時候做什麼<span class="tag">${esc(MECHNAME[I.mech]||I.mech)}</span></div>`;
+  if(hasReserve){
+    const reserve=net0*(W.CASH||0);
+    H+=`<p class="lead">只有在<b>大盤從最高點跌下來</b>時才動手。你的準備金是 <b>${wan(reserve)}</b>(現金 ${pct(W.CASH)}):</p>
+      <table><thead><tr><th>大盤自高點回撤</th><th class="n">投入準備金的</th><th class="n">約當金額</th></tr></thead><tbody>`
+      +bands.THR.map((lv,i)=>`<tr><td>跌到 <b>−${Math.abs(lv*100).toFixed(0)}%</b></td>
+        <td class="n">${(bands.POR[i]*100).toFixed(0)}%</td><td class="n">${wan(reserve*bands.POR[i])}</td></tr>`).join('')
+      +`</tbody></table>
+      <p class="small mut">每個水位<b>只觸發一次</b>;等大盤重新創新高,這些水位才重新計算。
+        加碼的錢投進槓桿部位,不是隨便買。</p>`;
+  }else if(I.mech==='bh'){
+    H+=`<p class="lead"><b>什麼都不用做。</b>你選的是買進持有:不再平衡、不加碼、不看盤。
+      這是最省心、也最不容易做錯的一種。</p>`;
+  }else{
+    H+=`<p class="lead"><b>跌的時候不加碼 —— 你的計畫沒有崩盤加碼這一段。</b>
+      跌下來要做的只有一件事:確認有沒有哪一格<b>偏離目標比重超過 50%</b>,有就拉回,沒有就不要動。</p>
+      <p class="small mut">${(W.CASH||0)>1e-9
+        ? `你的現金 ${pct(W.CASH)}(${wan(net0*(W.CASH||0))})在這個機制下是<b>降低波動用的</b>,不是抄底彈藥 ——
+           它讓你在跌的時候抱得住,而抱得住本身就有價值。想改成「跌到 −12% 就投一批」,到
+           <a href="../plan/#adv-mech">⚙ 配資金 → 手上現金何時進場</a>換機制。`
+        : `你的配置裡沒有現金部位,所以也沒有可以拿來抄底的彈藥。`}</p>`;
+  }
+  // 今天的水位(來自 ② 挑時機)。抓不到就整段不顯示,不要顯示「—」。
+  H+=`<div id="todayBox"></div>`;
+  if(hasReserve){
+    H+=`<details class="x" id="why-bands" data-remember><summary>準備金的價值一半在「谷底有彈藥」,另一半在「你不會恐慌砍在最低點」</summary>
+      <div class="body">
+        <p>這幾條線不是為了擇時,是為了兩件事:<b>①谷底有彈藥</b>(機械化照表加碼,不必判斷底部在哪);
+          <b>②抱得住</b>(手上有現金,你不會在 −56% 的谷底恐慌砍在最低)。
+          本工具的回測顯示:準備金版的優勢有一大塊<b>純粹來自「不會在底部被洗掉」</b> —— 那是心理優勢,不是報酬魔法。</p>
+        <p>為什麼分四批而不是一次全押?<b>因為沒有人知道底部在哪裡。</b>
+          在第一個水位就全投,後面再跌就沒有子彈了;跌越深投越多,是在不預測底部的前提下能做的最好安排。</p>
+        <p class="mut">完整的機制對照(純再平衡 / 再平衡+加碼 / 純加碼 / CPPI / 買進持有)在
+          <a href="../plan/#adv-mechcmp">⚙ 配資金</a>的對照表 —— 結論是<b>沒有單一贏家</b>,是「報酬 vs 風險」的取捨。</p>
+      </div></details>`;
+  }
+  H+=`</div>`;
+
+  /* ══ ② 最壞會有多壞(L1,不准折疊)═══════════════════════
+     docs/IA.md §3.3 的例外條款:這一段永遠在 L1。
+     S11:數字配上比例條 —— 「你的 50 萬」是整條,橘段是一度少掉的,
+     剩下的藍段就是谷底。比例是畫出來的,不是形容出來的。 */
+  H+=`<div class="sec" id="sec-worst"><h2><span class="n">②</span>最壞會有多壞</h2>`;
+  if(ddP90!=null){
+    H+=`<div class="ap-stat warn lg">
+        <span class="k">你的 ${wan(net0)} 會一度只剩</span>
+        <span class="v">${wan(worstLeft)}</span>
+      </div>
+      <div class="worstbar">
+        <div class="ap-bar" aria-hidden="true">
+          <i style="width:${Math.max(2,(1-ddP90)*100)}%"></i>
+          <i class="loss" style="width:${Math.max(2,ddP90*100)}%"></i>
+        </div>
+        <div class="cap"><span>谷底(藍=還在的)</span>
+          <span>一度少掉 ${wan(net0-worstLeft)}(−${pct(ddP90)})</span></div>
+      </div>
+      <p class="small" style="margin-top:8px">這是<b>${ddLabel}</b>的最深帳面跌幅
+        ——每 10 種市場情境會有 1 種比這更慘<span class="jargon">(術語:回撤 P90)</span>。
+        <b>這是正常的,不是計畫失敗。</b>
+        撐不住這個數字,就到上面「想換一個風險等級?」往保守調一格。</p>`;
+  }
+  H+=`<div class="ap-risk">
+    ⚠️ 所有報酬都是<b>前瞻假設,不是預測,也不是保證</b>。回測用的歷史區間是人類史上最好的一段多頭,天生偏樂觀。`
+    +(hasLev?`<br>⚠️ 你的配置裡有<b>槓桿</b>(正二/SSO 合計 ${pct((W.L2||0)+(W.SSO||0))})——
+      <b>2008 式崩盤會讓槓桿部位帳面只剩不到兩成,而且可能好幾年回不來</b>。`:'')
+    +`</div>
+    <details class="x" id="how-dd" data-remember><summary>這個數字怎麼算的?(${ddLabel}回撤 P90,1500 條市場路徑)</summary>
+      <div class="body">
+        <p>用蒙地卡羅跑 <b>1500 條</b>市場路徑,每條路徑記下帳戶<b>從自己的最高點跌到谷底</b>的最深比例,
+          再取第 90 名(壞情境)。所以它是「每 10 種情境有 1 種會更慘」的那條線,不是最慘的那一條。</p>
+        <ul>
+          <li>回撤中位:<b>−${pct(K.ddAccumMed)}</b> —— 一半的情境比這個淺。</li>
+          <li>進場頭 3 年的回撤壞情境:<b>−${pct(K.e3P90)}</b> —— 「剛進場就重傷」的風險。
+            ${I.dcaMonths>0?'你已經開了分批進場,這個數字因此比較小。':'把「分批進場」的月數拉長可以壓低它,代價是長期中位報酬略降。'}</li>
+        </ul>
+        <p><b>只算退休前,是刻意的。</b>退休之後照計畫提領本來就會讓資產一路往下,
+          把那段也算進「回撤」會得到 −100% 這種數字 —— 那不是市場跌的,是你在花錢。
+          退休後夠不夠用,由下面那一段回答。</p>
+        <p class="mut">全期(含退休提領)的回撤是進階指標,在 <a href="../plan/#adv-band">⚙ 配資金 → 資產成長機率帶</a>裡。</p>
+      </div></details></div>`;
+
+  /* ── 退休以後夠不夠(次級層:小題頭、無大題編號)────────
+     它回答的是「理解」不是「行動」,所以視覺降一級;
+     essOK 是頭條指標,升成大數字,其餘內容原樣保留。 */
+  const retSpend=(R.ret&&R.ret.spend)||0, retInc=(R.ret&&R.ret.inc)||0;
+  const RM=E.RISK_META;
+  H+=`<div class="sec" id="sec-retire"><h2 class="minor">退休以後夠不夠</h2>`;
+  if(retSpend>0){
+    const eo=K.essOK, col=eo==null?'var(--muted)':(eo>0.85?'var(--good)':(eo>0.7?'var(--warn-ink)':'var(--bad)'));
+    /* 「花完 vs 花不完」的量化(S10)。E.amortRate 是純年金攤還公式:不進模擬、不動 fireNum,
+       只負責回答使用者問的那句「在餘命內把錢花完,是不是就能更快達成目標」。
+       實質報酬統一抓 3%(假設值)—— 2%~4% 之間答案只差約 ±2 年份,方向不會翻盤。 */
+    const RSTD=0.03;
+    const swrMult=(I.swr>0)?1/I.swr:null;
+    const amMult=1/E.amortRate(RSTD,Math.max(1,I.maxAge-I.retire));
+    /* 「退得越早、折扣越小」只有在真的早很多的時候才講得通。
+       fireAge 只比 retire 早一兩年時,兩個年份幾乎一樣(例:65→63 是 17.4 vs 18.3),
+       硬要拿它去對比會寫出假的結論。門檻設 5 年,不到就整段不顯示。
+       而且對比基準是 amMult(同樣「花完」口徑、退休年齡不同),不是 swrMult —— 拿花完去比不花完是換了兩個變數。 */
+    const eAge=(mAge!=null&&mAge>I.age0&&I.retire-mAge>=5)?mAge:null;
+    const eMult=(eAge!=null)?1/E.amortRate(RSTD,Math.max(1,I.maxAge-eAge)):null;
+    const legacyYrs=(K.legacyMed>0&&I.exp>0)?K.legacyMed/I.exp:null;
+    H+=`<div class="ap-stat lg">
+        <span class="k">${RM.essOK.label}(算到 ${I.maxAge} 歲)</span>
+        <span class="v" style="color:${col}">${pct(eo)}</span>
+        <span class="sub">${RM.essOK.hint}</span>
+      </div>
+      <p class="lead" style="margin-top:10px">退休當年:支出 <b>${wan(retSpend)}</b>`
+      +(retInc>0?` − 固定收入 <b>${wan(retInc)}</b> = <b>需從資產提領 ${wan(Math.max(0,retSpend-retInc))}</b>`:'')
+      +`,採<b>${I.wMode==='abw'?'攤銷式提領(每年用剩餘資產重算)':(I.flexW?'彈性提領(跌時少花)':'固定提領(每年花一樣多)')}</b>。</p>`;
+
+    /* 時間軸終點(= 使用者問的「餘命」)的揭露。改版前 maxAge 只以 ${I.maxAge} 的形式
+       在 essOK 那行括號裡出現過一次,從沒說過它怎麼來的,也沒說過模擬裡根本沒有壽命機率
+       —— deriveOpts 是 maxAge = max(retire+25, 90, age0+1),每條路徑都走到底。 */
+    H+=`<div class="note"><b>先講清楚:這份計畫算到 ${I.maxAge} 歲</b>,也就是退休後要撐
+      <b>${I.maxAge-I.retire} 年</b>。這個歲數是自動決定的(退休年齡 ＋25 年,而且至少 90),
+      <b>不是壽命預測</b> —— 模擬裡沒有任何「活到幾歲」的機率,1500 條路徑<b>每一條都一路走到 ${I.maxAge} 歲</b>。
+      抓到 ${I.maxAge} 歲是刻意站在保守的一邊:活得比預期久也不會沒錢。
+      代價寫在下面 —— 你如果其實用不到 ${I.maxAge} 歲,這份計畫會叫你存得比實際需要的多,
+      多出來的那一筆,就是後面的「中位剩餘遺產」。</div>`;
+
+    if(K.essOK!=null&&K.survive!=null&&K.essOK-K.survive>0.05){
+      H+=`<div class="note ok"><b>兩個數字的落差很重要:</b>你的固定收入(年金等)本身就蓋得住必要支出,
+        所以就算投資部位在 ${pct(1-K.survive)} 的情境裡被花光,<b>基本生活仍然不受影響</b> —— 受影響的只是彈性支出。
+        這份計畫比單看「資產未歸零 ${pct(K.survive)}」看起來的要穩得多。</div>`;
+    }
+    H+=`<details class="x" id="why-essok" data-remember><summary>為什麼看「必要支出撐不撐得住」,不看「資產有沒有歸零」?</summary>
+      <div class="body">
+        <p>「資產歸零」問的是帳戶,「必要支出撐不撐得住」問的是生活。兩者常常不是同一件事:</p>
+        <p>如果你的年金本身就蓋得住吃飯住房,那麼投資部位被旅遊、長照這些<b>彈性支出</b>花光,
+          你的生活其實不受影響 —— 但「資產未歸零」會把這種很安全的計畫報成幾乎失敗。<b>那是誤導,不是誠實。</b></p>
+        <p>反過來,一條把生活砍到見骨、勉強留下 1 元的路徑,「資產未歸零」會算它成功。也不對。</p>
+        <p class="mut">所以頭條看能力(錢夠不夠),下面的「退休生活水準達成率」看結果(實際過到什麼生活)。</p>
+      </div></details>
+      <details class="x" id="more-odds" data-remember><summary>另外幾個數字:${I.retire} 歲時已存到目標 ${pct(K.pFire)}、資產未歸零 ${pct(K.survive)}、壞情境仍過得到原訂生活的 ${pct(K.lifeP10)}</summary>
+        <div class="body">
+          <p>這些百分比的分母都是<b>同樣那 1500 條模擬路徑</b>,差別只在「數什麼、在哪個時點數」。
+            每一列底下那行小字就是它的定義。</p>
+          <div class="mlist">
+            <div><span class="k">${RM.pFire.label}(${I.retire} 歲)</span><span class="v">${pct(K.pFire)}</span>
+              <span class="d">${RM.pFire.hint}的路徑比例。<b>它只看那一個時點</b> —— 不管你退休以後會不會把錢花光。</span></div>
+            <div><span class="k">${RM.survive.label}</span><span class="v">${pct(K.survive)}</span>
+              <span class="d">${RM.survive.hint}的路徑比例。它問的是<b>帳戶</b>,不是生活;所以頭條指標不用它,用上面那個。</span></div>
+            <div><span class="k">${RM.lifeP50.label}</span><span class="v">${pct(K.lifeP50)}</span>
+              <span class="d">${RM.lifeP50.hint}。<b>可能超過 100%</b>:市場好的年份,彈性提領與攤銷式提領都會讓你花得比原訂多。</span></div>
+            <div><span class="k">${RM.lifeP10.label}</span><span class="v">${pct(K.lifeP10)}</span>
+              <span class="d">${RM.lifeP10.hint}。<b>這條比中位重要</b> —— 它才是「最不順的那十分之一,日子怎麼過」。</span></div>
+            ${K.discP50!=null?`<div><span class="k">彈性支出達成率(中位・含退休前)</span><span class="v">${pct(K.discP50)}</span>
+              <span class="d">旅遊、換車這類「不做也不會怎樣」的支出,實際花掉幾成。<b>時間窗是全期</b>,和上面兩條只算退休後不同。</span></div>`:''}
+            <div><span class="k">${RM.legacy.label}</span><span class="v">${wan(K.legacyMed)}</span>
+              <span class="d">${RM.legacy.hint}${legacyYrs?`;換算成生活費是 <b>${legacyYrs.toFixed(0)} 年份</b>`:''}。下面那一格專門解釋它。</span></div>
+          </div>`
+      +(mAge!=null&&mAge>I.age0?`<div class="note warn"><b>「存到目標的把握 ${pct(K.pFire)}」跟帶圖上「中位線 ${mAge} 歲碰到目標線」不衝突</b>
+            —— 它們是同一件事的兩個切面,而且用的是<b>同一個目標金額 ${wan(R.fireNum)}</b>:<br>
+            ・<b>${mAge} 歲</b>是「把機率固定在一半,問幾歲」。它找的是中位那條線第一次碰到目標的年份,
+              所以 ${mAge} 歲時大約<b>一半機會已經到、一半還沒到</b>。<br>
+            ・<b>${pct(K.pFire)}</b>是「把年齡固定在 ${I.retire} 歲,問幾成」。`
+            +(mAge<I.retire?`多存那 ${I.retire-mAge} 年、多滾那 ${I.retire-mAge} 年複利,把握度才從一半升到 ${pct(K.pFire)}。`
+              :`${I.retire} 歲時中位還沒碰到目標,所以它低於一半。`)
+            +`<br><b>要注意:這一頁所有的把握度,算的都是「工作到 ${I.retire} 歲」。</b>`
+            +(mAge<I.retire?`真的想 ${mAge} 歲就收手,不能只看那句話 ——
+              請到 <a href="../plan/">⚙ 配資金</a>把「預計退休年齡」改成 ${mAge} 再算一次:
+              退休期會從 ${I.maxAge-I.retire} 年拉長到 ${I.maxAge-mAge} 年,每年能領的比例得跟著降。`:'')
+            +`</div>`:'')
+      +(I.wMode==='abw'?`<p>你用的是<b>攤銷式提領</b>(折現率 ${pct(I.abwRate,1)} 實質):每年用剩餘資產重算,
+            <b>數學上不可能提早花光</b>,所以「資產未歸零」在這個模式下沒有參考價值 ——
+            資產最後被花到底本來就是計畫的一部分。</p>`:'')
+      +`<p class="mut">目標金額 <b>${wan(R.fireNum)}</b> = (退休後年支出 ${wan(I.exp)}
+            ${I.pension>0?`− 年金 ${wan(I.pension)}`:''}) ÷ 提領率 ${pct(I.swr,1)}。
+            這是「4% 法則」式的粗估;真正回答「夠不夠」的是最上面那個百分比,它跑的是逐月的真實提領模擬。</p>
+        </div></details>
+
+      <details class="x" id="legacy-read" data-remember><summary>中位情境下你 ${I.maxAge} 歲還剩 ${wan(K.legacyMed)}${legacyYrs?`(約 ${legacyYrs.toFixed(0)} 年份生活費)`:''} —— 為什麼會剩這麼多?把它花完能不能提早退休?</summary>
+        <div class="body">
+          <p><b>會剩這麼多不是你算錯,是「提領率」的定義造成的。</b>
+            目標金額 ${wan(R.fireNum)} = 年支出 ${wan(I.exp)} ÷ 提領率 ${pct(I.swr,1)},
+            等於 <b>${swrMult?swrMult.toFixed(1):'—'} 年份</b>的生活費。而 ${pct(I.swr,1)} 這個數字的前提是
+            <b>永遠不動本金、只花孳息</b> —— 可是你退休後只需要撐 ${I.maxAge-I.retire} 年。
+            多出來的那一截,最後就變成遺產。</p>
+          <p><b>所以你問的沒錯:打算把錢花完的話,需要的本金確實會少一截。</b>
+            退休後 ${I.maxAge-I.retire} 年、實質報酬抓 3%<span class="src fixed">假設值</span>,
+            一年可以領 <b>${pct(1/amMult,1)}</b>,目標從 ${swrMult?swrMult.toFixed(1):'—'} 年份降到
+            <b>${amMult.toFixed(1)} 年份</b>。(實質報酬改抓 2% 或 4%,這個年份只差約 ±2,方向不變)</p>`
+      +(eMult!=null?`<div class="note warn"><b>但退得越早,這個折扣越小。</b>
+            你如果 ${eAge} 歲就退休,退休期會從 ${I.maxAge-I.retire} 年拉長到 <b>${I.maxAge-eAge} 年</b>,
+            一年只能領 ${pct(1/eMult,1)},目標從 ${amMult.toFixed(1)} 年份升回
+            <b>${eMult.toFixed(1)} 年份</b> —— 又往 ${swrMult?swrMult.toFixed(1):'—'} 年份靠回去了。
+            <b>「把錢花完」省的是晚退休的人的錢,不是早退休的人的。</b></div>`:'')
+      +`<p class="mut">想真的照「花完」這個口徑規劃,到
+            <a href="../plan/#adv-withdraw">⚙ 配資金 → 退休後怎麼花</a>選<b>攤銷式提領</b> ——
+            它每年拿剩餘資產重算,數學上剛好花到底。切過去之後你會看到「中位剩餘遺產」掉到接近 0、
+            「退休生活水準達成率」衝過 100%(因為前段領得比原訂多)。<br>
+            <b>但要知道一件事:目標金額不會跟著變。</b>${wan(R.fireNum)} 這個數字只吃提領率,不吃提領方式 ——
+            上面那個「${amMult.toFixed(1)} 年份」目前只是給你參考的換算,還沒有接進計畫。</p>
+        </div></details>`;
+  }else{
+    H+=`<p class="lead">你的年金或固定收入已經蓋住全部年支出(或退休年齡已經到了),<b>不需要從本金提領</b>。</p>`;
+  }
+  H+=`</div>`;
+
+  /* ── 先確認地基 ──────────────────────────────────────── */
+  const F=APState.getFounding()||{};
+  const FQ=[['chk1','我有至少 <b>6 個月生活費</b>的緊急預備金,而且放在這套投資之外'],
+            ['chk2','我有基本的<b>醫療／失能／壽險</b>保障'],
+            ['chk3','我<b>沒有</b>卡債、信貸這類高利率負債<span class="mut">(一般房貸不算)</span>'],
+            ['chk4','我用的是<b>閒錢</b>——就算一度腰斬、好幾年回不來,也不會影響生活']];
+  H+=`<div class="sec"><h2 class="minor">先確認地基</h2>
+    <p class="lead">這一步不用任何工具,但比上面每一步都重要。地基沒打好之前,遇到意外會被迫在最低點賣股票。</p>`
+    +FQ.map(q=>`<label class="chk"><input type="checkbox" data-fk="${q[0]}"${F[q[0]]?' checked':''}>${q[1]}</label>`).join('')
+    +`<div id="foundMsg"></div></div>`;
+
+  /* ── 底部 ────────────────────────────────────────────── */
+  H+=`<div class="bottom">
+    <a class="btn" href="../report/">🖨 印成計劃書</a>
+    <a class="btn ghost" href="../plan/#portfolio">⚙ 想自己調參數　→</a>
+    <a class="btn ghost" href="../timing/">📈 看今天該做什麼</a>
+  </div>
+  <p class="small mut" style="margin-top:12px">結果產生於 ${esc(R.updated||'')}
+    ${I.engine==='hist'?'(引擎:歷史重抽)':''}。這份計畫只存在你自己的瀏覽器裡,沒有傳到任何伺服器。</p>`;
+
+  $('resultRoot').innerHTML=H;
+
+  // 填完才掃名詞,並讓「看細節」記住收合狀態。
+  // actionRow 用 dynIds 跳過(它不是動態容器,但機制相同:這個容器不要進氣泡)。
+  try{ APShell.annotateTerms($('resultRoot'),{dynIds:{actionRow:1}}); }catch(e){ if(window.console)console.warn(e); }
+  try{ APShell.initAdv(); }catch(e){}
+
+  drawPie(net0);
+  drawBand();
+  bindTierCards();
+  bindFounding();
+  loadToday(bands, hasReserve);
+}
+
+/* ── 錢怎麼分:圓餅(共用 APCharts.donut)──────────────────
+   顏色來自 E.ASSET_COLOR(全站同一份,已通過白底 3:1 與相鄰色盲分離驗證)。
+   圖例在旁邊的表格裡,所以圓餅本身不寫字 —— 小螢幕上字會疊在一起。 */
+function drawPie(net0){
+  const cv=$('pie'); if(!cv||!window.APCharts)return;
+  APCharts.donut(cv, E.ORDER.map(k=>({key:k, value:W[k]||0, color:E.ASSET_COLOR[k]||'#888'})));
+}
+
+/* ── 答案卡:資產成長機率帶(共用 APCharts.band)────────────
+   band 資料在 result.band(engine buildResult 算好、隨結果持久化)。
+   舊存檔沒有 band → 整塊收起來,不畫「—」。 */
+function drawBand(){
+  const cv=$('bandCv'); if(!cv)return;
+  const ok=!!(window.APCharts&&R.band&&APCharts.band(cv,R.band,{
+    retireAge:I.retire, target:R.fireNum, fmt:wan, probe:$('bandProbe'),
+  }));
+  if(!ok){ const bx=$('bandBox'); if(bx)bx.style.display='none'; }
+}
+
+/* ── 換一個風險等級(統一風險階梯,S8)──────────────────────
+   資料本體是 E.LADDER 的九階,分水嶺以上是槓桿階、要多一段警語。
+   S11:每張卡加回撤比例條;確認從 window.confirm 改成行內 .ap-confirm
+   (瀏覽器原生對話框擋全頁、不能帶格式、鍵盤路徑差)。 */
+let navFam='TW';
+function bindTierCards(){
+  const host=$('tierCards'); if(!host)return;
+  /* 目前的市場家族當預設分頁。改版前只在 TW / US 之間二選一 ——
+     於是選了「兩邊都要」的人一進來看到的是純台股那一組,跟他自己的計畫對不上。
+     S10 起 BOTH 是完整的一組(九階裡八階都有,只缺被支配的第 6 階),所以三選一。 */
+  const usW=(W.VT||0)+(W.VTI||0)+(W.VOO||0)+(W.QQQ||0)+(W.SSO||0);
+  const twW=(W.TW50||0)+(W.L2||0);
+  navFam=(usW>1e-9&&twW>1e-9)?'BOTH':(usW>twW?'US':'TW');
+  const lad=APState.getLadder();
+  const paint=()=>{
+    document.querySelectorAll('#famToggle button').forEach(b=>b.classList.toggle('active',b.dataset.fam===navFam));
+    host.innerHTML='';
+    E.ladderRungs(navFam).forEach(L=>{
+      const wf=E.ladderWeights(L.rung,navFam);
+      const wp={}; E.ORDER.forEach(k=>wp[k]=wf[k]/100);
+      const ne=E.netExposure(wp), dd=L.dd[navFam];
+      const left=(+R.in.net0||0)*(1-dd);
+      const isHere=!!(lad&&lad.rung===L.rung&&lad.market===navFam);
+      const div=document.createElement('div');
+      div.className='pcard'+(isHere?' here':'');
+      div.tabIndex=0;
+      div.setAttribute('role','button');
+      div.innerHTML=`<div class="pt">${L.emoji} ${L.rung}. ${esc(L.name)}${isHere?'<span class="herepill">目前</span>':''}</div>`
+        +`<div class="pw">${E.ORDER.filter(k=>wf[k]).map(k=>E.SHORT[k]+' '+wf[k]+'%').join(' · ')}</div>`
+        // 比例條:藍=谷底還在的,橘=一度少掉的 —— 與「② 最壞會有多壞」同一套視覺語言。
+        +`<div class="ap-bar thin" aria-hidden="true"><i style="width:${Math.max(2,(1-dd)*100)}%"></i><i class="loss" style="width:${Math.max(2,dd*100)}%"></i></div>`
+        +`<div class="pm">最壞一度只剩 <b style="color:var(--bad)">${wan(left)}</b>
+           <span class="mut">(−${(dd*100).toFixed(0)}%)</span><span class="src fixed">回測值</span></div>`
+        // 年化要標「名目/實質」—— LADDER[].mu 是名目(calibrate_wizard.js 用 impliedCAGR + infl),
+        // 而這張卡片改版前只印「年化 8.6%」,讀者無從判斷有沒有扣通膨。實質 = mu − infl(C9 的減法慣例)。
+        // 這裡在 bindTierCards() 裡,沒有 render() 那個區域變數 I,所以走 R.in。
+        +`<div class="pwho">淨曝險 ${(ne*100).toFixed(0)}% · 年化 名目 ${(L.mu[navFam]*100).toFixed(1)}%／實質 ${((L.mu[navFam]-(+R.in.infl||0))*100).toFixed(1)}% · ${esc(L.when)}</div>`;
+      const open=e=>{
+        if(e&&e.target&&e.target.closest&&e.target.closest('.ap-confirm'))return;
+        askRung(div,L,navFam);
+      };
+      div.addEventListener('click',open);
+      div.addEventListener('keydown',e=>{
+        if(e.key==='Enter'||e.key===' '){ e.preventDefault(); open(e); }
+      });
+      host.appendChild(div);
+    });
+  };
+  document.querySelectorAll('#famToggle button').forEach(b=>b.addEventListener('click',()=>{navFam=b.dataset.fam;paint();}));
+  paint();
+}
+
+/* 行內確認:插在被點的那張卡裡,同時間只開一個。
+   Esc 或「先不要」→ 關閉並把焦點還給卡片;確認 → applyRung(狀態寫入不變)。 */
+function askRung(card,L,mkt){
+  const host=$('tierCards');
+  Array.prototype.forEach.call(host.querySelectorAll('.ap-confirm'),n=>n.remove());
+  const dd=L.dd[mkt], left=(+R.in.net0||0)*(1-dd);
+  // 槓桿階多問一次,而且把最壞金額寫在確認框裡 —— 跨過分水嶺不該是一次順手的點擊。
+  const extra=L.lev
+    ? `<br>⚠ 這是<b>槓桿階</b>(淨曝險 ${Math.round(E.netExposure((()=>{const o={};E.ORDER.forEach(k=>o[k]=E.ladderWeights(L.rung,mkt)[k]/100);return o;})())*100)}%)。
+       最壞情況你的 ${wan(+R.in.net0||0)} 會一度只剩 <b>${wan(left)}</b>。<b>真的碰到那一天,你賣不賣?</b>`
+    : '';
+  const box=document.createElement('div');
+  box.className='ap-confirm';
+  box.setAttribute('role','group');
+  box.setAttribute('aria-label','確認換風險等級');
+  box.innerHTML=`要把配置換成「${L.emoji} 第 ${L.rung} 階 ${esc(L.name)}」嗎?<br>
+    只會換掉投資組合與策略,你的年齡、資產、每月投入<b>不會被改</b>。${extra}
+    <div class="acts">
+      <button type="button" class="btn" data-go="1">換成第 ${L.rung} 階</button>
+      <button type="button" class="btn ghost" data-no="1">先不要</button>
+    </div>`;
+  card.appendChild(box);
+  const close=()=>{ box.remove(); try{card.focus();}catch(e){} };
+  box.querySelector('[data-no]').addEventListener('click',e=>{ e.stopPropagation(); close(); });
+  box.querySelector('[data-go]').addEventListener('click',e=>{ e.stopPropagation(); applyRung(L,mkt); });
+  box.addEventListener('keydown',e=>{ if(e.key==='Escape'){ e.stopPropagation(); close(); } });
+  box.querySelector('[data-go]').focus();
+}
+function applyRung(L,mkt){
+  const raw=E.ladderWeights(L.rung,mkt), w={};
+  E.ORDER.forEach(k=>w[k]=(raw[k]||0)/100);
+  APState.setInput(Object.assign({}, APState.getInput(), {
+    mech:L.mech, glide:L.glide, glideStart:L.glideStart, flexW:L.flexW,
+    dcaMonths:L.dca, swr:L.swr/100, w
+  }));
+  // 階梯落點也要跟著改,否則「▸ 為什麼是這個比例?」會繼續講上一階的理由。
+  const prev=APState.getLadder()||{};
+  APState.setLadder(Object.assign({}, prev, {
+    // levMkt 於 S10 移除(槓桿階三個市場都有權重了)。舊記錄留著無害,只是不再寫入。
+    rung:L.rung, source:'manual', market:mkt,
+  }));
+  window.scrollTo(0,0);
+  boot();   // 輸入變了 → isStale() 為真 → 自己重算
+}
+
+/* ── 地基自測 ───────────────────────────────────────────
+   這是這一頁唯一的輸入元件(docs/IA.md §5.3 設計約束 4 的例外)——
+   它是自我確認,不是模擬參數,所以不會讓結果過期。 */
+function bindFounding(){
+  const boxes=Array.prototype.slice.call($('resultRoot').querySelectorAll('input[data-fk]'));
+  if(!boxes.length)return;
+  const paint=()=>{
+    const miss=boxes.filter(b=>!b.checked).length;
+    const m=$('foundMsg'); if(!m)return;
+    if(miss===0){ m.style.color='var(--good)';
+      m.textContent='✓ 地基 4/4,可以執行上面的計畫。每年重看一次就好 —— 收入、保單、負債變了,地基也要重檢。'; }
+    else{ m.style.color='var(--warn-ink)';
+      m.textContent='還有 '+miss+' 項沒打勾 —— 建議先補起來再執行上面的配置,尤其不要開槓桿。'; }
+  };
+  const save=()=>{
+    const s={}; boxes.forEach(b=>s[b.dataset.fk]=b.checked);
+    try{ APState.setFounding(s); }catch(e){}
+    paint();
+    try{ APShell.renderSteps('result'); }catch(e){}
+  };
+  boxes.forEach(b=>b.addEventListener('change',save));
+  paint();
+}
+
+/* ── 今天的水位(來自 ② 挑時機的 data.json)─────────────
+   抓不到就整段不顯示,不要顯示「—」(docs/IA.md §5.3 設計約束 3)。
+   ⚠ 這裡只借用「加權指數自高點回撤」這個市場事實。
+   ② 挑時機自己的分批水位是另一套(−25/−35/−45,針對單一台股槓桿部位),
+   **兩套規則不能混著讀**,所以刻意不顯示它的「已觸發 N 批」。 */
+function loadToday(bands, hasReserve){
+  const box=$('todayBox'); if(!box)return;
+  fetch('../timing/data.json?t='+Date.now()).then(r=>r.ok?r.json():null).then(d=>{
+    if(!d||!d.reserve||!d.taiex)return;
+    const rv=d.reserve, dd=(+rv.curDd||0)/100;   // curDd 是 %,轉成小數
+    let hit='';
+    if(hasReserve){
+      const n=bands.THR.filter(lv=>dd<=lv).length;
+      hit=n>0
+        ? `照上面的表,這個深度已經越過<b>第 ${n} 格(−${Math.abs(bands.THR[n-1]*100).toFixed(0)}%)</b>。`
+        : `還沒到你的第 1 格(−${Math.abs(bands.THR[0]*100).toFixed(0)}%),<b>今天不必做任何事</b>。`;
+    }else{
+      hit=`你的計畫沒有加碼水位,<b>今天不必因為這個數字做任何事</b>。`;
+    }
+    box.innerHTML=`<div class="note"><b>今天的水位</b><span class="src live">每日更新</span><br>
+      加權指數 <b>${Math.round(d.taiex.close).toLocaleString('zh-TW')}</b>(${esc(d.taiex.date)}),
+      自 ${esc(rv.athDate)} 的高點 ${Math.round(rv.ath).toLocaleString('zh-TW')} 回撤
+      <b>−${Math.abs(+rv.curDd||0).toFixed(1)}%</b>。${hit}
+      <div class="small mut" style="margin-top:6px">⚠ 這是<b>台股加權指數</b>的回撤,不是你整個帳戶的。
+        你的配置裡若有其他市場,實際觸發要看你自己的帳戶。這一格只是讓你知道「大概到哪了」。
+        「② 挑時機」用的是另一套水位(−25/−35/−45),那是針對單一台股槓桿部位的規則,<b>不要跟上面的表混著讀</b>。</div>
+      <div style="margin-top:9px"><a class="btn ghost" href="../timing/">看今天該做什麼　→</a></div></div>`;
+  }).catch(()=>{});
+}
+
+boot();
+})();
+</script>
+</body>
+</html>
