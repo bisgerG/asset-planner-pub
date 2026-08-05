@@ -4,7 +4,6 @@
 > 純前端、離線運算、**財務數字不外傳**;所有報酬皆為前瞻假設、非預測。
 
 🔗 線上使用:**https://bisgerg.github.io/asset-planner-pub/**
-(需先到 Settings → Pages 啟用,見下面「部署」)
 
 ## 六個頁面
 
@@ -99,8 +98,7 @@ node plan/scripts/update_carry.js     # 逆價差   → plan/carry.json
 
 ## 授權
 
-[MIT](LICENSE) —— 但**請先打開 `LICENSE` 把版權人欄位填上你的名字或 GitHub 帳號**(目前是佔位符)。
-不想採 MIT 就直接換掉整份;沒有 LICENSE 的公開 repo 在法律上是「保留全部權利」,別人不能合法 fork。
+[MIT](LICENSE)
 
 ---
 
