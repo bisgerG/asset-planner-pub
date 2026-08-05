@@ -1,31 +1,31 @@
 {
-  "updated": "2026-07-01",
-  "dataAsOf": "2026-07-01",
-  "recommendedCarry": 4.5,
+  "updated": "2026-08-05",
+  "dataAsOf": "2026-08-05",
+  "recommendedCarry": 5,
   "windows": {
     "1y": {
-      "beta": 1.89,
-      "alpha": -12.7,
-      "carry": 11.4,
+      "beta": 1.91,
+      "alpha": -16.2,
+      "carry": 14.9,
       "days": 251
     },
     "2y": {
-      "beta": 1.89,
-      "alpha": -16.4,
-      "carry": 15.1,
+      "beta": 1.92,
+      "alpha": -15.3,
+      "carry": 14,
       "days": 503
     },
     "3y": {
-      "beta": 1.86,
-      "alpha": -12.2,
-      "carry": 10.9,
+      "beta": 1.87,
+      "alpha": -13.7,
+      "carry": 12.4,
       "days": 755
     },
     "5y": {
-      "beta": 1.85,
-      "alpha": -5.9,
-      "carry": 4.6,
-      "days": 1214
+      "beta": 1.86,
+      "alpha": -6.7,
+      "carry": 5.4,
+      "days": 1213
     }
   },
   "method": "00631L vs 0050 日報酬 OLS 迴歸 α(Yahoo adjclose);recommended=近5年平均 clamp[-1,5];另列近1年(當年)供觀察惡化",

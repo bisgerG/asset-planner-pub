@@ -1,9 +1,13 @@
-# Coast FIRE 規劃器
+# Coast FIRE 規劃器 —— `/plan/` 的方法論
 
 > 槓桿指數投資 ＋ 準備金紀律的 **Coast FIRE** 規劃器。
-> 單一 HTML、純前端、**離線運算、財務數字不外傳**;所有報酬皆為前瞻假設、非預測。
+> 純前端、**離線運算、財務數字不外傳**;所有報酬皆為前瞻假設、非預測。
 
-🔗 線上使用:**https://bisgerg.github.io/fire-planner/**
+這一份是 `/plan/`(⚙ 配資金)這一頁的**方法論與資料來源說明**。
+整站的頁面地圖、開發與部署方式見 [根目錄 README](../README.md)。
+
+> 📌 本頁原本是一個獨立工具(單一自包含 HTML),合併進本站後改為與其他五頁共用
+> `assets/` 底下的引擎、樣式與導覽,**不能再用 `file://` 直開**。下面的敘述若與此衝突,以根 README 為準。
 
 ---
 
@@ -39,41 +43,27 @@
 - **逆價差自動更新**:GitHub Action 每月計算近 5 年台股 2x 逆價差,寫入 `carry.json`。
 - 設定自動存於瀏覽器 `localStorage`,下次打開沿用(可按「↺ 重設」清除)。
 
-## 檔案結構
+## 這一頁的檔案
 
 ```
-index.html                          # 主程式(自包含:HTML + CSS + JS + 內嵌歷史資料)
+index.html                          # /plan/ 頁面(運算邏輯在 ../assets/engine.js)
 carry.json                          # 逆價差估計值(GitHub Action 每月更新)
 scripts/update_carry.js             # 逆價差計算腳本(Node,抓 Yahoo 0050/00631L 做 OLS)
-tests/extract_logic.js              # 從 index.html 抽出核心運算、注入 mock DOM 供 Node 測試
-tests/stress_test.js                # 對核心模擬做數值健全性(sanity)壓測
-.github/workflows/update-carry.yml  # 每月排程 ＋ 手動觸發,提交 carry.json
 ```
 
-## 本機開發與測試
+模擬引擎本身是全站共用的 `../assets/engine.js`(零 DOM 的純函式);
+版面與元件在 `../assets/ui.css`。
 
-純靜態,直接用瀏覽器打開 `index.html` 即可開發(或用任意靜態伺服器,如 `npx serve`)。
-
-跑核心邏輯測試(需 Node):
+手動重算逆價差(平時由 `.github/workflows/update-carry.yml` 每月自動執行):
 
 ```bash
-node tests/extract_logic.js   # 由 index.html 產生 tests/temp_test_core.js
-node tests/stress_test.js     # 對抽出的核心做數值壓測
+node plan/scripts/update_carry.js   # 從 repo 根執行;腳本用 __dirname 定位,會寫回 plan/carry.json
 ```
 
-> `tests/temp_test_core.js` 為自動產生的中介檔,已列入 `.gitignore`。
+> 本頁的引擎有一組零容差的回歸護欄(581 個數字逐位元比對)守著,**但那些測試不在這個 repo 裡**。
+> 要改 `assets/engine.js` 請回開發 repo 改,不然沒有東西會告訴你哪個畫面上的數字被動到了。
 
-手動更新逆價差(平時由 GitHub Action 自動執行):
-
-```bash
-node scripts/update_carry.js  # 重新計算並寫回 carry.json
-```
-
-## 部署(GitHub Pages)
-
-1. Repo → **Settings → Pages** → Source 選 `Deploy from a branch`,Branch 選 `main` / `/ (root)`。
-2. 等幾分鐘,即可由 `https://<user>.github.io/fire-planner/` 開啟。
-3. 純靜態、無後端;逆價差由排程的 GitHub Action 自動更新 `carry.json`,網頁讀取即可。
+本機預覽與部署方式見 [根目錄 README](../README.md)。
 
 ## 方法論與資料來源
 

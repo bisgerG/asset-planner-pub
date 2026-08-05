@@ -152,7 +152,7 @@ Calmar 只差 **0.003**，而最差情境、最長水下、波動三項 NDX=0 �
 
 > ### ⚠ 2026-07-30 更正：上面的 α=−0.14%/年 是錯的，真值約 −0.83%/年
 >
-> 由 `backtest/tw_2x_products.py` 抓出來。α 的來源檔 `Strategy/backtest/cache/etf_00631L.csv`
+> 由 `backtest/tw_2x_products.py` 抓出來。α 的來源檔 `backtest/cache/etf_00631L.csv`
 > **少了 17 個交易日**，其中 **2016-02-01 ~ 2016-02-26 整段（13 天）不見了** ——
 > 缺口讓 2016-03-01 變成一個橫跨整個月的假單日報酬，單這一天就把全期 α 從
 > **−0.83%** 美化到 **−0.14%**（把該日剔除後既有檔也回到 −0.71%，可交叉驗證）。
@@ -230,7 +230,7 @@ Calmar 只差 **0.003**，而最差情境、最長水下、波動三項 NDX=0 �
 `0050.TW` 2009-01~03 有 13 天日報酬超過當時 ±7% 漲跌幅限制，物理上不可能，起點改設 2009-04-01；
 `00631L.TW` 整條不可用（2015-08-24 官方跌停 −10.59%，yfinance 給 −33.64%；σ 47.96% vs 官方 37.66%），
 一律走 TWSE 官方序列。另：`us_data.py:115` 說 1:23 分割陷阱記在本 README，實際上在
-`Strategy/backtest/data_loader.py:116-137` 的 docstring，本 README 從來沒有寫過。
+`backtest/data_loader.py:116-137` 的 docstring，本 README 從來沒有寫過。
 
 ### V2.6 回補規則加上一季的遲滯閘（`backtest/us_sleeve_rule.py`）
 
@@ -1266,30 +1266,17 @@ NDX 在這份名單裡是**倒數第二**。真正低相關的是長債（−0.3
 
 | 檔案 | 用途 |
 |---|---|
-| `index.html` | 自包含儀表板（HTML+CSS+JS，無框架、無 CDN、無 npm 相依） |
+| `index.html` | `/timing/` 儀表板（無框架、無 CDN、無 npm 相依；樣式與導覽來自 `../assets/`） |
 | `data.json` | 每日由排程覆寫；`index.html` 以 `fetch` 讀取 |
 | `taiex_daily.json` | 大盤日線 1995 至今（精簡格式 `[["1995-01-05", 7051.49], ...]`），增量更新，用來算歷史高點與回撤 |
 | `scripts/sources.js` | 資料抓取器（TWSE FMTQIK／worldperatio） |
 | `scripts/update_data.js` | 主程式：抓取 → 計算 → 寫檔。**策略參數（`STRATEGY`）在檔案頂端** |
-| `backtest/pe_backtest.py` | 主回測：準備金回補 vs 固定槓桿 vs 8 種 P/E 映射 |
-| `backtest/onekoni_real.py` | onekoni **真表**（5 格 / 160% 地板 / 320% 上限 / 季頻 EPS）的回測與凱利曲線實測 |
-| `backtest/tranche_final.py` | 加碼觸發點的 8 種方案比較與彈藥利用率診斷 |
-| `backtest/midas_check.py` | 覆核 midas82539 的「2 倍台指期 36 年只賺 36%」，並拆解股利／利息／起點三個變因 |
-| `backtest/rebalance_freq.py` | 自持台指期的再平衡頻率：日曆規則 vs 容忍帶 vs 不再平衡（後者會歸零） |
-| `backtest/wait_for_crash.py` | 「預期會崩就先等」值不值得：等待規則 vs 立刻進場 vs 分批，依崩盤到達速度分組 |
-| `backtest/analogue_1997.py` | 唯一真正的高估值類比（1997）—— 用 1995 起的日線繞過 `load_daily_tr()` 的 1999 起點限制 |
-| `backtest/us_data.py` | **美股資料層**：NDX/SPX 含息重建、時變成本模型、合成槓桿、對真實 ETF 校準與自檢 |
-| `backtest/us_kelly.py` | 美股凱利甜蜜點：理論 f\* vs 實證槓桿掃描、成本位移拆解、台美分散化檢驗 |
-| `backtest/us_reserve.py` | 準備金策略移植 QLD/TQQQ/SSO/UPRO；含 2000-2015 失落十五年的機制失效拆解 |
-| `backtest/us_tranche.py` | −25/−35/−45 在美股要不要重校；每格附獨立事件數 n，n≤2 標記為不可信 |
-| `backtest/us_return.py` | **純報酬視角**：一次進場／滾動持有期／定期定額的終值分布，與報酬最大化 vs 風險調整最大化的槓桿 |
-| `backtest/us_vs_tw.py` | **台美同尺度對決**：共同期間 1995-2026 的單一標的、準備金策略、滾動持有期，與混合配置掃描＋匯率敏感度 |
-| `backtest/us_portfolio.py` | **配置本身的端到端回測**：三個 sleeve 各跑準備金 70/30、各自指數觸發，再月再平衡；含權重單純形全掃描與台股紅利反轉壓測 |
-| `backtest/us_robust.py` | **反過擬合檢定**：曲面平坦度／子期間穩定性／區塊自助法／抽掉單一危機，判定哪些配置結論是訊號、哪些是雜訊 |
-| `backtest/us_overlap.py` | **重疊 vs 分散**：NDX 與 SPX 的相關／迴歸分解／邊際波動貢獻，檢定 QLD 到底是分散工具還是科技加碼；並比較其他候選分散資產 |
-| `backtest/us_blend_return.py` | **混合的報酬是否真的贏純台股**：波動耗損拆解、再平衡頻率、滾動勝率、自助法、損益兩平點 |
-| `.github/workflows/update-data.yml` | 每日排程（10:30 UTC ≈ 台灣 18:30，週一～六） |
-| `layout.jpg` | 最初的設計稿（＝ PTT 推文者 Arkzeon 的 AI 生成圖，**非 onekoni 的表**），保留供對照 |
+| `../.github/workflows/update-data.yml` | 每日排程（10:30 UTC ≈ 台灣 18:30，週一～六） |
+
+> ⚠ **本文引用的 Python 回測腳本（`backtest/*.py`）不在這個 repo 裡。**
+> 這份 README 是研究過程的完整記錄，底下每一個數字都出自那些腳本；
+> 它們連同歷史資料快取留在開發 repo，這裡只保留**結論與方法論**。
+> 同理，文中提到的 `layout.jpg`（最初的設計稿，PTT 推文者 Arkzeon 的 AI 生成圖）也未收錄。
 
 ## 資料來源
 
@@ -1310,27 +1297,14 @@ onekoni 用的則是第三種口徑：**加權指數 ÷ 台股實績 EPS**（202
 ## 本機執行
 
 ```bash
-node scripts/update_data.js          # 更新資料
-python -X utf8 -m http.server 8080   # 預覽（file:// 會被瀏覽器擋下 fetch）
-
-# 美股分析（需 yfinance；us_data.py 要先跑，會建立 backtest/cache/us/ 並自檢）
-python -X utf8 -W ignore backtest/us_data.py      # 資料層 + 校準自檢（不過就 exit 1）
-python -X utf8 -W ignore backtest/us_kelly.py     # 凱利甜蜜點 + 分散化檢驗
-python -X utf8 -W ignore backtest/us_reserve.py   # 準備金策略移植
-python -X utf8 -W ignore backtest/us_tranche.py   # 加碼水位重校
-python -X utf8 -W ignore backtest/us_return.py    # 純報酬視角（滾動視窗／DCA）
-python -X utf8 -W ignore backtest/us_vs_tw.py     # 台美同尺度對決 + 混合配置
-python -X utf8 -W ignore backtest/us_portfolio.py # 配置端到端回測 + 權重掃描
-python -X utf8 -W ignore backtest/us_robust.py    # 反過擬合檢定（先跑上一支）
-python -X utf8 -W ignore backtest/us_overlap.py   # 重疊 vs 分散檢定
-python -X utf8 -W ignore backtest/us_blend_return.py  # 混合報酬拆解與兩平點
+# 從 repo 根執行（腳本用 __dirname 定位，會正確寫回 timing/ 底下）
+node timing/scripts/update_data.js   # 更新資料（平時由每日排程自動跑）
+python -X utf8 -m http.server 8090   # 預覽整站（file:// 會被瀏覽器擋下 fetch）
 ```
 
-需 Node 18+（只用內建 `https`／`fs`，無需 `npm install`）。回測需 Python 3 + pandas + numpy：
+需 Node 18+（只用內建 `https`／`fs`，無需 `npm install`）。
 
-```bash
-python -X utf8 -W ignore backtest/pe_backtest.py
-```
+> 本文引用的 Python 回測（`backtest/*.py`，需 Python 3 + pandas + numpy + yfinance）不在這個 repo 裡，見上面「檔案」一節的說明。
 
 ## 調參
 
