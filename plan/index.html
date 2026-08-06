@@ -1023,7 +1023,10 @@ function renderSummary(){
   const age=(v)=>v==null?'未達成':(v<=I.age0?'已達成':v+' 歲');
   box.innerHTML=head
     +`<br><span class="mut" style="color:#b9c4e4">上次計算 ${esc(R.updated||'')}:</span>`
-    +` Coast <b>${age(R.ms&&R.ms.coastAge)}</b> · FIRE <b>${age(R.ms&&R.ms.fireAge)}</b>`
+    // S11-P8:兩者前提相反(Coast=從此停投、終點是 retire;FIRE=投到 retire、中位在此達標),
+    // 舊寫法「Coast X · FIRE Y」並排會被讀成一條時間線。標籤各自帶上前提。
+    +` Coast<span class="mut">(從此停投)</span> <b>${age(R.ms&&R.ms.coastAge)}</b>`
+    +` · 中位達標<span class="mut">(投到 ${I.retire})</span> <b>${age(R.ms&&R.ms.fireAge)}</b>`
     +` · 退休時中位 <b>${fmtW(K.medRetire)}</b>`
     +(K.essOK!=null?` · 必要支出撐得住 <b>${pct(K.essOK)}</b>`:'')
     +(dd!=null?` · ${I.retire<=I.age0?'進場後頭 3 年':'退休前'}最深回撤 P90 <b>−${(dd*100).toFixed(0)}%</b>`:'')
@@ -1222,7 +1225,7 @@ function renderCagrReadout(){
        不再有「切到 3 分頁就一口氣跑 12 次模擬,不看的人也要等」這件事;
      · 分頁沒了,showTab 也沒了;深連結改由檔案最後的 jump() 負責;
      · 「安全範例」按鈕併進範本卡,而範本卡唯一的家是「★ 我的計畫」❷
-       的「▸ 想換一個風險等級?」(docs/IA.md §5.5)。
+       的 #switch-tier(docs/IA.md §5.5)。
      · 地基自測的 updatePreflight 早在 S4 就隨那 4 個 checkbox 刪掉了 ——
        唯一的家是「🚀 快速開始」第 5 題。 ) */
 
@@ -2023,7 +2026,7 @@ function renderFlowChips(){
 function flowsFromInput(){FLOWS=parseFlows($('flows')?$('flows').value:'');renderFlows();}
 
 /* ================= 起點範本 =================
-   S5 刪除。範本卡的**唯一的家**是「★ 我的計畫」❷ 的「▸ 想換一個風險等級?」——
+   S5 刪除。範本卡的**唯一的家**是「★ 我的計畫」的 #switch-tier ——
    資料本體一直只有一份,重複的只是 renderer(docs/HANDOFF.md「兩份暫時的重複」之一)。
    原本 tab0 的「🐣 安全範例」按鈕也一起併進去了:它本來就是一張無槓桿範本。
    **S8:資料本體從 E.PRESETS(5 張卡 × TW/US)換成 E.LADDER(統一風險階梯九階)**,

@@ -133,13 +133,18 @@ details.adv:target > summary{background:#eef4ff}
    單一資料來源在 assets/shell.js(合併 /plan/ 32 條 + /timing/ 60 條 → 75 條)。
    氣泡用 position:fixed 由 JS 定位 —— 術語會出現在 overflow-x:auto 的表格裡,
    absolute 版本會被裁掉。 */
-.term{border-bottom:1px dashed var(--muted); cursor:help; font-style:normal;
+/* .tip(S12)= 就地一句白話,和 .term 長得一模一樣、共用同一顆氣泡,差別只在資料來源:
+   .term 查辭典(名詞),.tip 掛 data-tip(數字)。外觀刻意相同 —— 對使用者來說
+   「有虛線的字可以點」是**一條**規則,不該因為背後實作不同而長成兩種樣子。
+   用法:<span class="tip" tabindex="0" data-tip="一句話">62%</span>
+   ⚠ /report/ 是 A4 列印文件,紙上沒有滑鼠 —— 那一頁不准用 .tip。 */
+.term,.tip{border-bottom:1px dashed var(--muted); cursor:help; font-style:normal;
   background:none; border-width:0 0 1px; padding:0; font:inherit; color:inherit}
-.term:hover{border-bottom-color:var(--core); color:var(--core)}
-.term:focus-visible{outline:2px solid var(--core); outline-offset:2px; border-radius:3px}
-.term::after{content:"?"; font-size:.62em; font-weight:800; color:var(--muted);
+.term:hover,.tip:hover{border-bottom-color:var(--core); color:var(--core)}
+.term:focus-visible,.tip:focus-visible{outline:2px solid var(--core); outline-offset:2px; border-radius:3px}
+.term::after,.tip::after{content:"?"; font-size:.62em; font-weight:800; color:var(--muted);
   vertical-align:super; margin-left:1px}
-.term:hover::after{color:var(--core)}
+.term:hover::after,.tip:hover::after{color:var(--core)}
 #gpop{position:fixed; z-index:60; display:none; max-width:min(330px,86vw);
   background:#16255c; color:#fff; border-radius:8px; padding:9px 12px;
   font-size:13px; font-weight:500; line-height:1.7; box-shadow:0 6px 22px rgba(10,20,50,.34)}

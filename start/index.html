@@ -67,6 +67,16 @@ h2:focus{outline:none}
 .note.warn{border-left-color:var(--warn);background:#fdf5ec;color:var(--warn-ink)}
 .note.ok{border-left-color:var(--ok);background:#f2f9f4}
 .mut{color:var(--muted)}
+
+/* 快速通道 —— 刻意做成次要動作,主線仍然是「下一步」。 */
+.express{margin:14px 0 0;padding:11px 13px;background:var(--panel);
+  border:1px dashed var(--line);border-radius:9px}
+.express .mut{display:block;font-size:12.5px;line-height:1.7;margin-top:6px}
+
+/* ── 行長上限(S11-P9)——見 ui.css 的 --copy(理想 28~34 字) ──
+   本頁 --wrap 640px,一行仍吃到約 47 字。只套自由段落,
+   方框(.note/.calc)維持滿寬 —— 它們的解法是變少變短,不是變窄。 */
+.sub, .hint, details.x .body p, details.x .body li{max-width:var(--copy)}
 table{width:100%;border-collapse:collapse;margin:10px 0;font-size:14px}
 th,td{padding:6px 9px;border-bottom:1px solid var(--line);text-align:left}
 th{color:var(--muted);font-weight:600;font-size:12.5px;background:var(--panel)}
@@ -176,6 +186,8 @@ const A={ // 使用者的答案
   // 而 /plan/ 那一份根本沒存(chk1..4 不在 LS_IDS 裡,勾了就沒了)。現在唯一的家在這裡。
   emerg:null, insure:null, debt:null, idle:null,
   q1:null, qinc:null, market:null, events:[],
+  // 走過快速通道 → 那四題用建議值填掉並跳過。完成頁會照實說出是哪幾題。
+  express:false,
   /* 退休後的月支出。預設 = 現在的支出(最保守的抓法,也讓不動它的人結果與改版前逐字相同)。
      retSpendTouched:使用者自己打過數字之後,回頭改「現在支出」就不再覆蓋它 ——
      默默把他調好的退休預算換掉,比不更新更糟(同第 9 題 rungTouched 的理由)。 */
@@ -226,43 +238,67 @@ function why(concl,body){
     <div class="body">${body}</div></details>`;
 }
 
+/* 「已經有一份存好的設定」= 算過結果,或有舊版的 firePlanner_v1 存檔。
+   只有 ap_state_v2 存在還不夠 —— 在首頁勾過地基自測也會建出它,那不算「設定」。 */
+function hadPlan(){
+  try{ return !!(APState.getResult()||localStorage.getItem(APState.LEGACY_KEYS.plan)); }
+  catch(e){ return false; }
+}
+
+/* ── 快速通道(S11-P9)────────────────────────────────────────────────
+   這四題**畫面上本來就印著「不知道就選這個」** —— 專案自己已經宣告了安全預設,
+   所以讓趕時間的人一次採用它們是誠實的,不是偷工。
+   🔴 地基四題**不在這裡**:預設「有預備金」會讓 suggestRung() 少掉降階、
+      把人推到更高的風險階 —— 那是用預設值說謊,正好是本站最不該做的事。
+   四題的預設值必須與各題選項上那顆 .rec 標記一致,改動選項時要回來對。 */
+const EXPRESS={q1:2, qinc:2, market:'TW', events:[]};
+const EXPRESS_LABEL={q1:'跌 30% 時你會怎麼做', qinc:'收入穩定度', market:'投資哪個市場', events:'未來的人生事件'};
+function goExpress(){
+  Object.keys(EXPRESS).forEach(k=>{ A[k]=Array.isArray(EXPRESS[k])?EXPRESS[k].slice():EXPRESS[k]; });
+  A.express=true;
+  step=nextIdx(step,1);
+  render();
+}
+/* 反悔:關掉快速通道並直接跳回被跳過的第一題。
+   不能只叫使用者按「上一步」—— express 開著的時候,往回也一樣會跳過那四題。 */
+function unExpress(){
+  A.express=false;
+  const i=STEPS.findIndex(s=>s.id==='q1');
+  if(i>=0){ step=i; render(); }
+}
+
 // ── 題目定義 ───────────────────────────────────────────
 const STEPS=[
 
-{id:'hello',render:()=>{
-  // 「已經有一份存好的設定」= 算過結果,或有舊版的 firePlanner_v1 存檔。
-  // 只有 ap_state_v2 存在還不夠 —— 在首頁勾過地基自測也會建出它,那不算「設定」。
-  const had=(()=>{try{
-    return !!(APState.getResult()||localStorage.getItem(APState.LEGACY_KEYS.plan));
-  }catch(e){return false;}})();
-  return `<h2>九個問題,幫你配好第一版計畫</h2>
-  <p class="sub">不需要任何理財知識,每一題都有「不知道就選這個」的預設。
-    全程在你自己的瀏覽器裡算,<b>數字不會傳出去</b>。</p>
-  <div class="note">這裡不賣任何商品。最後一題會把九個風險等級<b>全部攤開</b>:
-    每一階都先寫好最壞會跌掉多少;點任何一階,會再多告訴你它適合什麼條件 ——
-    <b>選哪一階由你決定</b>。</div>
-  ${had?`<div class="note warn">偵測到你<b>已經有一份存好的設定</b>。走完這個精靈並按下產生後,
-    會用新的設定覆蓋掉它。想保留舊的,請先到「⚙ 配資金」的「⚖ 存快照與並排比較」存一份快照。</div>`:''}`;
-}},
-
-/* 年齡與退休年齡合併成第 1 題(S8)。
+/* 年齡與退休年齡是第 1 題(S8)。
    改版前退休年齡排在三道風險題**之後**,可是「還有幾年」正是決定配置的主軸 ——
-   使用者答完風險題才發現年限被拿去降檔,順序是反的。 */
+   使用者答完風險題才發現年限被拿去降檔,順序是反的。
+
+   S11-P9:原本前面還有一張純過場的 hello 屏(零輸入、純閱讀),擋在任何進度之前。
+   它的兩段內容分別下沉:自我介紹併成這一題的 sub;「已有存檔會被覆蓋」是條件式警告,
+   照舊顯示,只是改在這裡。 */
 {id:'age',valid:()=>A.age>=15&&A.age<=90&&A.retire>A.age&&A.retire<=90,render:()=>`
+  ${hadPlan()?`<div class="note warn">你<b>已經有一份存好的設定</b>,最後按下「產生」會覆蓋它。
+    想留著舊的,先到「⚙ 配資金」存一份快照。</div>`:''}
   <h2>你現在幾歲?打算幾歲退休?</h2>
-  <p class="sub">退休年齡不確定就先填 <b>65</b>(台灣法定請領年齡),之後隨時可以改。</p>
+  <p class="sub">不需要理財知識,每題都有「不知道就選這個」。全程在你的瀏覽器裡算,<b>數字不會傳出去</b>。</p>
   <div class="fields">
     <div class="f"><label>我現在</label>
       <div class="row"><input type="number" id="i_age" min="15" max="90" step="1" value="${A.age}"><span class="unit">歲</span></div></div>
     <div class="f"><label>希望</label>
       <div class="row"><input type="number" id="i_ret" min="16" max="90" step="1" value="${A.retire}"><span class="unit">歲退休</span></div>
-      <div class="hint">這個年齡是試算的<b>分水嶺</b>:<b>提領從這歲之後才開始</b> ——
-        在那之前計畫假設你持續工作、持續存,下一題算出的「每月可投入」也會一路投入到這個歲數。</div></div>
+      <div class="hint">不確定就先填 <b>65</b>。這一歲是<b>分水嶺</b>:提領從這歲之後才開始,
+        在那之前計畫假設你持續工作、持續存。</div></div>
   </div>
   <div class="calc" id="yrCalc"></div>
+  <div class="express">
+    <button class="btn ghost" type="button" id="expressBtn">趕時間?其餘用建議值　→</button>
+    <span class="mut">後面四題直接採用畫面上標「不知道就選這個」的答案。算完隨時能回來改。
+      <b>地基那題還是會問你</b> —— 那一題替你猜會害到你。</span>
+  </div>
   ${why('「還有幾年」決定你扛不扛得起波動',
-    `<p>「還有幾年」是整份計畫裡最重要的數字:年限夠長,深跌有時間漲回來;年限短,就該以保本為主。
-      這個年數會直接決定最後一題我們建議你站哪一階。</p>`)}`},
+    `<p>年限夠長,深跌有時間漲回來;年限短,就該以保本為主。
+      這個年數會直接決定最後一題建議你站哪一階。</p>`)}`},
 
 /* 收支 + 退休後支出(S9,S11 改同屏兩段式)。
    改版前只問「現在花多少」,然後把它 ×12 直接當退休預算 —— 而那個數字決定
@@ -316,10 +352,14 @@ const STEPS=[
     <div class="hint"><b>不要算進去的:</b>緊急預備金、自住的房子、
       <b>五年內就要花掉</b>的錢(結婚、買車、近期的頭期款、明後年的學費)。</div>
   </div></div>
-  <div class="note">這筆錢計畫預設<b>一路留在市場裡</b>,從現在到你 ${A.retire} 歲(還有 <b>${A.retire-A.age} 年</b>),退休後才一年一年領出來。
-    買房頭期這類<b>比較遠的大筆支出不必先扣掉</b> —— <b>第 8 題</b>會排進時間軸自動算。
-    不過留在市場就會<b>跟著漲跌</b>:想把頭期款穩穩另外存、不冒這個險的人,第 8 題就不要勾買房,這筆錢也不要算進上面那格。</div>
-  <details class="x"><summary>那「幾年不動」才算數?—— 五年是底線,真正要撐多久看你最後選哪一階</summary>
+  <!-- 刻意用題目名字而不是「第 8 題」:走快速通道時那一題整題跳過,
+       題號會對不上,而且跳過的人根本沒機會在精靈裡勾它。 -->
+  <div class="note">這筆錢預設<b>一路留在市場裡</b>,到你 ${A.retire} 歲(還有 <b>${A.retire-A.age} 年</b>)退休後才一年一年領出來。
+    ${A.express
+      ? `買房頭期這類比較遠的大筆支出不必先扣掉 —— 產生計畫後,到「⚙ 配資金」的收支時間軸補上就好。`
+      : `買房頭期這類比較遠的大筆支出不必先扣掉 —— 後面「未來有沒有這些打算?」那題會排進時間軸自動算。
+         想把頭期款穩穩另外存的人,那題就不要勾買房,這筆錢也不要算進上面那格。`}</div>
+  <details class="x"><summary>五年是底線,真正要撐多久看你選哪一階</summary>
     <div class="body">
       <p>沒有一個固定年數,<b>是你在最後一題選的風險等級決定的</b>:最保守的那一階帳面最深跌
         −8%~−10%,兩三年通常就過去了;不開槓桿的最積極那一階是 −38%~−50%;
@@ -336,10 +376,13 @@ const STEPS=[
     </div>
   </details>`},
 
-{id:'base',valid:()=>A.emerg!==null&&A.insure!==null&&A.debt!==null&&A.idle!==null,render:()=>`
+/* S11-P9:第 ④ 題(閒錢)改成非必填 —— 它**不進 suggestRung()**,
+   只被寫成 chk4 檢查清單。也就是說它擋著 valid() 卻不改變任何數字。
+   前三題仍是必填:它們真的會降階(見 suggestRung 的 found 分支)。 */
+{id:'base',valid:()=>A.emerg!==null&&A.insure!==null&&A.debt!==null,render:()=>`
   <h2>先確認地基(這比投資更重要)</h2>
   <p class="sub">地基沒打好就開始投資,遇到意外會被迫在最低點賣股票。
-    這四項<b>只存在你自己的瀏覽器</b>——誠實面對自己就好。</p>
+    照實答就好 —— 答案<b>只存在你自己的瀏覽器</b>。</p>
   <p class="fq">① 我的緊急預備金 <span class="mut">(放在投資之外、隨時能動用的才算)</span></p>
   <div class="opts seg">${optHTML('emerg',[
     ['yes','有,至少 6 個月',''],
@@ -353,17 +396,17 @@ const STEPS=[
   <div class="opts seg">${optHTML('debt',[
     ['1','沒有',''],
     ['0','有','']],A.debt)}</div>
-  <p class="fq">④ 這筆錢若一度腰斬、好幾年回不來 <span class="mut">(這就是「閒錢」的真正考驗)</span></p>
+  <p class="fq">④ 這筆錢若一度腰斬、好幾年回不來 <span class="mut">(可略過 —— 這一題不影響建議的等級)</span></p>
   <div class="opts seg">${optHTML('idle',[
     ['1','不影響我的生活',''],
     ['0','會影響到生活','']],A.idle)}</div>
-  <div class="note"><b>這四項會被記住</b>,之後在「★ 我的計畫」與列印出來的計劃書裡都看得到。
-    沒補齊的項目<b>照實答就好</b>——一樣可以繼續往下,只是下一頁會幫你把風險等級<b>自動調保守一點</b>。</div>`},
+  <div class="note">前三項沒補齊也可以往下,只是下一頁會幫你把風險等級<b>自動調保守一點</b>。
+    這幾項會被記住,「★ 我的計畫」與列印的計劃書裡都看得到。</div>`},
 
 /* 風險意願。**用他自己的錢問,不問抽象百分比**(S8)——
    對「跌 30%」這種百分比,人一律答得比實際勇敢;換成他前一題填的金額才問得出真話。
    這一題的文案一字不動(S11)—— 它已經是全站最好的一題。 */
-{id:'q1',valid:()=>A.q1!==null,render:()=>`
+{id:'q1',skip:()=>A.express,valid:()=>A.q1!==null,render:()=>`
   <h2>你的 ${wan(A.net)} 在一年內變成 <span style="color:var(--warn-ink)">${wan(A.net*0.7)}</span>,你會?</h2>
   <p class="sub">帳面少了 <b>${wan(A.net*0.3)}</b>,而且沒有人能告訴你什麼時候會漲回來。
     請誠實回答 —— 這題答錯的代價,比選錯標的大得多。</p>
@@ -376,7 +419,7 @@ const STEPS=[
 
 /* 收入穩定度 = **能力**(會不會被迫賣),與上一題的**意願**(會不會想賣)是兩件事。
    計分時取最嚴格的一項而不是相加 —— 見 suggestRung()。 */
-{id:'qinc',valid:()=>A.qinc!==null,render:()=>`
+{id:'qinc',skip:()=>A.express,valid:()=>A.qinc!==null,render:()=>`
   <h2>你的收入穩不穩定?</h2>
   <p class="sub">收入穩定的人,崩盤時比較不會被迫賣股票——所以扛得起多一點波動。
     <b>失業碰上崩盤,是最常見的一種破產路徑。</b></p>
@@ -387,7 +430,7 @@ const STEPS=[
     ['3','很穩定,而且還有餘裕','公職、醫師等,或有第二份收入']
   ],A.qinc)}</div>`},
 
-{id:'market',valid:()=>A.market!==null,render:()=>`
+{id:'market',skip:()=>A.express,valid:()=>A.market!==null,render:()=>`
   <h2>你想投資哪個市場?</h2>
   <p class="sub">兩邊都是「買整個市場」而不是挑個股。不確定就選「台股為主」——本土券商就能買、台幣計價,<b>先簡單開始</b>比選到完美更重要。</p>
   <div class="opts">${optHTML('market',[
@@ -395,7 +438,7 @@ const STEPS=[
     ['US','美股(全球)為主','VT 之類的全球市場 ETF。最分散,但需要複委託或海外券商,有匯率風險。'],
     ['BOTH','兩邊都要,各一半','不押單一國家,長期最穩;但要同時管兩個市場(複委託、匯率、再平衡),上手難度較高。']
   ],A.market)}</div>
-  <details class="x"><summary>怕麻煩、要台幣計價 → 台股;要最好的全球分散、不怕開複委託 → 美股(代價是匯差與 30% 股息預扣)</summary>
+  <details class="x"><summary>怕麻煩選台股,要最好的分散選美股</summary>
     <div class="body">
       <table>
         <thead><tr><th>比較</th><th>🇹🇼 純台股</th><th>🌐 美股 / 全球</th></tr></thead>
@@ -411,7 +454,7 @@ const STEPS=[
     </div>
   </details>`},
 
-{id:'events',valid:()=>true,render:()=>`
+{id:'events',skip:()=>A.express,valid:()=>true,render:()=>`
   <h2>未來有沒有這些打算?</h2>
   <p class="sub">可以複選,也可以全部不選。這些會被排進你的收支時間軸,金額之後都能改。</p>
   ${EVENTS.map(e=>`<label class="chk${A.events.indexOf(e.k)>=0?' sel':''}">
@@ -422,8 +465,8 @@ const STEPS=[
   <div class="note warn" id="evHouseNote"${A.events.indexOf('house')>=0?'':' style="display:none"'}>
     <b>頭期款會留在投資裡一起漲跌</b>,到你設定的歲數才賣掉付房款 —— 長期這樣最有效率,
     但若買房前夕剛好遇到大跌,可能得<b>延後買房或降低預算</b>,要有這個心理準備。
-    想「穩穩另外存」的人:這項不要勾,並把頭期款排除在第 3 題的可投資資產之外。</div>
-  <details class="x"><summary>勞保年金、勞退月退是什麼?我能領多少、怎麼查? —— 兩筆不同的錢,都可以領</summary>
+    想「穩穩另外存」的人:這項不要勾,頭期款也不要算進「可以拿來投資的錢」那一格。</div>
+  <details class="x"><summary>勞保年金和勞退月退是兩筆不同的錢,都可以領</summary>
     <div class="body">
       <p><b>勞保年金(勞保老年年金)</b>:勞工保險的老年給付,<b>月領、活多久領多久</b>。
         條件:勞保年資滿 <b>15 年</b>才能月領(不滿 15 年只能一次領);法定請領年齡 <b>65 歲</b>
@@ -439,8 +482,8 @@ const STEPS=[
       <p><b>怎麼查你自己的數字(比用算的準)</b>:到<b>勞保局 e 化服務系統</b>(網路,用健保卡號+戶口名簿戶號註冊,或自然人憑證登入)
         可以直接看勞保年資、<b>老年給付試算</b>、勞退專戶餘額與試算;或用<b>勞動保障卡</b>在合作銀行 ATM 查。
         查到後把預設值改成你的數字 —— 產生計畫後到「⚙ 配資金」1.5 就能改金額與起領年齡。</p>
-      <p class="mut">注意:① 這兩個勾選跟「⚙ 配資金」1.1 的「退休後年金/勞退」欄位是<b>同一類錢的兩種填法,擇一就好</b>
-        —— 兩邊都填會被重複計算,計畫會憑空變得太樂觀。② 制度可能修法調整,金額以勞保局公告為準;不確定就先用預設的保守值。</p>
+      <p class="mut">① 這兩個勾選跟「⚙ 配資金」1.1 的「退休後年金/勞退」是<b>同一類錢的兩種填法,擇一就好</b>,
+        兩邊都填會重複計算。<br>② 制度可能修法,金額以勞保局公告為準;不確定就先用預設的保守值。</p>
     </div>
   </details>`},
 
@@ -669,6 +712,12 @@ function renderResult(){
   ${A.rung>S.rung?`<div class="note warn">你選的是第 ${A.rung} 階,問卷依你的答案建議的是第 ${S.rung} 階
     (綁住你的是:${S.binding.map(esc).join('、')})。<b>這是你自己的決定,我們照做</b>,但把它寫在這裡讓你記得。</div>`:''}
 
+  <!-- 走過快速通道就一定要照實說是哪幾題用了建議值 ——
+       使用者必須知道這份計畫有一部分不是他自己答的,否則「快」就變成了瞞。 -->
+  ${A.express?`<div class="note">這幾題用了建議值,不是你自己答的:<b>${Object.keys(EXPRESS_LABEL).map(k=>EXPRESS_LABEL[k]).join('、')}</b>。
+    影響最大的是前兩題 —— 它們決定建議的風險等級。
+    <div style="margin-top:8px"><button class="btn ghost" type="button" id="unexpressBtn">回去自己答這四題</button></div></div>`:''}
+
   <div class="ap-statrow">
     <span><span class="ap-stat"><span class="k">每月投入</span><span class="v">${wan(monthly)}</span></span></span>
     <span><span class="ap-stat warn"><span class="k">最壞一度剩</span><span class="v">${wan(A.net*(1-dd))}</span>
@@ -737,7 +786,7 @@ function handoff(){
     APState.setInput(input);
     // 地基自測的唯一的家(docs/IA.md §5.2)。/plan-result/ ❼ 與計劃書第 2 節都讀它。
     APState.setFounding({chk1:A.emerg==='yes', chk2:!!A.insure, chk3:!!A.debt, chk4:!!A.idle});
-    /* 階梯落點:讓「★ 我的計畫」的「▸ 為什麼是這個比例?」講得出理由,
+    /* 階梯落點:讓「★ 我的計畫」的 #why-alloc 講得出理由,
        也讓「② 挑時機」知道要預選哪一個 profile。
        suggested 與 rung 都存 —— 使用者自己往上調過的話,那件事本身要留下記錄。 */
     APState.setLadder({
@@ -755,19 +804,31 @@ function handoff(){
 
 // ── 流程控制 ───────────────────────────────────────────
 let step=0, lastStep=-1;
+
+/* 快速通道會整題跳過中間幾屏,所以「第幾題 / 共幾題」不能再拿陣列索引當答案 ——
+   要數的是**這一趟實際會問到的題目**,否則進度條會走到一半忽然跳一大格。 */
+const skipped=i=>!!(STEPS[i].skip&&STEPS[i].skip());
+const nextIdx=(from,dir)=>{
+  let i=from+dir;
+  while(i>0 && i<STEPS.length-1 && skipped(i)) i+=dir;
+  return Math.max(0,Math.min(STEPS.length-1,i));
+};
+const activeCount=upTo=>{ let n=0; for(let i=0;i<upTo;i++) if(!skipped(i)) n++; return n; };
+
 function render(){
   const S=STEPS[step];
   // 步內重繪(選階)會把讀者剛展開的說明收合 —— 重繪前記下、重繪後還原。
   const open=new Set(Array.prototype.map.call(
     $('card').querySelectorAll('details[id][open]'), d=>d.id));
-  $('pbar').style.width=Math.round(step/(STEPS.length-1)*100)+'%';
-  $('pnum').textContent=step===0?'':(step===STEPS.length-1?'完成':step+' / '+(STEPS.length-2));
   const last=step===STEPS.length-1;
+  const total=Math.max(1,activeCount(STEPS.length)-1);   // 扣掉最後那一屏「完成」
+  $('pbar').style.width=Math.round(activeCount(step)/total*100)+'%';
+  $('pnum').textContent=last?'完成':(activeCount(step)+1)+' / '+total;
   $('card').innerHTML=S.render()
     +`<div class="nav">
         ${step>0?'<button class="btn ghost" id="back" type="button">上一步</button>':''}
         <div class="spacer"></div>
-        <button class="btn" id="next" type="button">${last?'✓ 產生我的計畫':(step===0?'開始 →':'下一步 →')}</button>
+        <button class="btn" id="next" type="button">${last?'✓ 產生我的計畫':'下一步 →'}</button>
       </div>`;
   open.forEach(id=>{ const d=$(id); if(d)d.open=true; });
   bind(S);
@@ -854,12 +915,20 @@ function bind(S){
     // 買房的風險提醒要在「勾下去的當下」出現(S11-P7);這一步 bind 不重繪,用 display 切。
     if(k==='house'){const n=$('evHouseNote');if(n)n.style.display=el.checked?'':'none';}
   }));
-  // 導覽
-  if($('back'))$('back').addEventListener('click',()=>{step--;render();});
+  // 快速通道:本題仍要通過驗證才能用 —— 它省的是後面四題,不是這一題。
+  const ex=$('expressBtn');
+  if(ex)ex.addEventListener('click',()=>{
+    if(STEPS[step].valid&&!STEPS[step].valid())return;
+    goExpress();
+  });
+  const unex=$('unexpressBtn');
+  if(unex)unex.addEventListener('click',unExpress);
+  // 導覽(用 nextIdx 而不是 ++/--,跳過的題目兩個方向都要跳)
+  if($('back'))$('back').addEventListener('click',()=>{step=nextIdx(step,-1);render();});
   $('next').addEventListener('click',()=>{
     if(step===STEPS.length-1){handoff();return;}
     if(STEPS[step].valid&&!STEPS[step].valid())return;
-    step++;render();
+    step=nextIdx(step,1);render();
   });
   setNextEnabled(S);
 }

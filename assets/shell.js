@@ -330,10 +330,20 @@ function initGlossary(){
     document.body.appendChild(pop);
   }
   let openFor = null;
+  /* 兩種來源共用同一顆氣泡:
+       .term[data-g]  查全站辭典(75 個名詞,單一真相)
+       [data-tip]     就地一句白話 —— 給**數字**用(「達標把握 62%」「−52%」)
+     S12 加 data-tip 的理由:辭典只認名詞,可是新手真正卡住的是數字旁邊那句定義。
+     以前那句話只能寫在正文裡,於是每個數字都拖一條尾巴,正文就變成文字牆。
+     用 textContent 而不是 innerHTML —— 這裡只要一句話,不需要標記。 */
   function place(el){
-    const g = GMAP[el.getAttribute('data-g')];
-    if (!g) return;
-    pop.innerHTML = '<b>' + g.term + '</b>' + g.short;
+    const tip = el.getAttribute('data-tip');
+    if (tip){ pop.textContent = tip; }
+    else {
+      const g = GMAP[el.getAttribute('data-g')];
+      if (!g) return;
+      pop.innerHTML = '<b>' + g.term + '</b>' + g.short;
+    }
     pop.classList.add('show');
     const r = el.getBoundingClientRect(), p = pop.getBoundingClientRect();
     let left = r.left + r.width / 2 - p.width / 2;
@@ -344,7 +354,7 @@ function initGlossary(){
     openFor = el;
   }
   function hide(){ pop.classList.remove('show'); openFor = null; }
-  const near = ev => (ev.target.closest && ev.target.closest('.term')) || null;
+  const near = ev => (ev.target.closest && ev.target.closest('.term,[data-tip]')) || null;
   document.addEventListener('mouseover', ev => { const t = near(ev); if (t) place(t); });
   document.addEventListener('mouseout',  ev => { const t = near(ev); if (t && t === openFor) hide(); });
   document.addEventListener('focusin',   ev => { const t = near(ev); if (t) place(t); else if (openFor) hide(); });
@@ -391,8 +401,10 @@ function annotateTerms(root, opt){
     if (skipEls.indexOf(node) >= 0) return;
     for (let ch = node.firstChild; ch; ch = ch.nextSibling){
       if (ch.nodeType === 1){
+        // data-tip 自己就是一顆氣泡的觸發點 —— 在裡面再長一顆 .term,
+        // 會變成兩層虛線疊在同一段字上,而且滑過去只開得到內層那顆。
         if (SKIP[ch.tagName] || ch.classList.contains('term') || ch.classList.contains('dyn')
-          || ch.classList.contains('banner') || dyn[ch.id]) continue;
+          || ch.classList.contains('banner') || ch.hasAttribute('data-tip') || dyn[ch.id]) continue;
         walk(ch);
       } else if (ch.nodeType === 3 && ch.nodeValue.trim()){
         for (let i = 0; i < pending.length; i++){

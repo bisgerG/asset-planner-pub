@@ -42,12 +42,25 @@ b.bad{color:var(--bad)} b.ok{color:var(--ok)} b.wn{color:var(--warn-ink)}
 canvas{width:100%;height:190px;display:block}
 .empty{text-align:center;padding:40px 20px;color:var(--muted)}
 
+/* ── 行長上限(S11-P9)────────────────────────────────────
+   本頁 --wrap 是 860px,三頁裡最寬 —— 一行吃到約 55 個中文字,
+   而 ui.css 的 --copy 說理想行長是 28~34 字。螢幕上套上限;
+   **列印時解除**(@media print 裡還原),紙本本來就該用滿欄寬。
+   方框(.note/.behav/.pledge)維持滿寬:縮窄只會變成浮在版面裡的碎片。
+
+   ⚠ 而且**方框裡的字也不能套上限** —— 方框有看得見的邊,它自己就是量尺;
+   再給裡面的段落一個更窄的上限,就會變成「框還很寬、字只佔 3/4」的破版。
+   (實際踩到:.behav 的三段行為契約。) */
+.sheet p, .sheet li{max-width:var(--copy)}
+.note p, .note li, .behav p, .pledge p, .kv p{max-width:none}
+
 @media (max-width:600px){ .sheet{padding:18px 15px} h1{font-size:21px} }
 
 @media print{
   @page{size:A4;margin:14mm}
   body{background:#fff;font-size:10.5pt;line-height:1.5}
   .wrap{max-width:none;padding:0}
+  .sheet p, .sheet li{max-width:none}
   .noprint{display:none !important}
   .sheet{border:0;border-radius:0;padding:0;margin:0}
   section{margin:14pt 0 0;page-break-inside:avoid}
@@ -275,16 +288,18 @@ H+=`<section><h2>6 · 退休以後怎麼領</h2>
   <div><div class="k">退休生活水準達成率(壞情境 P10)</div><div class="v">${pct(K.lifeP10)}</div></div>
   <div><div class="k">${RM.legacy.label}</div><div class="v">${wan(K.legacyMed)}</div></div>
 </div>
-<div class="note"><b>這四個數字各自在問什麼</b>(百分比的分母都是同樣那 1500 條模擬路徑):<br>
-  ·<b>${RM.essOK.label}</b> —— ${RM.essOK.hint}。<b>這是頭條指標</b>,它問的是生活過不過得下去。<br>
-  ·<b>${RM.survive.label}</b> —— ${RM.survive.hint}。它問的是<b>帳戶</b>,不是生活;
-    年金蓋得住必要支出的人,就算投資部位被花光,日子照樣過得下去。<br>
+<!-- S11-P9:原本定義與「計畫終點怎麼來的」擠在同一個十行方框裡。
+     紙上沒有展開器可以分層,但至少可以分**塊** —— 定義留在框裡(要對照著數字讀),
+     期限說明降成框外的小字(讀一次就好)。內容一字不少:列印頁不准把東西藏起來。 -->
+<div class="note"><b>這四個數字各自在問什麼</b>(分母都是同樣那 1500 條模擬路徑):<br>
+  ·<b>${RM.essOK.label}</b> —— ${RM.essOK.hint}。<b>這是頭條指標</b>,問的是生活過不過得下去。<br>
+  ·<b>${RM.survive.label}</b> —— ${RM.survive.hint}。問的是帳戶不是生活:
+    年金蓋得住必要支出的人,就算投資部位被花光,日子照樣過。<br>
   ·<b>退休生活水準達成率(壞情境 P10)</b> —— ${RM.lifeP10.hint}。可能超過 100%(好年份會多花)。<br>
-  ·<b>${RM.legacy.label}</b> —— ${RM.legacy.hint}。<br>
-  <b>計畫終點是 ${I.maxAge} 歲</b>(退休年齡 ＋25 年,而且至少 90),退休後要撐 ${I.maxAge-I.retire} 年。
-  這是自動決定的規劃期限,<b>不是壽命預測</b> —— 模擬裡沒有任何「活到幾歲」的機率,
-  每一條路徑都一路走到 ${I.maxAge} 歲。抓到 ${I.maxAge} 歲是刻意保守;
-  代價是你如果用不到那麼久,就會存得比實際需要的多,那一筆就顯示在上面的「${RM.legacy.label}」。</div>
+  ·<b>${RM.legacy.label}</b> —— ${RM.legacy.hint}。</div>
+<p class="mut" style="font-size:13px"><b>計畫終點 ${I.maxAge} 歲</b>(退休年齡＋25 年,至少 90),退休後要撐 ${I.maxAge-I.retire} 年。
+  這是規劃期限,<b>不是壽命預測</b> —— 模擬裡沒有壽命機率,每條路徑都走到 ${I.maxAge} 歲。
+  抓這麼久是刻意保守;代價是你若用不到,會存得比需要的多,多的那一筆就是上面的「${RM.legacy.label}」。</p>
 <p>退休當年:支出 <b>${wan(R.ret.spend)}</b>${R.ret.inc>0?` − 固定收入 <b>${wan(R.ret.inc)}</b>
   = 需從資產提領 <b>${wan(Math.max(0,R.ret.spend-R.ret.inc))}</b>`:''},
   採<b>${I.wMode==='abw'?`攤銷式提領(每年用剩餘資產重算,折現率 ${pct(I.abwRate)} 實質)`
@@ -395,13 +410,28 @@ H+=`<div class="pledge">
 
 // ── 8 里程碑與成長機率帶 ─────────────────────────────
 const mAge=v=>v==null?'未達成':(v<=I.age0?'已達成':v+' 歲');
+/* S11-P8:三個里程碑各自的**前提不同**,標籤必須把前提寫進去。
+   舊標籤「Coast FIRE(可以停止再投入)」與「Full FIRE」並排,讀者會串成一條時間線
+   ——「N 歲停止投入 → M 歲 Full FIRE」——那是不可能的組合(使用者實測回饋)。
+   真相:Coast 那條路的終點是 retire,不是 fireAge;而 fireAge 的前提正是「沒有停止投入」。
+   engine.js:634 每一條模擬路徑都投入到 retire,所以「可以停止」從未被驗證過。 */
 H+=`<section><h2>8 · 里程碑與資產成長機率帶</h2>
 <div class="kv">
-  <div><div class="k">Coast FIRE(可以停止再投入)</div><div class="v">${mAge(MS.coastAge)}</div></div>
-  <div><div class="k">Full FIRE(存到目標・中位)</div><div class="v">${mAge(MS.fireAge)}</div></div>
-  <div><div class="k">Barista(半退休)</div><div class="v">${mAge(MS.baristaAge)}</div></div>
+  <div><div class="k">Coast FIRE(此後不再投入,靠複利在 ${I.retire} 歲達標)</div><div class="v">${mAge(MS.coastAge)}</div></div>
+  <div><div class="k">Full FIRE(持續投入到 ${I.retire} 歲,中位在此達標)</div><div class="v">${mAge(MS.fireAge)}</div></div>
+  <div><div class="k">Barista(資產達到目標的一半)</div><div class="v">${mAge(MS.baristaAge)}</div></div>
   <div><div class="k">中位實質年化(不含每月投入)</div><div class="v">${pct(K.cagrReal)}</div></div>
 </div>
+${(MS.coastAge!=null&&MS.fireAge!=null)?`<p class="mut" style="font-size:12.5px">
+<b>上面前兩個是互斥的兩條路,不能串起來讀。</b>
+`+(MS.coastAge<=I.age0
+  ? `Coast <b>已達成</b>代表:你<b>現在</b>就算完全不再投入,光靠複利也夠撐到 ${I.retire} 歲達標 —— `
+  : `Coast 那格問的是「<b>從 ${MS.coastAge} 歲起完全不再投入</b>,光靠複利夠不夠撐到 ${I.retire} 歲」 —— `)
++`它的終點是 ${I.retire} 歲,<b>不是</b>「${mAge(MS.fireAge)}」。
+而「${mAge(MS.fireAge)}」的前提剛好相反:<b>你一路投入到 ${I.retire} 歲</b>,中位情境在那年第一次碰到目標金額。
+本頁其餘所有把握度算的都是後者。<b>Coast 那條線是用固定報酬率直線折現的,沒有波動、沒有壞情境</b>,
+所以它比聽起來的樂觀 —— 想看提早停止投入真正的代價(實際跑模擬的把握度),
+到「<b>★ 我的計畫</b>」展開<b>停投階梯</b>。</p>`:''}
 <canvas id="band"></canvas>
 <p class="mut" style="font-size:12.5px">線的名字直接標在圖的右端(普通/壞/好情境);水平虛線是目標金額、
 直的虛線是退休年齡(對數刻度)。這是<b>機率分布,不是預測</b>——真實只會走出其中一條。</p>
