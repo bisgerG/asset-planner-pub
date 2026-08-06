@@ -73,10 +73,11 @@ h2:focus{outline:none}
   border:1px dashed var(--line);border-radius:9px}
 .express .mut{display:block;font-size:12.5px;line-height:1.7;margin-top:6px}
 
-/* ── 行長上限(S11-P9)——見 ui.css 的 --copy(理想 28~34 字) ──
-   本頁 --wrap 640px,一行仍吃到約 47 字。只套自由段落,
-   方框(.note/.calc)維持滿寬 —— 它們的解法是變少變短,不是變窄。 */
-.sub, .hint, details.x .body p, details.x .body li{max-width:var(--copy)}
+/* ── 這一頁刻意**沒有**行長上限(--copy / .ap-measure)──────
+   S11-P9 曾經套過 `.sub, .hint{max-width:var(--copy)}`,撤掉了:
+   卡片有看得見的邊,那條邊就是量尺。實測卡片內容寬 552px,
+   .sub 只有 459px、.hint 只有 425px,而同一張卡裡的 .note/.calc 是滿寬的 ——
+   三種寬度並排,看起來像縮排壞掉。理由與 /plan-result/、/report/ 相同。 */
 table{width:100%;border-collapse:collapse;margin:10px 0;font-size:14px}
 th,td{padding:6px 9px;border-bottom:1px solid var(--line);text-align:left}
 th{color:var(--muted);font-weight:600;font-size:12.5px;background:var(--panel)}
