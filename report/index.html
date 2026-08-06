@@ -42,17 +42,18 @@ b.bad{color:var(--bad)} b.ok{color:var(--ok)} b.wn{color:var(--warn-ink)}
 canvas{width:100%;height:190px;display:block}
 .empty{text-align:center;padding:40px 20px;color:var(--muted)}
 
-/* ── 行長上限(S11-P9)────────────────────────────────────
-   本頁 --wrap 是 860px,三頁裡最寬 —— 一行吃到約 55 個中文字,
-   而 ui.css 的 --copy 說理想行長是 28~34 字。螢幕上套上限;
-   **列印時解除**(@media print 裡還原),紙本本來就該用滿欄寬。
-   方框(.note/.behav/.pledge)維持滿寬:縮窄只會變成浮在版面裡的碎片。
+/* ── 這一頁刻意**沒有**行長上限(--copy / .ap-measure)──────
+   S11-P9 曾經套過 `.sheet p{max-width:var(--copy)}`,兩個理由撤掉:
 
-   ⚠ 而且**方框裡的字也不能套上限** —— 方框有看得見的邊,它自己就是量尺;
-   再給裡面的段落一個更窄的上限,就會變成「框還很寬、字只佔 3/4」的破版。
-   (實際踩到:.behav 的三段行為契約。) */
-.sheet p, .sheet li{max-width:var(--copy)}
-.note p, .note li, .behav p, .pledge p, .kv p{max-width:none}
+   ① 這一頁的家具全是滿寬的 —— 表格、.kv 格線、.note/.behav/.pledge 方框。
+      只把段落壓窄,結果是 20 個段落有 16 個只剩 442px、旁邊的框卻是 766px,
+      大半頁的字看起來像縮成一半(使用者實際回報)。
+   ② 更關鍵:螢幕上的這一頁是**列印預覽**。當時的寫法在 @media print 裡把上限
+      還原成 none,等於螢幕與紙本長得不一樣 —— 預覽不該騙人。
+
+   要改善這一頁的行長,正確的旋鈕是 --wrap(整張紙變窄,字與框一起變),
+   不是逐段的 max-width。/plan-result/ 與 /start/ 沒有這個問題:
+   它們的段落與鄰居寬度接近(442 vs 520),不會看起來像縮排壞掉。 */
 
 @media (max-width:600px){ .sheet{padding:18px 15px} h1{font-size:21px} }
 
@@ -60,7 +61,6 @@ canvas{width:100%;height:190px;display:block}
   @page{size:A4;margin:14mm}
   body{background:#fff;font-size:10.5pt;line-height:1.5}
   .wrap{max-width:none;padding:0}
-  .sheet p, .sheet li{max-width:none}
   .noprint{display:none !important}
   .sheet{border:0;border-radius:0;padding:0;margin:0}
   section{margin:14pt 0 0;page-break-inside:avoid}
