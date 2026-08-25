@@ -695,6 +695,19 @@ function render(res){
           <p>目標金額 ${wan(R.fireNum)} = 年支出 ${wan(I.exp)} ÷ 提領率 ${pct(I.swr,1)},
             等於 <b>${swrMult?swrMult.toFixed(1):'—'} 年份</b>的生活費。而 ${pct(I.swr,1)} 的前提是
             永遠不動本金、只花孳息,可是你退休後只需要撐 ${I.maxAge-I.retire} 年 —— 多出來的那一截就變成遺產。</p>
+          ${hasLev?(()=>{
+            const levExp=((W.L2||0)+(W.SSO||0))*2, retExp=(+R.netExp||0)-levExp*0.7;
+            return `<div class="note warn"><b>⚠ 這個提領率不是按你的階別算出來的。</b>
+            九階風險階梯裡有<b>八階共用同一個 ${pct(I.swr,1)}</b>(只有第 1 階不同) —— 它沒有隨曝險逐階校準過。
+            ${(+I.glide===1)
+              ? `你現在的淨曝險是 <b>${Math.round((+R.netExp||0)*100)}%</b>,但隨齡降槓會在退休前把槓桿部位砍掉七成,
+                 退休當下大約剩 <b>${Math.round(retExp*100)}%</b>。
+                 <b>${pct(I.swr,1)} 對得上的是後面那個數字,不是前面那個。</b>`
+              : `而你<b>沒有開隨齡降槓</b>,退休時仍是 <b>${Math.round((+R.netExp||0)*100)}%</b> 淨曝險 ——
+                 這個共用的提領率從來沒有為這種情況校準過,請自行往下調。`}
+            已知方向:槓桿階真實可持續的提領率<b>低於</b> ${pct(I.swr,1)};但量到的不確定區間比爭議中的差距還寬,
+            所以這裡不擅自改數字,只標明它是共用值。把它當一個至少 ±1 個百分點的區間看,不要當精確值。</div>`;
+          })():''}
           <p><b>打算把錢花完的話,需要的本金確實會少一截。</b>
             退休後 ${I.maxAge-I.retire} 年、實質報酬抓 3%<span class="src fixed">假設值</span>,
             一年可以領 ${pct(1/amMult,1)},目標從 ${swrMult?swrMult.toFixed(1):'—'} 年份降到 <b>${amMult.toFixed(1)} 年份</b>。</p>`

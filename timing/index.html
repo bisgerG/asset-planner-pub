@@ -918,9 +918,9 @@ footer code{background:rgba(255,255,255,.12); padding:1px 4px; border-radius:3px
       </div>
       <div class="tblnote" id="btGateNote"></div>
       <div class="tblnote">
-        <b>本頁採用的 70/30 不是這張表 Calmar 最高的一列</b> —— 50/50 是 0.246、60/40 是 0.243，
-        都高於 70/30 的 0.238。選 70/30 的理由是<b>終值</b>（63.07 倍 vs 50/50 的 52.95 倍，高 19%），
-        代價是最大回撤多 5.7 個百分點。
+        <b>本頁採用的 70/30 不是這張表 Calmar 最高的一列</b> —— 50/50 是 0.230、60/40 是 0.227，
+        都高於 70/30 的 0.222。選 70/30 的理由是<b>終值</b>（61.72 倍 vs 50/50 的 52.19 倍，高 18%），
+        代價是最大回撤多 5.8 個百分點。
         <b>想少痛一點就往保守選一格，這張表把代價寫清楚了。</b>
       </div>
 
@@ -933,7 +933,7 @@ footer code{background:rgba(255,255,255,.12); padding:1px 4px; border-radius:3px
       </div>
       <div class="tblnote">
         起點從 2000-07 往前挪到 1995-01（把 1997 年亞洲金融風暴含進來）之後，
-        同一套做法的 Calmar 從 <b>0.238 掉到 0.170</b>，而<b>美股的 S&amp;P500 2x 反而是 0.182</b>。
+        同一套做法的 Calmar 從 <b>0.222 掉到 0.164</b>，而<b>美股的 S&amp;P500 2x 反而是 0.184</b>。
         <br><b>這代表什麼：</b>「台股比較好」這個結論<b>撐不住</b> ——
         它有一部分只是因為起點挑在 2000 年網路泡沫破掉<b>之後</b>。
         這正是下面「<a href="#adv-blend">錢要分給幾個市場</a>」存在的理由。
@@ -1251,14 +1251,14 @@ footer code{background:rgba(255,255,255,.12); padding:1px 4px; border-radius:3px
       <div class="rcard" style="border-left-color:var(--warn);border-color:#e8c49a;background:#fffaf3">
         <!-- 原本寫「三件」，但這張卡一直列了四件（稅／交易成本／內扣／你自己），
              現在又多了一條「回測算錯」的更正 —— 索性不寫數字，避免下次再加又對不上。
-             ⚠ C16：alphaBug 這一段是**維持揭露、不重跑**（SPEC §10 C16）。 -->
+             ✅ C16：alphaBug 已於 2026-08-24 修正並重跑，本段改為「已修正」的敘述。 -->
         <details class="x risky">
           <summary style="color:#8a4a06">⑥ 回測沒算、以及回測算錯的事 —— 你一定會遇到</summary>
           <div class="body">
             <p class="rp" style="color:#4a3a20"><b>稅。</b>本頁所有回測<b>完全沒有計入任何稅</b> ——
               台灣的證交稅、股利所得稅、二代健保補充保費，以及美股那邊的海外所得與遺產稅，
               <b>一律都是零</b>。實際拿到手的一定比表上的數字少。</p>
-            <p class="rp" style="color:#4a3a20"><b>交易成本。</b>表層那些績效數字（63.07 倍、−76.7%、0.238）
+            <p class="rp" style="color:#4a3a20"><b>交易成本。</b>表層那些績效數字（61.72 倍、−77.1%、0.222）
               也<b>沒有扣交易成本</b>。專案裡只有驗證用的腳本算過（台股每邊 0.15%，含 0.1% 證交稅），
               結論是扣完之後這套規則的優勢仍在 —— 但表上的數字本身是未扣的。</p>
             <p class="rp" style="color:#4a3a20"><b>內扣費用。</b>台股正二每年的內扣費用在
@@ -1267,15 +1267,18 @@ footer code{background:rgba(255,255,255,.12); padding:1px 4px; border-radius:3px
               <b>⚠ 注意不要重複計算</b>：那張表裡的「實際成本」<b>已經把內扣包在裡面了</b>
               （那是拿真實淨值回推的，扣完所有費用之後的結果）。</p>
             <div class="keyn" style="background:#fff;border-color:#e8c49a;color:#6b4410">
-              <b>⚠ 這一條是本頁自己抓到的錯，先講清楚再往下看。</b><br>
-              回測合成正二用的成本是 <b>−0.14%／年</b>。這個數字<b>是錯的</b> ——
+              <b>✅ 這一條是本頁自己抓到的錯，已經修好了 —— 但過程留在這裡。</b><br>
+              回測合成正二用的成本原本是 <b>−0.14%／年</b>，那個數字<b>是錯的</b> ——
               它來自的那份 00631L 歷史檔<b>少了 <span id="nBugDays">—</span> 個交易日</b>
               （<span id="nBugSpan">—</span> 整段不見了），
-              害缺口後的第一天變成一個假的單日大漲，把成本從
-              <b><span id="nBugFix">—</span>／年</b>一路美化到 −0.14%／年。<br>
-              用完整資料重算是 <b><span id="nBugFix2">—</span>／年</b>。也就是說
-              <b>本頁那些 26 年回測的終值，大約高估了 <span id="nBugInfl">—</span></b>。
-              重跑整套回測不在這次的範圍內，所以<b>數字先不動、但錯誤寫在這裡</b>。<br>
+              害缺口後的第一天變成一個假的單日大漲，把成本美化掉了。<br>
+              <b>2026-08-24 已補回缺口並重跑整套回測</b>，正確的成本是
+              <b><span id="nBugFix">—</span>／年</b>，<b>本頁的 26 年回測數字已經是重跑後的值</b>
+              （頭條從 63.07 倍改成 <b><span id="nBugNewFin">—</span> 倍</b>）。<br>
+              <span style="font-size:.94em">先前這裡寫「終值高估約 19.9%」，那是<b>用公式估的、偏大</b>。
+              拿同一支腳本做控制對照（餵壞資料 vs 餵好資料）實測是
+              <b><span id="nBugInfl">—</span></b>；而相對於本頁先前刊出的數字則是約 −2.1%。
+              估錯的原因是：α 的誤差只作用在部位裡的槓桿那一段，不是整段期間都以兩倍在複利。</span><br>
               <span style="font-size:.94em">附帶一件剛好抵掉的事：本頁預設已從 00631L 換成
               <b>00685L</b>，而 00685L 的實際成本是 <b><span id="nBugNew">—</span>／年</b>，
               比 00631L 便宜約 <b><span id="nBugSave">—</span> 個百分點</b>。
@@ -2101,8 +2104,8 @@ footer code{background:rgba(255,255,255,.12); padding:1px 4px; border-radius:3px
           $('nBugDays').textContent = B.missingDays;
           $('nBugSpan').textContent = slash(B.gapFrom) + ' ~ ' + slash(B.gapTo);
           $('nBugFix').textContent = pct(B.corrected);
-          $('nBugFix2').textContent = pct(B.corrected);
-          $('nBugInfl').textContent = B.final26Inflation.toFixed(1) + '%';
+          $('nBugInfl').textContent = '−' + B.final26Inflation.toFixed(1) + '%';
+          if (B.newFinal && $('nBugNewFin')) $('nBugNewFin').textContent = B.newFinal.toFixed(2);
           var pk = R.products2x.rows.filter(function (r) { return r.pick; })[0];
           var o631 = R.products2x.rows.filter(function (r) { return r.tk === '00631L'; })[0];
           if (pk && o631) {
