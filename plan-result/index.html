@@ -99,6 +99,10 @@ tfoot th{background:transparent; color:var(--navy); font-size:13px}
 .note{border-left:3px solid var(--gold); background:#fffdf5; padding:9px 13px; margin:10px 0; font-size:13.5px; line-height:1.75}
 .note.warn{border-left-color:var(--warn); background:#fdf5ec; color:var(--warn-ink)}
 .note.ok{border-left-color:var(--good); background:#f2f9f4}
+/* .bad 是是非判斷的「否」(ui.css §4.3 的語彙)。提領率警示框用它,
+   否則「⚠ 你設的提領率撐不住」會跟一般的金色提示框長得一模一樣。 */
+.note.bad{border-left-color:var(--bad); background:#fff1f1; color:#5c2020}
+.note.bad b{color:#8f1d1d}
 
 /* ── 每月投入的標的金額 chips ─────────────────────────── */
 .chips{display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 6px}
@@ -354,9 +358,10 @@ function render(res){
         <p><b>50%</b> = 中位情境剛好在 ${I.retire} 歲碰到目標 ${wan(R.fireNum)},也就是圖上那條水平虛線。
           高過一半是提早碰到的安全邊際,低於一半代表連中位都會遲到。</p>
         <p>沒趕上的 ${pct(1-K.pFire)} 多半不是歸零,是<b>晚幾年才到</b>或退休後略減支出。
-          目標金額本身已經很保守:提領率用「永遠不動本金」的口徑,計畫又一路算到 ${I.maxAge} 歲。</p>
+          目標金額本身已經很保守:它用的提領率是拿整整 30 年量出來的,計畫又一路算到 ${I.maxAge} 歲。</p>
         <p class="mut">常聽到的「把握度要 75%~90%」講的是另一種指標 ——
-          退休後撐不撐得住,也就是下面那個大數字${K.essOK!=null?`(你的是 ${pct(K.essOK)})`:''}。
+          <b>必要支出全程撐得住</b>(從現在到 ${I.maxAge} 歲,每個月都付得出必要開銷),
+          也就是下面那個大數字${K.essOK!=null?`(你的是 ${pct(K.essOK)})`:''}。
           這一個超過 90%,通常代表存得比需要多。</p>
       </div></details>`;
   }
@@ -489,8 +494,8 @@ function render(res){
         <button type="button" data-fam="BOTH">🌍 兩邊都要(各一半)</button>
       </div>
       <div class="pcards" id="tierCards"></div>
-      <p class="small mut" style="margin-top:8px">「最壞」= 4000 次模擬裡第 90 差的那一次,退休前的最深帳面跌幅<span class="src fixed">回測值</span>。
-        <b>連最保守的一階都約 −10%,沒有零回撤的股票組合。</b><br>
+      <p class="small mut" style="margin-top:8px">「最壞」= 4000 次模擬裡<b>每 10 種情境最壞的那 1 種</b>,退休前的最深帳面跌幅<span class="src fixed">回測值</span>。
+        <b>連最保守的第 1 階都有 −8%~−10%(看你選哪個市場),沒有零回撤的股票組合。</b><br>
         第 6 階以上要開槓桿,那幾階的執行細節在 <a href="../timing/">「② 挑時機」</a>。</p>
     </div></details>`;
 
@@ -505,17 +510,23 @@ function render(res){
     H+=`<p class="lead">你設定為<b>不再新增投入</b>。既有部位照下面的規則維護就好。</p>`;
   }
   if(I.dcaMonths>0){
-    H+=`<div class="note">現有資金<b>分 ${I.dcaMonths} 個月</b>投入(每月一筆,約 ${wan(net0/I.dcaMonths)}/月),不是一次全壓。
+    /* ⚠ 分母是**扣掉現金之後**的核心,不是全部淨資產:engine.js:618 把
+       h['CASH'] 在第 0 個月一次放滿,619 行只把 coreW*net0 排進分批。
+       舊版寫 net0/dcaMonths,第 8 階(現金 30%)會把每月金額多報 43%。 */
+    const dcaCore=net0*(1-(W.CASH||0));
+    H+=`<div class="note">現有資金<b>分 ${I.dcaMonths} 個月</b>投入(每月一筆,約 ${wan(dcaCore/I.dcaMonths)}/月),不是一次全壓。
       <b>現金準備金第一天就到位、不分批</b> —— 它的用途是崩盤時有彈藥,晚到就沒意義了。</div>`;
   }
   H+=`<details class="x" id="why-rebal" data-remember><summary>有做差很多,做多勤沒差 —— 偏離 50% 才動</summary>
     <div class="body">
       <p>再平衡就是定期把配置拉回目標:賣掉漲多的、補買跌多的。
-        實測 50% 正二 + 50% 現金、30 年<span class="src fixed">回測值</span>:</p>
+        實測 50% 正二 + 50% 現金、<b>2003~2026 共 23 年</b><span class="src fixed">回測值</span>:</p>
       <ul>
-        <li><b>有做差很多</b>:完全不動,槓桿部位長期壓過現金 → 回撤 69%;有再平衡 → 回撤降到 <b>56%</b>。</li>
-        <li><b>做多勤沒差</b>:偏離 50% 才拉回(30 年約 4 次)vs 每月都拉回(360 次),結果幾乎一樣 ——
-          加上手續費與稅,勤做反而更差。</li>
+        <li><b>有做差很多</b>:完全不動,槓桿部位長期壓過現金 → 帳面最深跌 <b>70%</b>;
+          有再平衡 → 降到 <b>54~57%</b>。</li>
+        <li><b>做多勤沒差</b>:偏離 50% 才拉回,23 年只動手 <b>20 次</b>;
+          把標準收緊到偏離 30% 要動 <b>45 次</b>,年化反而略低(14.2% vs 14.4%)。
+          <b>動手更勤沒有比較好</b>,加上手續費與稅只會更差。</li>
       </ul>
       <p><b>規則:每月看一眼,任一標的偏離目標超過 50% 才全部拉回</b>(例如目標 30%、變成 45% 或 15%)。沒超過就不要動。</p>
     </div></details>`;
@@ -585,11 +596,15 @@ function render(res){
   H+=`<div class="ap-risk">
     ⚠️ 所有報酬都是<b>前瞻假設,不是預測,也不是保證</b>。回測用的歷史區間是人類史上最好的一段多頭,天生偏樂觀。`
     +(hasLev?`<br>⚠️ 你的配置裡有<b>槓桿</b>(正二/SSO 合計 ${pct((W.L2||0)+(W.SSO||0))})——
-      <b>2008 式崩盤會讓槓桿部位帳面只剩不到兩成,而且可能好幾年回不來</b>。`:'')
+      <b>2008 式崩盤會讓槓桿部位帳面只剩不到兩成,而且可能好幾年回不來</b>。
+      <br><b>覺得撐不住?</b>那就往保守調一階 —— 上面的
+      <a href="#switch-tier" style="color:#8f1d1d">「九階全部攤開」</a>點一下就換,
+      年齡、資產、每月投入都不會被改。<b>抱得住的計畫才有用。</b>`:'')
     +`</div>
-    <details class="x" id="how-dd" data-remember><summary>怎麼算的?1500 條路徑裡第 90 差的那一次</summary>
+    <details class="x" id="how-dd" data-remember><summary>怎麼算的?1500 種未來裡,每 10 種最壞的那 1 種</summary>
       <div class="body">
-        <p>每條路徑記下帳戶<b>從自己的最高點跌到谷底</b>的最深比例,再取第 90 名。
+        <p>每條路徑記下帳戶<b>從自己的最高點跌到谷底</b>的最深比例,把 1500 條由淺到深排好,
+          取<b>第 90 百分位</b>(也就是 1500 條裡第 150 慘的那一條)。
           所以它是「每 10 種情境有 1 種會更慘」的那條線,不是最慘的那一條。</p>
         <ul>
           <li>回撤中位 <b>−${pct(K.ddAccumMed)}</b> —— 一半的情境比這個淺。</li>
@@ -646,6 +661,100 @@ function render(res){
           多出來的那一筆,就是下面的「中位剩餘遺產」。</p>
       </div></details>`;
 
+    /* ── S12(2026-08-26):提領率的「階別 × 年限」校準揭露 ──────────────────
+       LADDER.swr 是九階共用的 3.5%(只有第 1 階 3.25),從沒按曝險或退休年限校準過。
+       下面三張表是**量測結果**,不是我方參數,所以放在這裡而不是 engine.js。
+       來源:Strategy/逐階安全提領率_判決報告.md §1.1/§1.2/§1.3
+       口徑:實質(CPI 調整)、固定金額提領、1928-2024 的 68 個 rolling 世代、
+             失敗 = 資產在撐完退休年限之前歸零。每格 = [破產率%, 撐得住的提領率%]。
+       ⚠ 第 6~9 階分「有沒有開隨齡降槓」;H=40 只量過開的那組(關的只會更差)。
+       ⚠ 第 1 階在 40 年期是全表最糟(51.7%)—— 40% 現金的實質報酬被引擎設為 0,
+         撐不起 40 年。這不是 bug,是「最保守 ≠ 最安全」的實際形狀。 */
+    const SWR_H30_OFF={1:[0,3.67],2:[0,3.79],3:[0,3.87],4:[0,3.94],5:[0,4.09],
+                       6:[1,3.57],7:[7,3.33],8:[7,3.05],9:[16,2.75]};
+    const SWR_H30_ON ={6:[0,3.76],7:[0,3.71],8:[3,3.62],9:[3,3.53]};
+    const SWR_H40    ={1:[51.7,3.05],2:[12.1,3.37],3:[3.4,3.59],4:[0,3.66],5:[0,3.77],
+                       6:[41.4,3.13],7:[32.8,3.17],8:[32.8,3.10],9:[32.8,3.01]};
+    const RET_EXPO   ={6:30,7:36,8:42,9:48};   // 第 6~9 階「退休當下」的有效曝險(隨齡降槓砍七成後)
+
+    H+=(()=>{
+      const HZ=Math.max(1,I.maxAge-I.retire);
+      let rung=null, rname='';
+      try{ const _l=APState.getLadder(); if(_l&&_l.rung!=null) rung=+_l.rung; }catch(e){}
+      if(rung==null){                       /* 自訂權重或舊格式:用淨曝險對到最近的一階 */
+        const ne=Math.round((+R.netExp||0)*100);
+        rung=[[20,1],[35,2],[50,3],[65,4],[80,5],[100,6],[120,7],[140,8],[160,9]]
+             .reduce((a,b)=>Math.abs(b[0]-ne)<Math.abs(a[0]-ne)?b:a)[1];
+      }
+      try{ const M=E.LADDER_BY_RUNG[rung]; if(M) rname=M.name; }catch(e){}
+      const glideOn=(+I.glide===1)&&rung>=6;
+      const longH=HZ>=36, anchor=longH?40:30;
+      const row=longH?SWR_H40[rung]:(glideOn?SWR_H30_ON[rung]:SWR_H30_OFF[rung]);
+      if(!row) return '';
+      /* ⚠ fail 是「每年固定領 3.5%」時量到的破產率,不是使用者自訂提領率下的破產率。
+         使用者若已經改過提領率,下面一律把它標成「3.5% 的」,不可掛在使用者的數字上。 */
+      const fail=row[0], safe=row[1], mine=(+I.swr||0)*100;
+      const safeR=Math.floor(safe*10)/10;   /* 建議值無條件捨去,不可四捨五入到比量測值還高 */
+      const who=`第 ${rung} 階${rname?`「${esc(rname)}」`:''}`
+               +(rung>=6?(glideOn?'、有開隨齡降槓':'、<b>沒開</b>隨齡降槓'):'');
+      const hzNote=longH
+        ? (HZ>44?` <span class="mut">(你的 ${HZ} 年比量測的 40 年還長,實際只會更嚴苛。)</span>`:'')
+        : (HZ<28?` <span class="mut">(你的 ${HZ} 年比量測的 30 年短,實際會比這寬鬆一些。)</span>`:'');
+      const measured=`在 1928-2024 的實質報酬史上(68 個 rolling 世代),<b>${who}</b>、
+        抱滿 <b>${anchor} 年</b>、每年固定領 <b>3.5%</b> ——
+        <b>${fail<=0.05?'沒有一個世代':`${fail.toFixed(1)}% 的世代`}</b>會在撐完之前把錢花光;
+        <b>撐得住的上限量到是 ${safe.toFixed(2)}%。</b>${hzNote}`;
+      const whyHolds=(rung>=6&&glideOn)
+        ? `<b>它撐得住不是因為 3.5% 為你這一階算過</b>(九階裡八階共用同一個數字),
+           而是<b>隨齡降槓在退休前把槓桿部位砍掉七成</b> —— 退休當下的有效曝險只剩
+           <b>${RET_EXPO[rung]}%</b>,不是你現在的 ${Math.round((+R.netExp||0)*100)}%。
+           <b>關掉隨齡降槓的話,同一階撐得住的只到 ${SWR_H30_OFF[rung][1].toFixed(2)}%。</b>`
+        : `九階裡有八階共用同一個提領率,它<b>沒有按曝險逐階校準過</b> ——
+           這一階撐得住是量出來的結果,不是設計出來的。`;
+      /* ⚠ 這一段是純方法論(IA §3.2 的 L2),原本是常駐小字 —— 每個人都得先讀完 150 字
+         才走到行動清單。改成展開器:結論句留在收合狀態,細節想看再點。 */
+      const caveat=`<details class="x how" style="margin-top:6px"><summary>這些百分比要抓多準?—— 看方向就好,別看小數點</summary>
+        <div class="body"><p>那 68 個世代<b>高度重疊,不是 68 份獨立的證據</b>(1930 年退休的人和 1931 年退休的人,
+        後面三十年幾乎走過同一段歷史)。會失敗的永遠是 <b>1929／1966／1969</b> 那三批人 ——
+        1966 那一代尤其值得記:他們名目上撐得住,是<b>通膨</b>把購買力掏空的。</p>
+        <p>量到的不確定區間大約是 <b>±1～2.5 個百分點</b>,比階與階之間的差距還寬。
+        所以這裡給的是<b>方向和量級</b>:「3.5% 對你這一階是偏高還是偏低」可以信,
+        「3.62% 比 3.53% 好」不能信。</p></div></details>`;
+
+      if(mine>safe+0.05){
+        const newFire=(+R.fireNum||0)*(mine/safeR), up=(mine/safeR-1)*100;
+        const shortAlt=longH&&(glideOn?SWR_H30_ON[rung]:SWR_H30_OFF[rung]);
+        return `<div class="note bad"><b>⚠ 你設的提領率 ${mine.toFixed(2)}%,在你這個組合下實測撐不住。</b><br>
+          你退休後要撐 <b>${HZ} 年</b>。${measured}
+          ${(rung>=6&&!glideOn&&longH)?`<br><span class="mut">(40 年期<b>只量過有開隨齡降槓</b>的情況。
+             你沒開,實際只會比 ${fail.toFixed(1)}% 更糟。)</span>`:''}
+          <div style="margin-top:10px"><b>要做的事 —— 挑一個:</b><br>
+            ・到 <a href="../plan/">⚙ 配資金</a> 把「每年提領率」改成 <b>${safeR.toFixed(1)}</b> ——
+              目標金額會從 ${wan(R.fireNum)} 升到 <b>${wan(newFire)}</b>(多 ${up.toFixed(0)}%)<br>
+            ・<b>把退休年齡往後挪</b>${shortAlt?` —— 同一階在 30 年期,3.5% 的失敗率只有
+              <b>${shortAlt[0].toFixed(0)}%</b>`:''}<br>
+            ・<b>把年支出往下調</b>,目標金額跟著降
+            ${(longH&&rung<=3)?`<br>・<b>或者往上換一階</b> —— 同樣 40 年、同樣 3.5%,
+              第 4 階的失敗率是 <b>${SWR_H40[4][0].toFixed(0)}%</b>、第 5 階也是
+              <b>${SWR_H40[5][0].toFixed(0)}%</b>。<br>
+              <span class="mut">這不是筆誤:撐不了 40 年的原因是<b>報酬不夠</b>,不是崩盤。
+              低曝險階留太多現金與債券,實質報酬追不上四十年的通膨。
+              「最保守」在 30 年期是對的,在 40 年期是反過來的。</span>`:''}
+          </div>${caveat}</div>`;
+      }
+      return `<div class="note ok"><b>✅ 你設的提領率 ${mine.toFixed(2)}%,在你這個組合下撐得住。</b><br>
+        你退休後要撐 <b>${HZ} 年</b>。${measured}
+        ${Math.abs(mine-3.5)>0.06?`<br><span class="mut">(上面那個破產率是「領 3.5%」量到的;
+          你已經把提領率調到 ${mine.toFixed(2)}%,比它更保守。)</span>`:''}
+        <br><span class="mut">但要知道它為什麼撐得住:${whyHolds}</span>
+        ${(!longH&&SWR_H40[rung]&&SWR_H40[rung][0]>5)?`<br><br>
+          <b>⚠ 如果你比設定的更早退休,這個結論會翻盤。</b>同一階拉到 <b>40 年</b>期,
+          3.5% 的失敗率跳到 <b>${SWR_H40[rung][0].toFixed(1)}%</b>、撐得住的只剩
+          <b>${SWR_H40[rung][1].toFixed(2)}%</b>。
+          <b>退休年限是這件事裡影響最大的變數,比你在第幾階更重要。</b>`:''}
+        ${caveat}</div>`;
+    })();
+
     if(K.essOK!=null&&K.survive!=null&&K.essOK-K.survive>0.05){
       H+=`<div class="note ok">你的年金本身就蓋得住必要支出。就算投資部位在 ${pct(1-K.survive)} 的情境裡被花光,
         <b>基本生活仍然不受影響</b> —— 受影響的只有旅遊、換車那類彈性支出。</div>`;
@@ -692,22 +801,12 @@ function render(res){
 
       <details class="x" id="legacy-read" data-remember><summary>會剩這麼多,是「提領率」的定義造成的</summary>
         <div class="body">
-          <p>目標金額 ${wan(R.fireNum)} = 年支出 ${wan(I.exp)} ÷ 提領率 ${pct(I.swr,1)},
-            等於 <b>${swrMult?swrMult.toFixed(1):'—'} 年份</b>的生活費。而 ${pct(I.swr,1)} 的前提是
-            永遠不動本金、只花孳息,可是你退休後只需要撐 ${I.maxAge-I.retire} 年 —— 多出來的那一截就變成遺產。</p>
-          ${hasLev?(()=>{
-            const levExp=((W.L2||0)+(W.SSO||0))*2, retExp=(+R.netExp||0)-levExp*0.7;
-            return `<div class="note warn"><b>⚠ 這個提領率不是按你的階別算出來的。</b>
-            九階風險階梯裡有<b>八階共用同一個 ${pct(I.swr,1)}</b>(只有第 1 階不同) —— 它沒有隨曝險逐階校準過。
-            ${(+I.glide===1)
-              ? `你現在的淨曝險是 <b>${Math.round((+R.netExp||0)*100)}%</b>,但隨齡降槓會在退休前把槓桿部位砍掉七成,
-                 退休當下大約剩 <b>${Math.round(retExp*100)}%</b>。
-                 <b>${pct(I.swr,1)} 對得上的是後面那個數字,不是前面那個。</b>`
-              : `而你<b>沒有開隨齡降槓</b>,退休時仍是 <b>${Math.round((+R.netExp||0)*100)}%</b> 淨曝險 ——
-                 這個共用的提領率從來沒有為這種情況校準過,請自行往下調。`}
-            已知方向:槓桿階真實可持續的提領率<b>低於</b> ${pct(I.swr,1)};但量到的不確定區間比爭議中的差距還寬,
-            所以這裡不擅自改數字,只標明它是共用值。把它當一個至少 ±1 個百分點的區間看,不要當精確值。</div>`;
-          })():''}
+          <p>目標金額 ${wan(R.fireNum)} = (年支出 ${wan(I.exp)}${I.pension>0?` − 年金 ${wan(I.pension)}`:''})
+            ÷ 提領率 ${pct(I.swr,1)},等於 <b>${swrMult?swrMult.toFixed(1):'—'} 年份</b>的生活費。
+            而 ${pct(I.swr,1)} 這個提領率是拿<b>整整 30 年</b>去量出來的,
+            可是你退休後只需要撐 ${I.maxAge-I.retire} 年 —— 用不到的那一截就變成遺產。</p>
+          ${hasLev?`<p class="mut">⚠ 這個提領率是九階裡八階共用的,沒有按曝險逐階校準過 ——
+            你這一階實測撐得住多少,寫在上面「退休以後夠不夠」那一段的提示框裡。</p>`:''}
           <p><b>打算把錢花完的話,需要的本金確實會少一截。</b>
             退休後 ${I.maxAge-I.retire} 年、實質報酬抓 3%<span class="src fixed">假設值</span>,
             一年可以領 ${pct(1/amMult,1)},目標從 ${swrMult?swrMult.toFixed(1):'—'} 年份降到 <b>${amMult.toFixed(1)} 年份</b>。</p>`
@@ -777,8 +876,11 @@ function render(res){
   try{ APShell.annotateTerms($('resultRoot'),{dynIds:{actionRow:1}}); }catch(e){ if(window.console)console.warn(e); }
   try{ APShell.initAdv(); }catch(e){}
 
-  drawPie(net0);
-  drawBand();
+  /* 畫圖失敗不可以連坐:drawPie 沒有 try 的時候,任何 canvas 例外都會讓後面的
+     bindTierCards / bindFounding / loadToday 整批不執行 —— 畫面看起來正常,
+     但「換一階」「地基打勾」「今天的水位」全部是死的。圖沒了頂多少一張圖。 */
+  try{ drawPie(net0); }catch(e){ if(window.console)console.warn(e); }
+  try{ drawBand(); }catch(e){ if(window.console)console.warn(e); }
   bindTierCards();
   bindFounding();
   bindLadder();

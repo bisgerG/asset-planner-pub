@@ -348,7 +348,7 @@
     <span class="small mut">全部可以跳過 —— 用預設值直接按「▶ 重新計算」就好</span></h2>
 
   <details class="adv" id="leverage">
-    <summary>🔴 7% 的大盤開 2 倍,扣完三層成本只剩約 5% —— 三個滑桿就是那三層成本(只在你持有正二/SSO 時有影響)</summary>
+    <summary>🔴 大盤 7% 開 2 倍不是 14%,扣完三層成本剩約 9% —— 三個滑桿就是那三層(只在你持有正二/SSO 時有影響)</summary>
     <div class="body">
       <div class="small" id="l2formula" style="margin:0 0 2px"></div>
       <div class="small" id="ssoformula" style="margin:0 0 11px"></div>
@@ -367,27 +367,37 @@
         </div>
       </div>
       <div class="small" style="margin-top:9px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <button class="btn ghost" id="reloadCarry" type="button" style="padding:3px 9px;font-size:12px">↻ 更新逆價差</button>
+        <button class="btn ghost" id="reloadCarry" type="button" style="padding:3px 9px;font-size:12px">↻ 重新量一次</button>
         <span id="carryInfo" class="mut"></span>
       </div>
       <details style="margin-top:9px">
         <summary>ⓘ 三個滑桿=槓桿的三層成本;預設值就是「對齊現況」,不確定就別動</summary>
-        <p><b>正二 = 2×大盤(7%) − 波動耗損 − 內扣(1.3%) − 逆價差;SSO = 2×標普500(7%) − 波動耗損 − 內扣(0.89%) − 融資成本。</b></p>
-        <p><b>① 逆價差+成本</b>:正二靠台指期複製槓桿,期貨折溢價影響報酬——順風(往左/負)加分、逆風(往右/正)扣分。<b>數字的正負是方向、不是加減</b>:「+3%」代表「每年約 3% 的逆風拖累」。預設值由 carry.json 每月自動載入 =「近 5 年的平均拖累」(目前那個平均剛好約 +3%/年),旁邊另顯示「當年(近1年)」看是否在惡化。歷史:2015–21 是 −3%(順風)→ 2022–25 反轉成 +5%(逆風)。手動查:搜「台指期 逆價差」,折價大→往左、折價消失→往右。</p>
+        <p><b>正二 = 2×大盤(7%) − 波動耗損 − 內扣(0.48%) − 逆價差;SSO = 2×標普500(7%) − 波動耗損 − 內扣(0.89%) − 融資成本。</b></p>
+        <p><b>① 逆價差</b>:台股正二是用<b>台指期</b>做出兩倍的,期貨每個月要換到下一個月的合約。
+          下個月比較便宜(逆價差)= 打折續約,對長期持有的人是<b>順風</b>;下個月比較貴 = 倒扣你錢,是<b>逆風</b>。
+          <b>滑桿上的正負是方向,不是加減</b>:「+3%」= 每年約 3 個百分點的逆風。
+          <br><b>預設 +3%,理由:</b>它是拉長看的中間值,而且九階風險階梯的年化就是照這個值算出來的
+          —— 兩邊用同一個數字,你在「★ 我的計畫」和這一頁才不會看到兩種年化。
+          旁邊的「實測」按鈕會去量最近的實際值給你對照,<b>但不會自己把滑桿改掉</b>。
+          <br><b>它真的會變:</b>2015–2021 是順風(等於免費槓桿),2022 之後反轉成逆風。
+          不過拉到 00685L 掛牌至今 9.3 年的全期,量到的所有成本合計只有
+          <b>0.15%/年</b><span class="src fixed">實測</span> —— 一來一往幾乎打平。
+          真的想自己判斷:搜「台指期 逆價差」,折價大 → 往左拉,折價消失或變溢價 → 往右拉。</p>
         <p><b>② 波動耗損(正二/SSO 共用)</b>:每日重設 2× 槓桿穿越波動的複利損失。理論 σ²≈4.4%(假設天天洗),但實測 0050 vs 完美2x(2016–26)<b>全期實際只 −0.6%</b>(強趨勢年甚至負的,只有盤整年 2018 接近理論)。故預設折衷 <b>1.5%</b>。怕失落十年式盤整 → 拉 3–4%;信續強趨勢 → 拉 0。<b>註:這是共用值——實測台股 0050 近10年≈0%;S&P500 的實測耗損也不大(強趨勢年甚至為負),但你若擔心進入長期盤整,可把此值上調。</b></p>
         <p><b>③ 融資成本(SSO 專用)</b>:美股 2x 靠 SWAP 借錢開槓桿,對借的部分付利息 <b>≈ 美元短率</b>。<b>台股正二沒有這項</b>(它的對應物是逆價差),所以兩者分開算。2010–21 零利率時 ≈ 0;現在短率 ~4.3% → 拖累約 4%。預設 <b>+4%</b>(對齊現況);利率走低 → 往左,利率走高 → 往右。姊妹專案 2x 實測:SSO 全期成本 ≈「0.89% 內扣 + 美元短率 + 0.46%」,12 年內誤差最大只有 0.84 個百分點——降息就會便宜回來。</p>
       </details>
       <!-- ↓ 原 tab4 觀念卡 ①②:它們解釋的就是上面這三個滑桿,搬過來當「▸ 為什麼」
            (docs/IA.md §5.5 觀念卡拆散對照表)。 -->
       <details style="margin-top:4px">
-        <summary>📌 7% 的大盤開 2 倍,扣完三層成本只剩約 5%——「2 倍」是倍率,不是報酬保證</summary>
+        <summary>📌 大盤 7% 開 2 倍不是 14%,扣完三層成本剩約 9%——「2 倍」是倍率,不是報酬保證</summary>
         <p>直覺以為「正二 = 0050 × 2」,但那只在<b>單邊上漲</b>成立。長期年化要扣三層:</p>
         <ul>
           <li><b>① 波動耗損 ≈ σ²(理論約 −4.4%/年)</b>:每日重設槓桿,漲跌來回會破洞,波動越大破越凶。</li>
-          <li><b>② 內扣費用(約 −1.3%/年)</b>。</li>
-          <li><b>③ 逆價差(曾是順風 −3%,現已反轉成 +5% 的拖累)</b>。</li>
+          <li><b>② 內扣費用(00685L 是 −0.48%/年)</b>,每天直接從淨值裡扣,你收不到帳單。</li>
+          <li><b>③ 逆價差(2015–2021 是順風,2022 之後反轉成逆風;本頁預設抓 −3%/年)</b>。</li>
         </ul>
-        <p>結果:7% 的原型,2 倍後前瞻基準只剩 <b class="warn">~5%</b>。「2 倍」是倍率,不是報酬保證。上面三個滑桿就是讓你自己決定這三層各扣多少。</p>
+        <p>結果:7% 的大盤開 2 倍,前瞻基準<b class="warn">不是 14%,是 9% 上下</b>(用本頁預設值算)。
+          <b>「2 倍」是倍率,不是報酬保證</b> —— 曝險加倍,期望報酬只多三成左右。上面三個滑桿就是讓你自己決定這三層各扣多少。</p>
       </details>
       <details style="margin-top:4px">
         <summary>📌 噴出月看到 1.9 倍很爽,盤整年只剩 0.06 倍——用單月推長期,就是倖存者偏差</summary>
@@ -438,7 +448,7 @@
           <summary>ⓘ 年輕時腰斬有薪水能救,60 歲腰斬沒時間救——越接近退休,越該自動降槓</summary>
           <p><b>生命週期投資法</b>(Ayres-Nalebuff):年輕時部位小、就算腰斬也是小錢、又有幾十年薪水能補 → 可以多開槓桿;<b>年紀越大、部位越大、能補的薪水越少 → 應該逐步降槓守成</b>,把賺到的果實保住。</p>
           <p><b>它解決的問題</b>:你 35 歲腰斬是「300 萬變 150 萬」、還有 25 年薪水能補;但 60 歲腰斬是「2000 萬變 1000 萬」、而且<b>沒時間也沒金流補回來了</b>。這叫「退休前夕碰崩盤」風險,是會打爛整個退休計畫的存在性風險。</p>
-          <p><b>工具怎麼做</b>:啟用後,從你設的年齡(預設 45)開始,<b>每年自動把一點正二/SSO 賣掉、換成債券</b>,到退休前把槓桿降約 70%(起始淨曝險 ~107% → 退休前 ~55%)。效果會反映在模擬的<b>較淺回撤、較好的壞情境</b>上(上方「淨曝險」顯示的是起始值)。</p>
+          <p><b>工具怎麼做</b>:啟用後,從你設的年齡(預設 45)開始,<b>每年自動把一點正二/SSO 賣掉、換成債券</b>,到退休前把槓桿降約 70%(以本頁的預設配置實跑:起始淨曝險 <b>93%</b> → 退休前 <b>51%</b>;你自己改過權重的話,上方「淨曝險」那個大數字就是你的起始值)。效果會反映在模擬的<b>較淺回撤、較好的壞情境</b>上(上方「淨曝險」顯示的是起始值)。</p>
           <p class="mut"><b>該開嗎</b>:想退休前更安穩、怕臨退休碰崩盤 → 開。年輕、還想衝、距退休很遠 → 可先關著,過幾年再開。預設關閉,基準投影不變。</p>
         </details>
 
@@ -644,9 +654,12 @@
       <div class="sbox" id="ddAllBox" style="margin-top:10px"></div>
       <p class="small mut" style="margin-top:8px;line-height:1.75">
         縱軸為<b>對數刻度</b>;每次模擬 1500 條路徑、<b>月步</b>,含肥尾(Student-t)與資產相關性。<br>
-        <b>現金回市場機制</b>依你在上面「手上現金何時進場」的選擇。崩盤加碼的觸發基準 = 「1x 全市場指數」自高點回撤,按 1:2:3:4 倒進槓桿核心。<br>
+        <b>現金回市場機制</b>依你在上面「手上現金何時進場」的選擇。崩盤加碼的觸發基準 = 「1x 全市場指數」自高點回撤,<b>水位與投入比例跟著你選的機制走</b>(預設「再平衡＋崩盤加碼」是 −12/−22/−32/−42 分四批 1:2:3:4;選「三段深觸發」則是 −25/−35/−45 分三批 1:2:3,那是「② 挑時機」用的那一張表)。<br>
         <b>分批進場、生命週期降槓</b>(若啟用)也會反映在內;正二/SSO 以「2× 標的 − 波動耗損 − 內扣 − 逆價差/融資」近似建模。<br>
-        <b>⚠️ 未含「巨災尾部閘門」</b>:故最壞情境(P10)偏保守——純價格分不出「錯殺(會反彈)」與「結構衰退(價值陷阱)」,硬做閘門會誤觸發。真實策略在多年大蕭條會降槓、停止加碼,把最壞尾部從「滅頂」救成「存活」。
+        <b>⚠️ 沒有「巨災尾部閘門」這種東西</b> —— 模擬裡沒有,<b>策略本身也沒有</b>。
+        構想是「跌到某個程度就停止加碼、主動降槓」,但唯一實測過的常設版本已經被回測否決(貴而無用),
+        極嚴版則<b>從來沒有回測數字,只是提案</b>。純價格分不出「錯殺(會反彈)」與「結構衰退(價值陷阱)」,硬做閘門會誤觸發。
+        <b>所以真遇到多年不創新高的結構性衰退,這套規則不會自己救你</b> —— 準備金會照表投完,然後滿倉等。
       </p>
     </div>
   </details>
@@ -793,7 +806,7 @@
         <li><b>固定比例為最優</b>:Merton(1969,CRRA 投資人最優=固定比例連續再平衡);Perold-Sharpe(1988,constant-mix vs CPPI)。</li>
         <li><b>50:50 後悔最小化</b>:Markowitz(現代投組理論)、Graham《智慧型股票投資人》、Bernstein《投資人宣言》。</li>
         <li><b>投資組合保險(CPPI)</b>:Black-Jones(1987)、Perold-Sharpe(1988)。</li>
-        <li><b>數據</b>:Yahoo Finance(0050 / 00631L / VOO 等歷史價)、台灣證交所報酬指數(逆價差驗證)、Damodaran (NYU Stern) 1928–2024 美股與美債年報酬。</li>
+        <li><b>數據</b>:Yahoo Finance(0050 / 00685L / VOO 等歷史價)、台灣證交所發行量加權股價報酬指數(含息、逆價差驗證)、Damodaran (NYU Stern) 1928–2024 美股與美債年報酬。</li>
         <li><b>姊妹工具</b>:<span class="x2link"><b>2x 進場時機儀表板</b></span>——進場時機與準備金策略的原始研究,含「為什麼選 SSO 不選 QLD」的完整回測(us_overlap / us_reserve)。</li>
       </ul>
     </details>
@@ -893,7 +906,9 @@ function updateWsum(){
   $('wsum').textContent=sr;
   $('wsum').className=ok?'good':'totbad';
   $('wnote').textContent=ok?'✓ 圖例即實際配置':`合計 ${sr}% → 計算時自動正規化成 100%(圖例 % 為正規化後)`;
-  drawPie();
+  // 圓餅畫不出來(canvas 不可用之類)不該連坐:下面的「淨曝險」大數字、
+  // 以及這一頁 init 後面所有的初始化,都不能因為一張圖而整批不執行。
+  try{ drawPie(); }catch(e){ if(window.console)console.warn(e); }
   // 淨曝險(主風險刻度)
   const neb=$('netExpBox');
   if(neb){
@@ -1516,25 +1531,32 @@ function buildStress(carryDrag,volDrag){
 }
 
 // ---------- 讀取自動估算的逆價差(GitHub Action 每月更新的 carry.json)----------
-async function loadCarry(applyToSlider){
+/* ⚠ 2026-08:這裡**不再自動把量到的值套進滑桿**。
+   舊版一進頁面就把滑桿改成 carry.json 的 recommendedCarry(那時是 5%),
+   可是九階風險階梯的年化是照 DEFAULTS.carryDrag = 3.0% 校準的 ——
+   於是同一個人在「★ 我的計畫」看到第 8 階年化 9.1%,切到這一頁卻變成 7.1%,
+   而且畫面上沒有任何地方說為什麼。滑桿預設只有一個家:assets/engine.js 的 DEFAULTS。
+   (那個 5% 本身也是錯的:舊版拿 00631L 對 **0050** 迴歸,β 只有 1.86 ——
+    量到的是「加權 vs 臺灣50」的指數差,不是持有成本。見 scripts/update_carry.js 檔頭。) */
+async function loadCarry(){
   const info=$('carryInfo');if(!info)return;
   info.textContent='讀取中…';
   try{
     const res=await fetch('carry.json?t='+Date.now());
     if(!res.ok)throw new Error('HTTP '+res.status);
     const c=await res.json();
-    if(applyToSlider && typeof c.recommendedCarry==='number'){
-      $('carry').value=clamp(c.recommendedCarry,-1,5);
-    }
-    refreshL2Display();
     const w=c.windows||{};
-    info.innerHTML=`✓ 預設 = 近5年平均拖累 <b>≈ +${c.recommendedCarry}%/年</b>`+
-      (w['1y']&&w['5y']?` · <span title="當年明顯高於近5年 = 逆價差正在惡化/反轉,可考慮手動把滑桿拉高一點">當年(近1年) +${w['1y'].carry}% ／ 近5年 +${w['5y'].carry}%</span>`:'')+
-      ` · 更新於 ${c.dataAsOf} · 每月自動 · <span class="warn" title="${(c.note||'').replace(/"/g,'')}">ⓘ粗估</span>`;
+    const f=v=>(v>=0?'+':'')+v+'%';
+    /* 只把**近 5 年**當可讀的數字。短視窗的 α 對單一年度行情極敏感 ——
+       近 1 年那格常常跑到 +15% 以上,那不是逆價差真的收你 15%,是迴歸雜訊。
+       仍然照實印出來(本站不藏數字),但要就地講清楚它不能當假設用。 */
+    info.innerHTML=`實測(${c.product||'00685L'} 對加權指數,已扣內扣):`+
+      (w['5y']?`<b>近 5 年 ${f(w['5y'].carry)}／年</b>`:'')+
+      ((w['3y']&&w['1y'])?` <span class="mut">(近 3 年 ${f(w['3y'].carry)}、近 1 年 ${f(w['1y'].carry)} ——
+        <b>越近越貴</b>,但短視窗雜訊很大,只看方向、不要直接拿來當假設)</span>`:'')+
+      ` · ${c.dataAsOf}`+
+      ` · <span class="warn" title="${(c.note||'').replace(/"/g,'')}">ⓘ滑桿不會自動跟著動</span>`;
     info.className='mut';
-    markDirty();
-    // 逆價差變了 = 設定變了 → markDirty 已經把摘要列標成過期。
-    // 不自動重算:這一頁的使用者正在調參數,自動重算會很吵(docs/IA.md §6.2)。
   }catch(e){
     info.innerHTML='<span class="mut">(本機 file:// 讀不到 carry.json — 部署到 GitHub Pages 後會自動載入。目前用手動預設值。)</span>';
   }
@@ -1568,9 +1590,11 @@ function saveReport(ci,sim,ms){
   catch(e){/* 隱私模式或空間不足:報告頁會顯示「還沒算過」*/}
 }
 /* 把 ap_state_v2.input 寫回表單。
-   回傳「這是不是一份真的存檔」—— 首次造訪(沒有任何舊鍵、也沒有 v2)要回 false,
-   loadCarry(!hadSaved) 才會把自動估算的逆價差套進滑桿(SPEC §2.2:新使用者 4.5%、
-   老使用者留在自己存的值)。 */
+   回傳「這是不是一份真的存檔」(首次造訪沒有任何舊鍵、也沒有 v2 → false)。
+   ⚠ 2026-08 起**沒有人在用這個回傳值了**。它原本餵給 loadCarry(!hadSaved),
+   讓 carry.json 量到的逆價差自動套進滑桿;那條路已經拿掉 —— 滑桿預設只有一個家
+   (engine.js 的 DEFAULTS.carryDrag),否則同一個人在「★ 我的計畫」與這一頁
+   會看到兩組對不起來的年化。詳見 loadCarry 的註解。留著回傳值是為了以後還用得到。 */
 function loadSettings(){
   try{
     const had=!!(localStorage.getItem(APState.KEY)||localStorage.getItem(LS_KEY));
@@ -1692,7 +1716,7 @@ function renderSnapshots(){
   if($('snapCount'))$('snapCount').textContent=arr.length+'/'+SNAP_MAX+' 組';
   const list=$('snapList');
   if(list){
-    if(!arr.length){list.innerHTML='<div class="empty">還沒有快照。到「1 · 設定」調好後,按「💾 把目前設定存成快照」。</div>';}
+    if(!arr.length){list.innerHTML='<div class="empty">還沒有快照。到上面的<a href="#basics">「基礎層 · 設定」</a>把 1.1 與 1.3 調好,再按「💾 把目前設定存成快照」。</div>';}
     else{
       list.innerHTML='';
       arr.forEach(s=>{
@@ -2058,7 +2082,7 @@ function buildAdvice(ci,w,sim,ms,pFire){
 
 // ---------- init ----------
 buildWeights();
-const hadSaved=loadSettings();
+loadSettings();   // 2026-08:回傳值原本只餵給 loadCarry(!hadSaved),那條路已移除
 // 攤銷式提領的三個參數只在選了該模式時才有意義,平常收起來別佔版面。
 function refreshAbwBox(){const b=$('abwBox');if(b)b.style.display=(+$('flexW').value===2)?'':'none';}
 if($('flexW'))$('flexW').addEventListener('change',refreshAbwBox);
@@ -2118,7 +2142,7 @@ if(APState.migrationHit){
   const mig=$('migNote');
   if(mig){mig.style.display='block';mig.innerHTML='ⓘ 你之前存的 <b>QLD</b> 部位已自動改成 <b>SSO(2× 標普500)</b>:權重數字照舊,但標的與報酬假設不同(為什麼換?見 1.3 裡 SSO 那一格的「ⓘ 理由」)。請再確認一次配置。 <button type="button" style="font:inherit;font-size:11.5px;border:1px solid #ecd79a;background:#fff;border-radius:6px;padding:0 7px;cursor:pointer" onclick="this.parentNode.style.display=\'none\'">知道了</button>';}
 }
-$('reloadCarry').addEventListener('click',()=>loadCarry(true));
+$('reloadCarry').addEventListener('click',()=>loadCarry());
 // 「重設為預設值」要把兩個鍵一起清掉 —— 只清舊鍵的話,ap_state_v2 還在,重載後又被還原。
 if($('resetBtn'))$('resetBtn').addEventListener('click',()=>{try{localStorage.removeItem(APState.KEY);localStorage.removeItem(LS_KEY);}catch(e){}location.reload();});
 // 姊妹工具「2x 進場時機儀表板」——同站台的相對路徑(同網域才能共用 localStorage 互通)。
@@ -2167,7 +2191,7 @@ function jumpToHash(){
 /* hashchange 也要接:同一頁內按 <a href="#leverage"> 不會重新載入,
    shell.js 的 openHash 只認 closest('details'),對群組錨點(<section>)無效。 */
 window.addEventListener('hashchange',jumpToHash);
-loadCarry(!hadSaved); // 第一次造訪→套用自動逆價差;有存檔→沿用你存的
+loadCarry();          // 只顯示實測值,不動滑桿(滑桿預設 = engine.js 的 DEFAULTS.carryDrag)
 if(location.hash.slice(1)){
   // 跳兩次:第一次讓瀏覽器自己的片段捲動有東西可捲,load 之後再補一次
   // (圖表/表格撐開之後版面高度會變,只跳一次會落在錯的位置)。

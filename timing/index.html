@@ -249,6 +249,10 @@ h3.sec{margin:14px 0 6px; font-size:14.5px; font-weight:800; color:var(--navy)}
 .two > div{min-width:0}
 tbody tr.cur{background:#f2f4f9}
 tbody tr.warnrow{background:#fdeaea}
+/* 對照列(不開槓桿的「什麼都不做」組)：與策略列視覺分家，
+   否則讀者會把 0050／VTI／VOO 讀成「本站的另外三個選項」。 */
+tbody tr.refrow{background:#fbfcfe; color:#4a5468}
+tbody tr.refrow td:first-child{border-left:3px solid var(--line)}
 
 footer{margin-top:12px; background:var(--navy); color:#c8d2ee; border-radius:10px;
   padding:10px 16px; font-size:12.5px; line-height:1.8}
@@ -691,7 +695,7 @@ footer code{background:rgba(255,255,255,.12); padding:1px 4px; border-radius:3px
           <div><span class="ln">3</span><span class="lt">2 倍槓桿</span></div>
           <p>一種<b>把漲跌都放大兩倍</b>的 ETF。大盤漲 1%，它大約漲 2%；
             大盤跌 1%，它大約跌 2%。</p>
-          <p>台股有<b>四檔</b>可以選，這頁用的是 <b>00685L</b>（群益臺灣加權正2）——
+          <p>台股有<b>四檔</b>可以選，<b>本站用的是 00685L</b>（群益臺灣加權正2）——
             因為它追的正是本頁在看的<b>加權指數</b>（下面那顆按鈕有四檔的比較）。
             它靠期貨做到兩倍，<b>不是跟你借錢</b>，所以不會被追繳、不會斷頭。</p>
           <div class="eg">⚠ 放大的是<b>兩邊</b>。大盤跌 40%，它大約跌 <b>64%</b> ——
@@ -713,7 +717,7 @@ footer code{background:rgba(255,255,255,.12); padding:1px 4px; border-radius:3px
   <!-- 四檔正二的比較刻意是**獨立一格**，不是塞在上面那格裡面 ——
        使用者把教學收合之後，「我到底該買哪一檔」這個問題還是要找得到答案。 -->
   <details class="adv" id="adv-pick">
-    <summary>🏷 台股正二有四檔，這頁用最便宜、而且追對指數的那一檔 —— 差別比想像中大</summary>
+    <summary>🏷 台股正二有四檔，本站用最便宜、而且追對指數的那一檔 —— 差別比想像中大</summary>
     <div class="body">
       <p class="plainlead">四檔的漲跌都是「大盤的兩倍」，但有兩件事不一樣，而且都會影響你拿到多少錢。</p>
 
@@ -742,7 +746,7 @@ footer code{background:rgba(255,255,255,.12); padding:1px 4px; border-radius:3px
       </div>
       <p class="tblnote" id="pickFoot">—</p>
 
-      <p class="plainlead" style="margin-top:10px"><b>所以這頁用 00685L</b>：它追的就是本頁在看的大盤，
+      <p class="plainlead" style="margin-top:10px"><b>所以本站用 00685L</b>（「⚙ 配資金」那一頁的「正二」指的也是它）：它追的就是本頁在看的大盤，
         而且實際成本是四檔裡最低的 —— <span id="pickGap">—</span></p>
 
       <div class="keyn" style="background:#fffbe9;border-color:#ecd79a;color:#6b5410">
@@ -762,7 +766,7 @@ footer code{background:rgba(255,255,255,.12); padding:1px 4px; border-radius:3px
       </div>
 
       <p class="tblnote" style="margin-top:9px">另外兩檔追大盤的（00675L、00663L）規則上也可以用，
-        只是實際成本各貴約 <span id="pickAlt">—</span>。<b>00631L 不建議搭配本頁使用</b> ——
+        只是實際成本各貴約 <span id="pickAlt">—</span>。<b>00631L 不建議搭配本站的規則使用</b> ——
         除了追錯指數，它<b>從 2026-05-19 起還主動加進台積電現貨</b>去強化追台灣50，
         也就是刻意往離開大盤的方向走（詳見風險第 ④ 條）。</p>
     </div>
@@ -923,6 +927,43 @@ footer code{background:rgba(255,255,255,.12); padding:1px 4px; border-radius:3px
         代價是最大回撤多 5.8 個百分點。
         <b>想少痛一點就往保守選一格，這張表把代價寫清楚了。</b>
       </div>
+      <div class="tblnote">
+        <b>先看最下面那三列「什麼都不做」的對照組。</b>同一段 26 年，如果你只是買整個市場、
+        然後什麼都不做：<b>0050 變 13.78 倍</b>、美國全市場（VTI）<b>8.66 倍</b>、
+        美國五百大（VOO）<b>8.15 倍</b>。本頁這套做法是 <b>61.72 倍</b>。
+        <br><b>代價寫在旁邊那一欄：</b>對照組最慘的時候帳面少掉 <b>55～58%</b>，
+        本頁這套是 <b>77%</b> —— 100 萬會一度只剩 23 萬。
+        <b>多賺的部分，是拿「跌得更深、而且要忍更久」換來的。</b>
+        <br><span class="mut">口徑：0050 那一列用的是台股大盤含息指數（0050 要 2003 年才掛牌，
+        而且它自己還要再扣約 0.32%/年，所以這一列略偏樂觀）；VTI／VOO 以<b>美元</b>計價，
+        掛牌前用同一家、同一個投資組合的基金級別接上去。同期美元兌台幣長期接近打平
+        （2004-03 起年化 +0.05%），但那仍然是一個你要自己承擔的波動來源。</span>
+      </div>
+      <div class="tblnote">
+        <b>Calmar 這一欄怎麼讀 —— 它的刻度是綁在「窗長」上的。</b>
+        Calmar＝年化報酬 ÷ 最大回撤。常聽到的「要大於 1 才算好」出自期貨基金的評比慣例，
+        而這個比率 1991 年被提出時，<b>原始定義就是三年（36 個月）窗</b> —— 短窗的回撤小，數值自然高。
+        這張表是 <b>26 年</b>窗，回撤大一個量級：同一套 70/30 改用 36 個月窗重算，
+        中位數是 <b>0.50</b>，跟這裡的 0.222 差兩倍多。
+        <b>所以別拿外面的門檻套這張表，要比就在表內比</b> ——
+        不開槓桿的 0050 是 <b>0.183</b>、VTI <b>0.156</b>、VOO <b>0.152</b>，
+        整張表落在 0.15～0.23，那是這個窗長下的正常範圍。
+        <br>⚠ 這個範圍本身也很吃起點：同樣三檔不開槓桿的指數，起點換成 2003 年，
+        Calmar 變成 0.21～0.25；換成 2010 年，變成 0.40～0.52。
+        <b>Calmar 沒有絕對刻度，只有「同一段期間之內」才比得動。</b>
+        <br>⚠ 還有一件事別誤讀：0050 的 0.183 高於 VTI 的 0.156，<b>不代表「台股比美股好」</b>。
+        不開槓桿時台股確實贏（我們試過 1999／2000／2003／2010 四個起點，四次都贏）；
+        但<b>一開槓桿就翻過來</b> —— 下一張表同一套 70/30 做法，台股正二的 Calmar 是 0.164，
+        美股 S&amp;P500 2x 反而是 0.184。原因是台股波動大，
+        <b>波動在開槓桿之後是平方地吃報酬</b>。這正是下面「<a href="#adv-blend">錢要分給幾個市場</a>」存在的理由。<br>
+        還有一件事：<b>Calmar 沒有「賺得夠不夠」這一項</b>，現金留得越多它越高。
+        這張表自己就看得到 —— 核心 80% → 70% → 60% → 50%，Calmar 是
+        0.217 → 0.222 → 0.227 → 0.230，一路往上；我們往下測到核心只剩 5%，它<b>還在往上</b>。
+        <b>它不會告訴你該在哪裡停。</b>
+        所以它適合回答「同樣的曝險下，哪個做法比較好」；
+        要決定「該留多少現金」，得把<b>終值、最大回撤、最長水下</b>三欄並列著看，
+        再對照你自己撐得住多深的回撤 —— 那才是這張表真正在問你的事。
+      </div>
 
       <h3 class="sec">⚠ 但如果把起點往前挪五年半，結論會變<span style="font-weight:600;color:var(--muted)" id="btcSpan"></span></h3>
       <div class="scroll">
@@ -961,7 +1002,7 @@ footer code{background:rgba(255,255,255,.12); padding:1px 4px; border-radius:3px
 
       <div class="rangewrap">
         <div class="rangebox tw"><div class="k">台股 2 倍</div><div class="v" id="bRangeTw">—</div>
-          <div class="n">00631L；內部一樣是 70 / 30（本頁上半部）<br><span id="bRangeTwAlt">—</span></div></div>
+          <div class="n">00685L；內部一樣是 70 / 30（本頁上半部）<br><span id="bRangeTwAlt">—</span></div></div>
         <div class="rangebox spx"><div class="k">美股 S&amp;P500 2 倍</div><div class="v" id="bRangeSpx">—</div>
           <div class="n">SSO；美股這份內部同樣 70 / 30<br><span id="bRangeSpxAlt">—</span></div></div>
       </div>
@@ -1034,7 +1075,7 @@ footer code{background:rgba(255,255,255,.12); padding:1px 4px; border-radius:3px
         <summary>為什麼沒有那斯達克（QLD）？因為它不是第三個市場，是 S&amp;P500 的科技加強版</summary>
         <div class="body">
           <p>先說名詞：<b>QLD</b> 是那斯達克 100 的 2 倍槓桿 ETF，
-            地位相當於台股的 00631L、美股的 SSO，只是它追的是科技股為主的那斯達克。
+            地位相當於台股的 00685L、美股的 SSO，只是它追的是科技股為主的那斯達克。
             很多人會問「為什麼不乾脆買它」，答案如下。</p>
           <p>那斯達克 100 有<b>近七成的漲跌就是 S&amp;P500 本身</b>（用統計說是 R² 0.694）；
             台股只有不到三成能被 S&amp;P500 解釋（R² 0.286）—— <b>台股才是真正的另一個市場</b>。</p>
@@ -1187,7 +1228,7 @@ footer code{background:rgba(255,255,255,.12); padding:1px 4px; border-radius:3px
         <details class="x risky">
           <summary>④ 如果你買的是 00631L，你看的指數和你買的指數<u>正在分開</u></summary>
           <div class="body">
-            <p class="rp">這一條<b>只在你買 00631L 的時候才適用</b>。本頁預設的 00685L 追的就是大盤，沒有這個問題
+            <p class="rp">這一條<b>只在你買 00631L 的時候才適用</b>。本站用的 00685L 追的就是大盤，沒有這個問題
               （四檔的差別見上方「台股正二有四檔」）。</p>
             <p class="rp">00631L 的名字寫的是「台灣50 正 2」，但它<b>過去</b>是純用<b>臺股期貨</b>建倉的，
               交付給你的其實是 <b>2 倍的大盤</b> —— 所以拿本頁的大盤訊號去操作它，剛好對得上。
@@ -1279,7 +1320,7 @@ footer code{background:rgba(255,255,255,.12); padding:1px 4px; border-radius:3px
               拿同一支腳本做控制對照（餵壞資料 vs 餵好資料）實測是
               <b><span id="nBugInfl">—</span></b>；而相對於本頁先前刊出的數字則是約 −2.1%。
               估錯的原因是：α 的誤差只作用在部位裡的槓桿那一段，不是整段期間都以兩倍在複利。</span><br>
-              <span style="font-size:.94em">附帶一件剛好抵掉的事：本頁預設已從 00631L 換成
+              <span style="font-size:.94em">附帶一件剛好抵掉的事：本站已從 00631L 換成
               <b>00685L</b>，而 00685L 的實際成本是 <b><span id="nBugNew">—</span>／年</b>，
               比 00631L 便宜約 <b><span id="nBugSave">—</span> 個百分點</b>。
               換標的省下來的，量級上和上面高估的差不多 —— 但這是兩件不同的事，不要互相抵銷著看。</span>
@@ -2457,8 +2498,10 @@ footer code{background:rgba(255,255,255,.12); padding:1px 4px; border-radius:3px
     // ── 回測表 ────────────────────────────────────────────────
     $('btSpan').textContent = d.strategy.backtest.span;
     $('tBt').innerHTML = d.strategy.backtest.rows.map(function (r) {
-      return '<tr' + (r.cur ? ' class="cur"' : '') + '>'
-        + '<td style="text-align:left">' + r.name + (r.cur ? '　<span class="tag wait">本頁採用</span>' : '') + '</td>'
+      return '<tr' + (r.cur ? ' class="cur"' : (r.ref ? ' class="refrow"' : '')) + '>'
+        + '<td style="text-align:left">' + r.name
+        + (r.cur ? '　<span class="tag wait">本頁採用</span>' : '')
+        + (r.ref ? '　<span class="tag wait">什麼都不做</span>' : '') + '</td>'
         + '<td class="num">' + r.expo + '%</td>'
         + '<td class="num">' + (r.fin != null ? r.fin.toFixed(2) + 'x' : '—') + '</td>'
         + '<td class="num">' + r.cagr.toFixed(1) + '%</td>'

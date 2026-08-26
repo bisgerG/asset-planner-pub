@@ -1,34 +1,38 @@
 {
-  "updated": "2026-08-05",
-  "dataAsOf": "2026-08-05",
-  "recommendedCarry": 5,
+  "updated": "2026-08-26",
+  "dataAsOf": "2026-08-26",
+  "product": "00685L.TW",
+  "applyToSlider": false,
+  "measured5y": 3.1,
+  "divYield": 3.4,
+  "fee": 0.48,
   "windows": {
     "1y": {
-      "beta": 1.91,
-      "alpha": -16.2,
-      "carry": 14.9,
-      "days": 251
+      "beta": 2.04,
+      "alphaVsPrice": -9.5,
+      "carry": 15.8,
+      "days": 250
     },
     "2y": {
-      "beta": 1.92,
-      "alpha": -15.3,
-      "carry": 14,
-      "days": 503
+      "beta": 2.04,
+      "alphaVsPrice": -4.8,
+      "carry": 11.1,
+      "days": 502
     },
     "3y": {
-      "beta": 1.87,
-      "alpha": -13.7,
-      "carry": 12.4,
-      "days": 755
+      "beta": 2.03,
+      "alphaVsPrice": -2.9,
+      "carry": 9.2,
+      "days": 754
     },
     "5y": {
-      "beta": 1.86,
-      "alpha": -6.7,
-      "carry": 5.4,
-      "days": 1213
+      "beta": 2,
+      "alphaVsPrice": 3.2,
+      "carry": 3.1,
+      "days": 1212
     }
   },
-  "method": "00631L vs 0050 日報酬 OLS 迴歸 α(Yahoo adjclose);recommended=近5年平均 clamp[-1,5];另列近1年(當年)供觀察惡化",
-  "note": "粗估;逆價差先天雜訊大、ETF對ETF有衰減偏誤,僅供方向參考。精確值需證交所報酬指數+校準β=2.05。滑桿可手動覆蓋。",
+  "method": "00685L.TW vs ^TWII 日報酬 OLS 迴歸;carry = 2×現金殖利率(假設 3.4%) − α − 內扣 0.48%",
+  "note": "粗估,只看方向。現金殖利率是常數假設(差 0.5pp → carry 差 1pp),短視窗雜訊大。精確值見「② 挑時機」的 products2x:00685L 掛牌至今 9.3 年的全期 α 是 −0.15%/年(已扣所有費用)。滑桿預設固定 3.0%(= 九階風險階梯校準時用的值),這裡的數字只供對照,可手動覆蓋。",
   "source": "Yahoo Finance"
 }

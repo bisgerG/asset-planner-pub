@@ -67,7 +67,9 @@ const DEFAULTS = { carryDrag: 0.03, volDrag: 0.015, ssoFin: 0.04 };
 // 倍率、內扣、吃哪種成本拖累(逆價差 vs 融資)只寫這一次。
 // 新增/移除槓桿標的只改這張表 —— 曾散落在 7 個三元判斷 + 3 份內扣硬編碼。
 const LEV = {
-  L2:  {mult:2, er:0.013,  drag:'carry'},   // 台指期逆價差
+  // er = 內扣費用。台股正二在 2026-08 由 00631L 換成 00685L(見 assetDefs().L2 的說明),
+  // 內扣跟著從 1.16%(元大)換成 0.48%(群益)—— 四檔台股正二裡最低的一檔。
+  L2:  {mult:2, er:0.0048, drag:'carry'},   // 台指期逆價差
   SSO: {mult:2, er:0.0089, drag:'fin'  },   // SWAP 融資成本(每日 2 倍 S&P500)
 };
 const isLev = k => !!LEV[k];
@@ -112,7 +114,7 @@ function assetDefs(carryDrag, volDrag, ssoFin){
     VOO: {name:'VOO 標普500',muNom:0.07,sigma:0.16,rho:0.85},
     TW50:{name:'0050 台股大盤',muNom:0.07,sigma:0.21,rho:0.80},
     QQQ: {name:'QQQ 那斯達克100',muNom:0.08,sigma:0.22,rho:0.82},
-    L2:  {name:'00631L 正二(台股2x)',muNom:l2muNom(carryDrag,volDrag),sigma:0.42,rho:0.80},
+    L2:  {name:'00685L 正二(台股2x)',muNom:l2muNom(carryDrag,volDrag),sigma:0.42,rho:0.80},
     SSO: {name:'SSO 標普500 2x',muNom:ssoMuNom(ssoFin,volDrag),sigma:0.32,rho:0.85},
     CASH:{name:'現金/短債(準備金)',muNom:0.015,sigma:0.01,rho:0.0},
     BOND:{name:'債券(後期)',muNom:0.04,sigma:0.06,rho:-0.10},
@@ -138,7 +140,20 @@ const ASSET_META={
   VOO: {tag:'🟢',volHist:0.18,dd:-0.55,role:'VOO｜美國 S&P 500,500 大企業,美股最經典的大盤指標。跟 VTI(全美股)幾乎一樣(VTI 多含中小型股),兩者選一即可、別重複。核心打底、長抱不用管。USD 計價,含匯率風險。'},
   TW50:{tag:'🟡',volHist:0.21,dd:-0.57,role:'0050｜台股前 50 大權值股,等於押台股大盤。優點:台幣計價、無匯率、你最熟悉的市場。風險:高度集中台積電(占比極高),買它等於半押一檔股票。'},
   QQQ: {tag:'🟠',volHist:0.22,dd:-0.83,role:'QQQ｜那斯達克 100,美股科技成長股集中(蘋果、輝達、微軟…)。長期報酬亮眼但波動大、估值常偏高;2000 網路泡沫曾崩 −83%。當進攻配置、別當全部。'},
-  L2:  {tag:'🔴',volHist:0.42,dd:-0.84,role:'00631L 正二｜台股大盤的「每日 2 倍槓桿」。本策略只拿它當「崩盤時用準備金抄底、加速修復」的工具,不是平時歐印買進持有。回撤可達 −84%、逆價差已反轉成拖累。嚴禁再疊融資/質押(會被斷頭)。'},
+  /* 2026-08:台股正二的主標的由 00631L(元大台灣50正2)換成 00685L(群益臺灣加權正2)。
+     理由不是費用(雖然 0.48% 對 1.16% 也便宜一半以上),是**基準一致**:
+     本站所有加碼訊號看的是加權指數,00685L 追的就是它;00631L 追的是臺灣50,
+     而且 2026-05-19 起元大加進台積電現貨、官方明講要與 2 倍加權「做出區隔」。
+     與「② 挑時機」同一個決定,見 timing/scripts/update_data.js 的 product 欄。 */
+  L2:  {tag:'🔴',volHist:0.42,dd:-0.84,role:'00685L 正二(群益臺灣加權正2)｜每天讓你的漲跌變成台股大盤的兩倍。'
+    +'<br>本策略拿它當「崩盤時用準備金抄底、加速修復」的工具,不是平常抱好抱滿的東西。'
+    +'<br><br><b>⚠ 三件事先知道:</b>'
+    +'<br>① 帳面最深跌過 <b>−84%</b>,而且可能好幾年回不來。'
+    +'<br>② 它比 00631L 薄(日均成交約四分之一),大跌那幾天想立刻買到想要的量,價差可能難看。'
+    +'<br>③ <b>絕對不要再拿它去融資或質押</b> —— 它本身已經是槓桿,再借一次才是真的會歸零。'
+    +'<br><span class="mut">為什麼不是規模最大的 00631L(元大台灣50正2)?因為它追的是<b>臺灣50</b>,不是本站訊號在看的<b>大盤</b>,'
+    +'而且 2026-05-19 起元大加進台積電現貨去強化追臺灣50,官方明講要與 2 倍大盤「做出區隔」——'
+    +'買 00631L 而照本站的訊號操作,<b>你看的和你買的不是同一個指數</b>。完整說明在「② 挑時機」。</span>'},
   // ↓ 原 tab4 觀念卡「為什麼用 SSO 不用 QLD」整張搬進來(IA §5.5)——
   //   放在一個誰都不會點的分頁裡等於沒有,搬到它解釋的那一格才會被讀到。
   SSO: {tag:'🔴',volHist:0.38,dd:-0.85,role:'SSO｜S&P500 的「每日 2 倍槓桿」。靠 SWAP 借錢開槓桿,成本跟著美元利率走(利率高時拖累大),沒有台股的逆價差;2008 金融海嘯實測最深 −85%、花了 6 年才回到前高。它是美股那份錢的槓桿引擎。'
@@ -175,7 +190,7 @@ const ASSET_META={
 // L2 用 2x 的 --up 紅(槓桿=燙手)、TW50 用海軍藍、QQQ 用 --warn 橘(進攻)。
 const ASSET_COLOR={TW50:'#2159a5',L2:'#c62828',VT:'#7b4fa8',VTI:'#2e7d32',VOO:'#0f8ea3',QQQ:'#e2711d',SSO:'#b3186b',CASH:'#8b95a6',BOND:'#3949ab',GOLD:'#b8860b'};
 const SHORT={VT:'VT',VTI:'VTI',VOO:'VOO',TW50:'0050',QQQ:'QQQ',L2:'正二',SSO:'SSO',CASH:'現金',BOND:'債',GOLD:'金'};
-const DNAME={VT:'VT 全球股',VTI:'VTI 美股',VOO:'VOO 標普500',TW50:'0050 台股',QQQ:'QQQ 那斯達克',L2:'00631L 正二',SSO:'SSO 標普500 2x',CASH:'現金準備金',BOND:'債券',GOLD:'黃金'};
+const DNAME={VT:'VT 全球股',VTI:'VTI 美股',VOO:'VOO 標普500',TW50:'0050 台股',QQQ:'QQQ 那斯達克',L2:'00685L 正二',SSO:'SSO 標普500 2x',CASH:'現金準備金',BOND:'債券',GOLD:'黃金'};
 const CATS=[
   {label:'🇹🇼 台股(國內)',keys:['TW50','L2']},
   {label:'🌎 海外股',keys:['VT','VTI','VOO','QQQ','SSO']},
@@ -216,7 +231,7 @@ const LADDER=[
   {rung:1,emoji:'🛡',name:'守成',lev:false,mech:'rebal',glide:0,glideStart:45,flexW:1,dca:0,swr:3.25,
    w:{TW:{TW50:20,BOND:40,CASH:40}, US:{VT:20,BOND:40,CASH:40}, BOTH:{TW50:10,VT:10,BOND:40,CASH:40}},
    dd:{TW:0.1031,US:0.0832,BOTH:0.0825}, mu:{TW:0.0408,US:0.0387,BOTH:0.0395},
-   when:'距退休不到 5 年、已退休、或還沒存到緊急預備金。這一階刻意留 40% 現金 —— 股票只剩兩成時防禦部位佔了八成,債券參數本身變成主要風險,債現各半才穩。'},
+   when:'距退休不到 5 年、已退休、或還沒存到緊急預備金。這一階刻意留 40% 現金:股票只剩兩成的時候,剩下八成如果全押債券,債券自己的漲跌反而會變成你最大的風險 —— 債和現金各半才穩。'},
   {rung:2,emoji:'🟢',name:'保守',lev:false,mech:'rebal',glide:0,glideStart:45,flexW:1,dca:0,swr:3.5,
    w:{TW:{TW50:35,BOND:65}, US:{VT:35,BOND:65}, BOTH:{TW50:18,VT:17,BOND:65}},
    dd:{TW:0.2128,US:0.1662,BOTH:0.1657}, mu:{TW:0.0565,US:0.0527,BOTH:0.0547},
@@ -245,20 +260,20 @@ const LADDER=[
         所以階與階之間仍然可比。 */
   {rung:6,emoji:'🔵',name:'槓桿·防禦',lev:true,mech:'deep3',glide:1,glideStart:45,flexW:1,dca:12,swr:3.5,
    w:{TW:{L2:50,CASH:50}, US:{SSO:50,CASH:50}, BOTH:{L2:25,SSO:25,CASH:50}},
-   dd:{TW:0.6618,US:0.4804,BOTH:0.5033}, mu:{TW:0.0778,US:0.0584,BOTH:0.0676}, skipMkt:['US','BOTH'],
+   dd:{TW:0.6632,US:0.4804,BOTH:0.5049}, mu:{TW:0.0820,US:0.0584,BOTH:0.0695}, skipMkt:['US'],
    when:'槓桿的最低劑量:一半 2 倍 ETF、一半準備金,平常的放大倍數剛好等於「全押大盤」。'},
   {rung:7,emoji:'🟣',name:'槓桿·保守',lev:true,mech:'deep3',glide:1,glideStart:45,flexW:1,dca:12,swr:3.5,
    w:{TW:{L2:60,CASH:40}, US:{SSO:60,CASH:40}, BOTH:{L2:30,SSO:30,CASH:40}},
-   dd:{TW:0.6821,US:0.5110,BOTH:0.5371}, mu:{TW:0.0822,US:0.0633,BOTH:0.0729}, skipMkt:['US'],
+   dd:{TW:0.6831,US:0.5110,BOTH:0.5376}, mu:{TW:0.0870,US:0.0633,BOTH:0.0749}, skipMkt:['US'],
    when:'比全押大盤多兩成曝險,準備金仍然厚。想開槓桿但還在適應回撤的人。'},
   {rung:8,emoji:'⭐',name:'槓桿·均衡',lev:true,mech:'deep3',glide:1,glideStart:45,flexW:1,dca:12,swr:3.5,
    w:{TW:{L2:70,CASH:30}, US:{SSO:70,CASH:30}, BOTH:{L2:35,SSO:35,CASH:30}},
-   dd:{TW:0.7099,US:0.5529,BOTH:0.5730}, mu:{TW:0.0864,US:0.0675,BOTH:0.0780},
-   when:'本站回測 26 年表現最好的一格(「② 挑時機」的預設策略)。判準只有一個:**你能不能在帳面剩兩成的時候不賣掉?**'},
+   dd:{TW:0.7093,US:0.5529,BOTH:0.5729}, mu:{TW:0.0912,US:0.0675,BOTH:0.0801},
+   when:'本站回測 26 年表現最好的一格(「② 挑時機」的預設策略)。判準只有一個:你能不能在帳面一度只剩兩成的時候不賣掉?答不出來就往上選一階 —— 第 7 階少賺約 0.4 個百分點,但最深跌淺 3 個百分點。'},
   {rung:9,emoji:'🔴',name:'槓桿·積極',lev:true,mech:'deep3',glide:1,glideStart:45,flexW:1,dca:12,swr:3.5,
    w:{TW:{L2:80,CASH:20}, US:{SSO:80,CASH:20}, BOTH:{L2:40,SSO:40,CASH:20}},
-   dd:{TW:0.7405,US:0.5948,BOTH:0.6162}, mu:{TW:0.0894,US:0.0718,BOTH:0.0825},
-   when:'準備金只剩兩成,子彈很快就打完。回測顯示比均衡型多的報酬有限,但最長水下時間明顯拉長。'},
+   dd:{TW:0.7398,US:0.5948,BOTH:0.6156}, mu:{TW:0.0945,US:0.0718,BOTH:0.0851},
+   when:'準備金只剩兩成,大跌時子彈很快就打完。比第 8 階多的年化不到 0.4 個百分點,最深跌卻多 3 個百分點、而且要更久才回得來 —— 多承受的比多拿到的多。'},
 ];
 /* ── 為什麼「兩邊都要」也有槓桿階了(S10)─────────────────────────
    改版前第 6–9 階只有 TW/US 兩組,理由寫的是「準備金加碼要盯單一指數,兩個市場的

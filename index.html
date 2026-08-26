@@ -67,7 +67,7 @@ footer a{color:var(--core)}
     <a class="again" href="plan-result/" id="againLink" style="display:none">已經有計畫了?<b>→ 看我的計畫</b></a>
   </div>
 
-  <p class="how ap-measure">回答九個白話問題,你會拿到:<b>錢怎麼分</b>、<b>每個月做什麼</b>、<b>跌到哪裡加碼</b>、
+  <p class="how ap-measure">回答九個白話問題,你會拿到:<b>錢怎麼分</b>、<b>每個月做什麼</b>、<b>跌下來的時候做什麼</b>、
     以及<b>最壞會有多壞</b>。不需要任何理財知識,每個數字之後都能自己改。</p>
 
   <!-- 有名詞氣泡的頁面就要有這個提示。使用者測試顯示:沒有人會自己發現
@@ -75,16 +75,20 @@ footer a{color:var(--core)}
   <div class="termhint">💡 這頁凡是<span class="fakedot">有虛線的字</span>都可以點開看白話解釋,不懂的名詞先點一下再往下讀。</div>
 
   <div class="ap-risk soft">
-    ⚠️ <b>先把話說在前面</b><br>
-    這裡所有的報酬數字都是<b>前瞻假設,不是預測</b>,更不是保證。回測用的歷史區間是人類史上最好的一段多頭,
-    天生偏樂觀。槓桿 ETF 在 2008 式崩盤會讓帳面<b>只剩不到兩成</b>,而且可能要好幾年才回得來。
-    本站僅供教育與試算用途,<b>非投資建議</b>,請依自身狀況審慎評估。
+    ⚠️ <b>先說清楚三件事</b><br>
+    ① 這裡<b>不保證你會賺錢</b>。所有報酬數字都是前瞻假設 —— 先講明假設,再算給你看,你隨時可以自己改。<br>
+    ② 回測用的那段歷史,剛好是人類史上最好的一段多頭,所以這些數字<b>天生偏樂觀</b>。<br>
+    ③ 九個問題<b>不會把你送去開槓桿</b>。問卷最多建議到第 5 階,那幾階不用槓桿。
+    要往上是你自己再按一次的決定,而且按之前那一頁會先把「最壞會剩多少錢」寫給你看。<br>
+    <span class="mut">本站僅供教育與試算用途,非投資建議,請依自身狀況審慎評估。</span>
   </div>
 
   <footer>
-    資料來源:台灣證券交易所、Yahoo Finance、Damodaran (NYU Stern) 1928–2024 美股與美債年報酬。
-    方法論詳見原始碼庫裡的 <code>plan/README.md</code> 與 <code>timing/README.md</code>(在 GitHub 上閱讀)。<br>
-    純靜態、無後端、無帳號;設定只存在你自己的瀏覽器裡。
+    <b>數字從哪裡來</b>:台灣證券交易所、Yahoo Finance,以及 Damodaran(紐約大學)整理的 1928–2024 年美股與美國公債年報酬。<br>
+    <b>想看怎麼算的</b>:<a href="https://github.com/bisgerG/asset-planner-pub/blob/main/plan/README.md">配資金的算法</a>
+    ·<a href="https://github.com/bisgerG/asset-planner-pub/blob/main/timing/README.md">挑時機的算法</a>
+    <span class="mut">(程式碼與方法論,寫給想自己驗算的人看)</span><br>
+    這個網站<b>沒有伺服器、不用註冊</b>,你填的東西只留在自己的瀏覽器裡。
   </footer>
 
 </div>

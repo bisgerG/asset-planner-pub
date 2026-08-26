@@ -150,6 +150,9 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
     <span class="pnum" id="pnum"></span>
   </div>
   <div class="card" id="card"></div>
+  <!-- 有名詞氣泡的頁面就要有這個提示。使用者測試顯示:沒有人會自己發現虛線＋問號代表可以點,
+       少了它整份辭典等於白做(docs/IA.md §4.4)。放在卡片外面 —— 卡片每題都會被重繪。 -->
+  <div class="termhint">💡 遇到看不懂的詞不用查:凡是<span class="fakedot">有虛線的字</span>都可以點開,會跳出一句白話解釋。</div>
 </div>
 
 <!-- engine.js:S8 起精靈直接讀統一風險階梯(E.LADDER),不再自己抄一份配置表。 -->
@@ -160,7 +163,9 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
-// 精靈的內容由 JS 逐題重繪,名詞自動註解會被下一題的 innerHTML 沖掉 —— 所以只掛導覽,不掃名詞。
+/* 精靈的內容由 JS 逐題重繪,所以 init 這一刻 #card 還是空的 —— glossary:false 是對的。
+   但**不掃名詞是錯的**:這一頁是新手唯一的入口,而它整頁都是「淨曝險」「正二」「準備金」
+   「隨齡降槓」這種詞。2026-08 補上:改在每次 render() 末尾掃一次(見 render 的註解)。 */
 APShell.init({page:'start', glossary:false});
 const E=window.APEngine;
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -282,7 +287,8 @@ const STEPS=[
   ${hadPlan()?`<div class="note warn">你<b>已經有一份存好的設定</b>,最後按下「產生」會覆蓋它。
     想留著舊的,先到「⚙ 配資金」存一份快照。</div>`:''}
   <h2>你現在幾歲?打算幾歲退休?</h2>
-  <p class="sub">不需要理財知識,每題都有「不知道就選這個」。全程在你的瀏覽器裡算,<b>數字不會傳出去</b>。</p>
+  <p class="sub">不需要理財知識。要填數字的地方有建議值,要用選的地方有「不知道就選這個」。
+    全程在你的瀏覽器裡算,<b>數字不會傳出去</b>。</p>
   <div class="fields">
     <div class="f"><label>我現在</label>
       <div class="row"><input type="number" id="i_age" min="15" max="90" step="1" value="${A.age}"><span class="unit">歲</span></div></div>
@@ -294,7 +300,8 @@ const STEPS=[
   <div class="calc" id="yrCalc"></div>
   <div class="express">
     <button class="btn ghost" type="button" id="expressBtn">趕時間?其餘用建議值　→</button>
-    <span class="mut">後面四題直接採用畫面上標「不知道就選這個」的答案。算完隨時能回來改。
+    <span class="mut">後面四題直接幫你填:前三題用畫面上標「不知道就選這個」的答案,
+      「未來的人生事件」那題<b>先全部不勾</b>。算完隨時能回來改。
       <b>地基那題還是會問你</b> —— 那一題替你猜會害到你。</span>
   </div>
   ${why('「還有幾年」決定你扛不扛得起波動',
@@ -410,7 +417,8 @@ const STEPS=[
 {id:'q1',skip:()=>A.express,valid:()=>A.q1!==null,render:()=>`
   <h2>你的 ${wan(A.net)} 在一年內變成 <span style="color:var(--warn-ink)">${wan(A.net*0.7)}</span>,你會?</h2>
   <p class="sub">帳面少了 <b>${wan(A.net*0.3)}</b>,而且沒有人能告訴你什麼時候會漲回來。
-    請誠實回答 —— 這題答錯的代價,比選錯標的大得多。</p>
+    <b>這一題沒有標準答案</b> —— 照你真實的反應選就好。
+    選得比實際勇敢,結果就是計畫做出來你抱不住;選得保守只是少賺一點。</p>
   <div class="opts">${optHTML('q1',[
     ['0','全部賣掉,睡不著覺','受不了帳面一直變少'],
     ['1','先停止投入,觀望一陣子',''],
@@ -422,8 +430,9 @@ const STEPS=[
    計分時取最嚴格的一項而不是相加 —— 見 suggestRung()。 */
 {id:'qinc',skip:()=>A.express,valid:()=>A.qinc!==null,render:()=>`
   <h2>你的收入穩不穩定?</h2>
-  <p class="sub">收入穩定的人,崩盤時比較不會被迫賣股票——所以扛得起多一點波動。
-    <b>失業碰上崩盤,是最常見的一種破產路徑。</b></p>
+  <p class="sub">上一題問的是「你想不想賣」,這一題問的是「你會不會<b>被迫</b>賣」。
+    收入穩定的人,就算崩盤也不必動到投資的錢;收入不穩的人,可能剛好在最低點需要用錢。
+    <span class="mut">兩題取比較嚴的那一項,所以這裡照實答只會讓計畫更貼近你。</span></p>
   <div class="opts">${optHTML('qinc',[
     ['0','很不穩定(接案、業績制、剛創業)',''],
     ['1','普通,大致固定但沒有把握',''],
@@ -616,12 +625,13 @@ function renderLadder(){
     if(L.lev&&!levOpened){ levOpened=true;
       H+=`</div><div class="levline">以下開始用槓桿</div>
       <div class="note warn" style="margin:6px 0 8px">
-        <b>四項全部成立才考慮開槓桿:</b><br>
-        ① 距離退休還有 <b>20 年以上</b>(跌下去要有時間等它回來)<br>
-        ② 收入<b>穩定</b>,崩盤時不會被迫賣 —— 失業 + 崩盤同時發生是最常見的破產路徑<br>
+        <b>下面這幾階要開槓桿。少一項就往上選一階就好</b> —— 上面那幾階一樣可以用一輩子,只是少賺一點。<br>
+        <span class="mut">往保守選會少賺,但抱得住才是真的;而且之後隨時能回來改。</span>
+        <div style="margin-top:8px"><b>四項全部成立才考慮:</b><br>
+        ① 距離退休還有 <b>20 年以上</b> —— 跌下去要有時間等它回來<br>
+        ② 收入<b>穩定</b> —— 崩盤的時候不會剛好需要動用這筆錢<br>
         ③ 地基<b>四項全過</b>:6 個月預備金、醫療失能保障、無卡債信貸、純閒錢<br>
-        ④ 你<b>看得懂並接受</b>那個「帳面最深跌」:一度只剩<b>三成上下</b>,而且可能好幾年回不來<br>
-        <span class="mut">少一項就<b>往上</b>選一階(表格上方 = 比較保守那一端)。往保守選會少賺,但你抱得住才是真的。</span>
+        ④ 你<b>看得懂並接受</b>下面那個「帳面最深跌」:一度只剩<b>三成上下</b>,而且可能好幾年回不來</div>
       </div><div class="ladder" role="radiogroup" aria-label="槓桿階">`;
     }
     const dd=L.dd[A.market], mu=L.mu[A.market];
@@ -648,36 +658,40 @@ function renderLadder(){
      mkt / peak / fired[],水位是所有股票部位的加權指數;加碼金額本來就按比例分給所有槓桿標的;
      param 引擎每月也只抽一個共同市場因子。整段連同 A.levMkt 一起拿掉。 */
   if(cur&&cur.lev&&A.market==='BOTH'){
-    H+=`<div class="note"><span class="mut"><b>「兩邊都要」的槓桿版本 = 00631L 正二與 SSO 各半</b>,
+    H+=`<div class="note"><span class="mut"><b>「兩邊都要」的槓桿版本 = 台股正二(00685L)與美股 SSO 各半</b>,
       準備金合用一份。加碼觸發看的是<b>你整個股票部位</b>的水位(不是單一指數),
       觸發時那筆錢會<b>按比例分到兩支上</b>。<br>
-      實跑下來,第 8 階「報酬 ÷ 最深跌」是<b>三個市場裡最好的</b>(都要 0.136、純台股 0.122、純美股 0.122)
+      實跑下來,第 8 階「報酬 ÷ 最深跌」是<b>三個市場裡最好的</b>(都要 0.140、純台股 0.129、純美股 0.122)
       —— 分散在槓桿階同樣有效。<br>
       ⚠ 但「② 挑時機」<b>只有台股的每日訊號</b>,SSO 那一半的高點與跌幅要你自己查。</span></div>`;
   }
   if(A.market==='US')H+=`<div class="note"><span class="mut">美股沒有第 6、7 階 —— 實跑顯示
     SSO 在低曝險時被第 5 階<b>全面打敗</b>(更痛而且更少),原因是融資成本。已知會輸的選項不放進來。</span></div>`;
-  if(A.market==='BOTH')H+=`<div class="note"><span class="mut">「兩邊都要」沒有第 6 階 —— 同樣是實跑的結果:
-    它比第 5 階<b>更痛(−50% vs −40%)而且退休中位更少(2750萬 vs 2793萬)</b>。已知會輸的選項不放進來。</span></div>`;
+  /* 2026-08:原本這裡有一句「兩邊都要沒有第 6 階」,理由是它被第 5 階支配。
+     台股正二換成 00685L(內扣 1.3%→0.48%)之後重跑,第 6 階的退休中位反超第 5 階
+     (2849萬 vs 2793萬)—— 更痛但也真的更多,不再是被支配的選項,所以放回選單。
+     LADDER 的 skipMkt 同步從 ['US','BOTH'] 改成 ['US']。 */
 
   if(A.rung>S.rung){
-    H+=`<div class="note warn"><b>你選的比建議高。</b>不擋你,但要知道是哪一項沒過關:
+    const _sdd=rungDD(S.rung), _mdd=rungDD(A.rung);
+    H+=`<div class="note warn"><b>你選的比建議高,我們照做。</b>只是要讓你知道是哪一項把建議壓下來的:
       <b>${S.binding.map(esc).join('</b>、<b>')}</b>${S.found?`;而且${esc(S.found)}`:''}。<br>
-      <span class="mut">這一階最壞會讓你的 ${wan(A.net)} 一度剩 <b>${wan(A.net*(1-rungDD(A.rung)))}</b>。
-      真的碰到那一天,你賣不賣?</span></div>`;
+      <span class="mut">這一階最壞會讓你的 ${wan(A.net)} 一度剩 <b>${wan(A.net*(1-_mdd))}</b>;
+      退回建議的第 ${S.rung} 階則是剩 ${wan(A.net*(1-_sdd))}
+      (實質年化 ${pc(rungMU(S.rung)-WIZ_INFL,1)} 對 ${pc(rungMU(A.rung)-WIZ_INFL,1)})。
+      <b>看著上面那個金額想一下:真的跌到那裡,你會不會賣掉?</b>會的話,現在往上退一階比較划算。</span></div>`;
   }
   /* 「那兩個數字是什麼」:標籤已經就地寫在列上,這裡只留定義與誠實條款(S11 壓縮)。 */
-  H+=`<div class="note"><b>「帳面最深跌」</b>= 每 10 種市場情境裡最壞那 1 種,<b>退休前</b>過程中一度看到的帳面低點
-    <span class="src fixed">回測值</span><span class="jargon">(術語:第 90 百分位)</span> ——
-    不是每年都跌這麼多,也不是永久虧損。
-    <b>「預期年化」</b>看<b>實質</b>那個 —— 那才是扣掉通膨後真正多買得到東西的部分。
-    所有報酬都是<b>前瞻假設,不是預測,也不是保證</b>。</div>
+  H+=`<div class="note"><b>「帳面最深跌」</b>= 每 10 種未來裡最壞的那 1 種,退休前一度看到的帳面低點
+    <span class="src fixed">回測值</span>。<b>它是過程,不是結果</b> —— 不是每年都跌這麼多,也不是永久虧損。<br>
+    <b>「預期年化」</b>請看<b>實質</b>那一個:扣掉通膨之後、真正多買得到東西的部分。
+    所有報酬都是前瞻假設,不是保證。</div>
 
   <details class="x" id="why-lev-flat"><summary>為什麼開了槓桿,年化只多一點點,最深跌卻多很多?—— 三個原因,而且都是真的成本</summary>
     <div class="body">
       <p><b>① 槓桿沒有你想的便宜。</b>正二不是「兩倍報酬」。以台股為例:2×7% = 14%,
-        接著要扣 <b>1.5% 波動耗損</b>、<b>1.3% 內扣費用</b>、<b>3% 逆價差</b>,剩下 <b>8.2%</b> ——
-        比 0050 的 7% 只多 <b>1.2 個百分點</b>。<b>曝險加倍,報酬只多一點二。</b>
+        接著要扣 <b>1.5% 波動耗損</b>、<b>0.5% 內扣費用</b>、<b>3% 逆價差</b>,剩下 <b>9.0%</b> ——
+        比 0050 的 7% 只多 <b>2 個百分點</b>。<b>曝險加倍,報酬只多三成。</b>
         <span class="mut">(美股 SSO 更明顯:2×7% 扣掉 1.5% ＋ 0.89% 內扣 ＋ 4% 融資成本 = 7.6%,
         比 VT 的 6.5% 只多 1.1 個百分點 —— 這也是第 6、7 階不開放美股的原因)</span></p>
       <p><b>② 波動本身會吃掉報酬,而且是平方地吃。</b>你看到的是<b>中位</b>那條路徑,不是「平均」。
@@ -728,12 +742,12 @@ function renderResult(){
   <p class="mut" style="font-size:12.5px;margin:6px 0 0">最壞的數字是<b>正常波動</b>,不是計畫失敗;
     覺得會睡不著,回上一步往上選一階(比較保守的那一邊)。所有報酬都是前瞻假設,不是保證。</p>
 
-  ${L.lev?`<div class="note warn"><b>你選的是槓桿階,有兩件事要先知道:</b><br>
-    ① 這一頁與「★ 我的計畫」的模擬是<b>月步</b>的,看不見盤中的深谷,所以會<b>低估</b>
-       「跌 25/35/45% 加碼」這種深觸發的效果。這個策略真正的長期回測在
-       <b>「② 挑時機」</b>那一頁(26 年日線),兩邊的數字對不起來是正常的。<br>
-    ② 計畫已自動開啟<b>隨齡降槓</b>(45 歲起逐步把槓桿換成債券)與<b>分批 12 個月進場</b>——
-       35 歲跑這個曝險可以,64 歲還跑同一個不行。</div>`:''}
+  ${L.lev?`<div class="note warn"><b>你選的是槓桿階。計畫已經自動幫你加了兩道保險:</b><br>
+    ① <b>隨齡降槓</b> —— 45 歲起每年自動把一點槓桿換成債券。35 歲跑這個曝險可以,64 歲還跑同一個不行。<br>
+    ② <b>分 12 個月進場</b> —— 不是今天一次全買,避開「剛好買在最高點」。<br>
+    <span class="mut">另外:這一頁的模擬是<b>一個月看一次</b>,看不到盤中最深的那幾天,
+    所以「跌到就加碼」的效果被<b>低估</b>了。同一套規則的逐日長期回測在
+    <a href="../timing/">「② 挑時機」</a>那一頁 —— 兩邊數字對不起來是正常的。</span></div>`:''}
 
   ${A.emerg!=='yes'?`<div class="note">💡 建議先把緊急預備金補到約 <b>${wan(emergNeed)}</b>(半年支出),
     放在<b>這套投資之外</b>。這筆錢不是拿來賺錢的,是拿來讓你在崩盤時不用賣股票的。</div>`:''}
@@ -741,15 +755,15 @@ function renderResult(){
   <!-- 口徑揭露(docs/SPEC.md 決議 D8 / 差異 C11)。
        D8 的原則沒變(不做隱式打折),但 S9 之後這裡是**回述使用者自己的選擇**,
        不再是「工具替你抓了一個數字、事後才解釋」。 -->
-  <div class="note">「退休後年支出 <b>${wan(yearExp)}</b>」是你在第 2 題選的
+  <div class="note"><b>${wan(yearExp)}</b> 這個數字是你自己選的:第 2 題的
     ${A.retSpendTouched
       ? `<b>自己填的 ${wan(A.retSpend)}/月</b>`
       : `<b>「${esc((RET_CHIP_BY_K[A.retChip]||{}).t||'')}」</b>(${wan(A.retSpend)}/月)`}${
       A.spend>0&&Math.abs(A.retSpend-A.spend)>1e-9
-        ? ` —— 現在花 ${wan(A.spend)}/月 的 <b>${Math.round(A.retSpend/A.spend*100)}%</b>`
-        : `,與你現在的花費相同`}。
-    它決定 FIRE 目標 <b>${wan(yearExp/(L.swr/100))}</b> 與退休後每年能提領多少 ——
-    想改就回上一步,或之後到「⚙ 配資金」改「退休後一年生活費」。</div>
+        ? `,等於你現在花費的 <b>${Math.round(A.retSpend/A.spend*100)}%</b>`
+        : `,與你現在的花費相同`}。<br>
+    <b>它是整份計畫最敏感的一格</b>:目標金額 ${wan(yearExp/(L.swr/100))} 就是從它算出來的。
+    <span class="mut">想改:回上一步,或之後到「⚙ 配資金」改「退休後一年生活費」。</span></div>
 
   <div class="note">按下去會直接產生<b>「★ 我的計畫」</b>:錢怎麼分、每月做什麼、跌到哪裡加碼、最壞會有多壞。
     想自己調參數或印成計劃書,那一頁上都有入口。</div>`;
@@ -833,6 +847,17 @@ function render(){
       </div>`;
   open.forEach(id=>{ const d=$(id); if(d)d.open=true; });
   bind(S);
+  /* ── 名詞氣泡:每題重繪之後補掃一次 ──────────────────────────────────
+     氣泡本身是 document 層的事件委派(shell.js 的 initGlossary),所以動態插進來的
+     .term 一樣有效;annotateTerms 的「首次出現」是**每次呼叫各自算**,
+     於是每一題各自標自己的第一次出現,不會被上一題用掉。
+     dynIds 是那三個會被 input 事件整段重寫的計算框 —— 標在裡面的氣泡會被沖掉,
+     而那個詞在全頁的「第一次出現」已經用掉了,等於那一條辭典再也叫不出來。
+     ⚠ 選項卡是 <label>,在 annotateTerms 的 SKIP 名單裡(裡面塞 <button> 會搶走勾選的那一下)
+       —— 所以選項自己的文字必須本來就是白話,不能靠氣泡救。 */
+  try{ APShell.annotateTerms($('card'),
+       {dynIds:{yrCalc:1, cashCalc:1, retCalc:1}, skip:['.nav']}); }
+  catch(e){ if(window.console)console.warn(e); }
   const changed=lastStep!==step; lastStep=step;
   if(changed){
     window.scrollTo(0,0);
