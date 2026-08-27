@@ -300,7 +300,7 @@ footer code{background:rgba(255,255,255,.12); padding:1px 4px; border-radius:3px
 
 /* ── 基礎層最下方：⚠ 最壞會有多壞（L1，不折疊）──────────────────
    docs/IA.md §3.3 的例外條款：風險揭露即使不是「動作」也不准折疊。
-   §7.2：凡是風險數字一律同時給金額 —— 所以這裡的 −76.7% 一定跟著
+   §7.2：凡是風險數字一律同時給金額 —— 所以這裡的 −77.1% 一定跟著
    「你的 100 萬會一度剩 23 萬」，而且金額跟著使用者填的總資金與選的風格走。 */
 .worst{border:2px solid #c62828; background:#fff1f1; border-radius:10px;
   padding:12px 15px; margin-bottom:12px; color:#5c2020}
@@ -1199,10 +1199,12 @@ footer code{background:rgba(255,255,255,.12); padding:1px 4px; border-radius:3px
             <details class="x">
               <summary>如果這個便宜完全消失，數字會變成什麼樣</summary>
               <div class="body">
+                <!-- 這四個數字曾經硬編在這裡，2026-08-24 的 α 重跑動了 blend 表卻沒掃到正文，
+                     於是正文停在 0.170/0.116/7.2/10.0 而表格已經是新的。改成從 data.json 取。 -->
                 <p>把成本改成最近幾年<b>實際量到</b>的水位（每年多付約 5%）重跑：
-                  只押台股的 Calmar 從 0.170 掉到 <b>0.116</b>、
-                  <b>最長水下從 7.2 年拉長到 10.0 年</b>、
-                  而 15 年最差的那一代<b>開始虧錢</b>（0.76 倍，代表投了十五年還倒賠）。</p>
+                  只押台股的 Calmar 從 <span id="bsCalmar0">—</span> 掉到 <b id="bsCalmar1">—</b>、
+                  <b>最長水下從 <span id="bsUw0">—</span> 年拉長到 <span id="bsUw1">—</span> 年</b>、
+                  而 15 年最差的那一代<b>開始虧錢</b>（<span id="bsWorst">—</span> 倍，代表投了十五年還倒賠）。</p>
                 <div class="scroll">
                   <table>
                     <thead><tr><th>配置（紅利反轉情境）</th><th>Calmar</th><th>最長水下</th><th>15 年中位</th><th>15 年最差</th><th>虧損比率</th></tr></thead>
@@ -1211,7 +1213,7 @@ footer code{background:rgba(255,255,255,.12); padding:1px 4px; border-radius:3px
                 </div>
                 <p><b>「15 年最差 0.76 倍」是這整段最該讓你停下來想一想的數字。</b>
                   它的意思是：如果你剛好生在那一代，投了十五年之後打開帳戶，錢比放著還少。
-                  而<b>分散到美股的那一列，同樣情境下最差是 1.97 倍</b> —— 這就是分散在保護的東西。</p>
+                  而<b>分散到美股的那一列，同樣情境下最差是 <span id="bsWorstMix">—</span> 倍</b> —— 這就是分散在保護的東西。</p>
                 <p class="tblnote">⚠ 這裡講的是<b>「紅利反轉」不是「補貼歸零」</b>：
                   成本從每年 −0.14% 變成 −5.11%，是從「幾乎免費」變成「每年倒貼 5%」，不是變回零。
                   <br>⚠ 混合那一列是用「含 10% 那斯達克」的組合當<b>代表值</b>，
@@ -1871,8 +1873,8 @@ footer code{background:rgba(255,255,255,.12); padding:1px 4px; border-radius:3px
        改版前這一段是寫死的：不管你填多少錢、選哪一種風格，都印
        「你的帳面會少掉八成、100 萬看到剩 23 萬」。兩個問題：
          ① 填了 500 萬的人要自己心算；
-         ② −76.7% 是**均衡型 70/30** 的回測值，選積極 80/20 的人實際是 −79.6%，
-            選防禦 50/50 的人是 −71.0% —— 同一個數字對四種風格都說一次，
+         ② −77.1% 是**均衡型 70/30** 的回測值，選積極 80/20 的人實際是 −79.9%，
+            選防禦 50/50 的人是 −71.3% —— 同一個數字對四種風格都說一次，
             對其中三種是假的。
        現在兩件事都跟著資料走：backtest.rows 依 coreW/reserveW 對到那一列。 */
     function btRowFor(p) {
@@ -2579,6 +2581,17 @@ footer code{background:rgba(255,255,255,.12); padding:1px 4px; border-radius:3px
         : '。')
       + '<span class="src fixed">回測值</span>';
 
+    // 正文那四個數字與表格同源（見上方 HTML 的註解）。
+    (function () {
+      var s0 = (b.stress.rows || []).filter(function (r) { return r.cur; })[0];
+      var s1 = (b.stress.rows || []).filter(function (r) { return r.proxy; })[0];
+      var r0 = (b.rows || []).filter(function (r) { return r.cur; })[0];
+      var put = function (id, v) { var e = $(id); if (e && v != null) e.textContent = v; };
+      if (r0) { put('bsCalmar0', r0.calmar.toFixed(3)); put('bsUw0', r0.uw.toFixed(1)); }
+      if (s0) { put('bsCalmar1', s0.calmar.toFixed(3)); put('bsUw1', s0.uw.toFixed(1));
+                put('bsWorst', s0.worst15.toFixed(2)); }
+      if (s1) put('bsWorstMix', s1.worst15.toFixed(2));
+    })();
     $('tBlendStress').innerHTML = b.stress.rows.map(function (r) {
       return '<tr class="' + (r.cur ? 'warnrow' : '') + '">'
         + '<td style="text-align:left">' + r.name

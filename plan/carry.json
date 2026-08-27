@@ -1,28 +1,52 @@
 {
-  "updated": "2026-08-26",
-  "dataAsOf": "2026-08-26",
+  "updated": "2026-08-27",
+  "dataAsOf": "2026-08-27",
   "product": "00685L.TW",
   "applyToSlider": false,
-  "measured5y": 3.1,
+  "measured": {
+    "full": {
+      "drag": 0.11,
+      "carry": -0.37,
+      "span": "2017-03 ~ 2026-07（9.3 年）"
+    },
+    "5y": {
+      "drag": 3.02,
+      "carry": 2.54
+    },
+    "3y": {
+      "drag": 7.64,
+      "carry": 7.16
+    },
+    "2y": {
+      "drag": 9.34,
+      "carry": 8.86
+    },
+    "1y": {
+      "drag": 9.98,
+      "carry": 9.5
+    }
+  },
+  "measuredAt": "2026-08-27",
+  "measuredNote": "用證交所「發行量加權股價報酬指數」直接量,不需要殖利率假設;腳本 Strategy/sources/carry-windows/carry_windows.py",
   "divYield": 3.4,
   "fee": 0.48,
   "windows": {
     "1y": {
       "beta": 2.04,
-      "alphaVsPrice": -9.5,
-      "carry": 15.8,
+      "alphaVsPrice": -9.9,
+      "carry": 16.2,
       "days": 250
     },
     "2y": {
       "beta": 2.04,
-      "alphaVsPrice": -4.8,
-      "carry": 11.1,
+      "alphaVsPrice": -4.2,
+      "carry": 10.5,
       "days": 502
     },
     "3y": {
-      "beta": 2.03,
-      "alphaVsPrice": -2.9,
-      "carry": 9.2,
+      "beta": 2.04,
+      "alphaVsPrice": -2.8,
+      "carry": 9.1,
       "days": 754
     },
     "5y": {
@@ -33,6 +57,6 @@
     }
   },
   "method": "00685L.TW vs ^TWII 日報酬 OLS 迴歸;carry = 2×現金殖利率(假設 3.4%) − α − 內扣 0.48%",
-  "note": "粗估,只看方向。現金殖利率是常數假設(差 0.5pp → carry 差 1pp),短視窗雜訊大。精確值見「② 挑時機」的 products2x:00685L 掛牌至今 9.3 年的全期 α 是 −0.15%/年(已扣所有費用)。滑桿預設固定 3.0%(= 九階風險階梯校準時用的值),這裡的數字只供對照,可手動覆蓋。",
+  "note": "measured 是權威值(含息指數直接量);windows 是每月自動跑的 Yahoo 迴歸,因為要手動加回 2×現金殖利率(假設 3.4%),短視窗會灌水 —— 近 1 年迴歸法 +15.8% vs 真值 +9.98%,只看方向不要看數值。滑桿預設固定 3.0%(= 九階風險階梯校準時用的值),可手動覆蓋。",
   "source": "Yahoo Finance"
 }

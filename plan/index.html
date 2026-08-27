@@ -1545,17 +1545,25 @@ async function loadCarry(){
     const res=await fetch('carry.json?t='+Date.now());
     if(!res.ok)throw new Error('HTTP '+res.status);
     const c=await res.json();
-    const w=c.windows||{};
-    const f=v=>(v>=0?'+':'')+v+'%';
-    /* 只把**近 5 年**當可讀的數字。短視窗的 α 對單一年度行情極敏感 ——
-       近 1 年那格常常跑到 +15% 以上,那不是逆價差真的收你 15%,是迴歸雜訊。
-       仍然照實印出來(本站不藏數字),但要就地講清楚它不能當假設用。 */
-    info.innerHTML=`實測(${c.product||'00685L'} 對加權指數,已扣內扣):`+
-      (w['5y']?`<b>近 5 年 ${f(w['5y'].carry)}／年</b>`:'')+
-      ((w['3y']&&w['1y'])?` <span class="mut">(近 3 年 ${f(w['3y'].carry)}、近 1 年 ${f(w['1y'].carry)} ——
-        <b>越近越貴</b>,但短視窗雜訊很大,只看方向、不要直接拿來當假設)</span>`:'')+
-      ` · ${c.dataAsOf}`+
-      ` · <span class="warn" title="${(c.note||'').replace(/"/g,'')}">ⓘ滑桿不會自動跟著動</span>`;
+    /* ⚠ 顯示以 c.measured 為準,不是 c.windows。
+       windows 是每月自動跑的 Yahoo 迴歸,它得手動加回 2×現金殖利率(假設值),
+       短視窗會灌水 —— 近 1 年迴歸法給 +15.8%,用含息指數直接量是 +9.98%。
+       ⚠ 也刻意**同時給全期與近三年兩端**:只給近 5 年會剛好像在替 3.0% 背書,
+       而那是三個視窗裡最貼近預設值的一個。全期 ≈ 0、近三年 ≈ 7%,3% 是中間值不是實測值。 */
+    const m=c.measured||{}, w=c.windows||{};
+    const f=v=>(v>=0?'+':'')+v.toFixed(1)+'%';
+    if(m.full&&m['3y']){
+      info.innerHTML=`實測拖累(${c.product||'00685L'} 對 2× 加權<b>含息</b>,已扣內扣):`+
+        `<b>全期 ${f(m.full.carry)}／年</b><span class="mut">(${m.full.span||''})</span>`+
+        ` · <b>近 3 年 ${f(m['3y'].carry)}／年</b>`+
+        (m['5y']?` <span class="mut">(近 5 年 ${f(m['5y'].carry)})</span>`:'')+
+        `<br><span class="mut">拉長看幾乎沒成本,近三年卻很貴 —— <b>兩句話都是真的,差別只在視窗</b>。`+
+        `滑桿預設 3.0% 是<b>取中間</b>,不是任何一段的實測值。`+
+        (w['1y']?` 另有每月自動更新的粗估(近 1 年 ${f(w['1y'].carry)}),只看方向。`:'')+
+        `</span>`;
+    }else if(w['5y']){
+      info.innerHTML=`粗估(每月自動):近 5 年 ${f(w['5y'].carry)}／年 · ${c.dataAsOf}`;
+    }
     info.className='mut';
   }catch(e){
     info.innerHTML='<span class="mut">(本機 file:// 讀不到 carry.json — 部署到 GitHub Pages 後會自動載入。目前用手動預設值。)</span>';

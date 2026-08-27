@@ -89,6 +89,25 @@ const FEE = 0.0048;            // 00685L 內扣(MoneyDJ 2026-07 查證)
    要精確值請用「② 挑時機」那條用證交所報酬指數的管線(不需要這個假設)。 */
 const DIV_YIELD = 0.034;
 
+/* ══ 權威值:用**含息指數本身**量,不需要殖利率假設 ══════════════════════════════
+   量測腳本 Strategy/sources/carry-windows/carry_windows.py(2026-08-27),
+   口徑 = (1+理論每日重設 2×加權含息年化) / (1+00685L 實際年化) − 1,drag 已含內扣、carry 沒有。
+   共同期間 2017-03-24 ~ 2026-07-21(2268 個交易日)。
+
+   ⚠ 為什麼不直接用下面那個 Yahoo 迴歸當權威:它得手動加回 2×現金殖利率(DIV_YIELD 假設值),
+     而那個假設在短視窗會嚴重灌水 —— 近 1 年迴歸法給 +15.8%,真值是 +9.98%,差 5.8pp。
+     迴歸法保留下來當**自動更新的趨勢對照**,不是頭條。
+
+   ⚠ 這組是靜態值,不會每月自己更新。要更新就重跑 carry_windows.py 再貼回來。 */
+const MEASURED = {
+  full: { drag: 0.11, carry: -0.37, span: '2017-03 ~ 2026-07（9.3 年）' },
+  '5y':  { drag: 3.02, carry: 2.54 },
+  '3y':  { drag: 7.64, carry: 7.16 },
+  '2y':  { drag: 9.34, carry: 8.86 },
+  '1y':  { drag: 9.98, carry: 9.50 },
+};
+const MEASURED_AT = '2026-08-27';
+
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const round1 = (x) => Math.round(x * 10) / 10;
 const round2 = (x) => Math.round(x * 100) / 100;
@@ -117,14 +136,20 @@ const round2 = (x) => Math.round(x * 100) / 100;
       product: PRODUCT,
       // 只顯示、不自動套用滑桿(見檔頭 ⚠)。保留欄位是為了讓舊版前端不至於壞掉。
       applyToSlider: false,
-      measured5y: out['5y'] ? out['5y'].carry : null,
+      // 權威值(含息指數直接量,無殖利率假設)。頁面顯示以這一組為準。
+      measured: MEASURED,
+      measuredAt: MEASURED_AT,
+      measuredNote: '用證交所「發行量加權股價報酬指數」直接量,不需要殖利率假設;'
+        + '腳本 Strategy/sources/carry-windows/carry_windows.py',
       divYield: round1(DIV_YIELD * 100),
       fee: round2(FEE * 100),
+      // 以下是每月自動更新的 Yahoo 迴歸,只當趨勢對照 —— 短視窗會被 DIV_YIELD 假設灌水。
       windows: out,
       method: `${PRODUCT} vs ${INDEX} 日報酬 OLS 迴歸;carry = 2×現金殖利率(假設 ${round1(DIV_YIELD * 100)}%) − α − 內扣 ${round2(FEE * 100)}%`,
-      note: `粗估,只看方向。現金殖利率是常數假設(差 0.5pp → carry 差 1pp),短視窗雜訊大。`
-        + `精確值見「② 挑時機」的 products2x:00685L 掛牌至今 9.3 年的全期 α 是 −0.15%/年(已扣所有費用)。`
-        + `滑桿預設固定 3.0%(= 九階風險階梯校準時用的值),這裡的數字只供對照,可手動覆蓋。`,
+      note: `measured 是權威值(含息指數直接量);windows 是每月自動跑的 Yahoo 迴歸,`
+        + `因為要手動加回 2×現金殖利率(假設 ${round1(DIV_YIELD * 100)}%),短視窗會灌水 —— `
+        + `近 1 年迴歸法 +15.8% vs 真值 +9.98%,只看方向不要看數值。`
+        + `滑桿預設固定 3.0%(= 九階風險階梯校準時用的值),可手動覆蓋。`,
       source: 'Yahoo Finance',
     };
     const outPath = path.join(__dirname, '..', 'carry.json');
