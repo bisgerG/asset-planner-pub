@@ -1,6 +1,6 @@
 {
-  "updated": "2026-09-01",
-  "dataAsOf": "2026-09-01",
+  "updated": "2026-10-01",
+  "dataAsOf": "2026-10-01",
   "product": "00685L.TW",
   "applyToSlider": false,
   "measured": {
@@ -32,27 +32,27 @@
   "fee": 0.48,
   "windows": {
     "1y": {
-      "beta": 2.05,
-      "alphaVsPrice": -10.9,
-      "carry": 17.3,
+      "beta": 2.06,
+      "alphaVsPrice": -10.2,
+      "carry": 16.6,
       "days": 250
     },
     "2y": {
       "beta": 2.03,
       "alphaVsPrice": -3.6,
-      "carry": 9.9,
+      "carry": 10,
       "days": 502
     },
     "3y": {
-      "beta": 2.04,
+      "beta": 2.03,
       "alphaVsPrice": -2.9,
-      "carry": 9.3,
+      "carry": 9.2,
       "days": 754
     },
     "5y": {
-      "beta": 2,
-      "alphaVsPrice": 3.2,
-      "carry": 3.1,
+      "beta": 1.99,
+      "alphaVsPrice": 3.3,
+      "carry": 3,
       "days": 1212
     }
   },
