@@ -1,22 +1,22 @@
 {
   "version": "V3.1",
-  "updated": "2026-10-08",
+  "updated": "2026-10-09",
   "product": {
     "ticker": "00685L",
     "name": "群益臺灣加權正2"
   },
   "taiex": {
-    "date": "2026-10-07",
-    "close": 49806.37,
-    "change": -16.18,
-    "changePct": -0.03
+    "date": "2026-10-08",
+    "close": 49313.44,
+    "change": -492.93,
+    "changePct": -0.99
   },
   "reserve": {
     "ath": 49822.55,
     "athDate": "2026-10-06",
     "trough": 47631.96,
     "troughDate": "2026-09-29",
-    "curDd": -0.03,
+    "curDd": -1.02,
     "maxDd": -1.09,
     "deployed": 0,
     "tranches": [
@@ -27,8 +27,8 @@
         "share": 0.16666666666666666,
         "triggerIndex": 37367,
         "fired": false,
-        "distPts": -12439,
-        "distPct": -24.98,
+        "distPts": -11947,
+        "distPct": -24.23,
         "leveredDd": -43.7
       },
       {
@@ -38,8 +38,8 @@
         "share": 0.3333333333333333,
         "triggerIndex": 32385,
         "fired": false,
-        "distPts": -17422,
-        "distPct": -34.98,
+        "distPts": -16929,
+        "distPct": -34.33,
         "leveredDd": -57.7
       },
       {
@@ -49,8 +49,8 @@
         "share": 0.5,
         "triggerIndex": 27402,
         "fired": false,
-        "distPts": -22404,
-        "distPct": -44.98,
+        "distPts": -21911,
+        "distPct": -44.43,
         "leveredDd": -69.7
       }
     ],
@@ -105,19 +105,19 @@
       "level": -0.25,
       "triggerIndex": 37367,
       "reached": false,
-      "distPts": -12439,
-      "distPct": -24.98
+      "distPts": -11947,
+      "distPct": -24.23
     },
     "reset": {
       "gapDays": 63,
       "lastDate": "2026-09-22",
       "lastClose": 47800.17,
-      "elapsed": 9,
+      "elapsed": 10,
       "gateOpen": false,
-      "gateIn": 54,
+      "gateIn": 53,
       "gateEta": "2026-12-22",
       "level": 49822.55,
-      "levelPct": 0.03,
+      "levelPct": 1.03,
       "resets": 20,
       "blocked": 244
     },
@@ -128,8 +128,8 @@
       "share": 0.16666666666666666,
       "triggerIndex": 37367,
       "fired": false,
-      "distPts": -12439,
-      "distPct": -24.98,
+      "distPts": -11947,
+      "distPct": -24.23,
       "leveredDd": -43.7
     }
   },
@@ -705,11 +705,11 @@
     "epsAsOf": "2026 Q1"
   },
   "pe": {
-    "value": 28.1664,
-    "display": 28.17,
-    "asOf": "2026-10-07",
+    "value": 27.5176,
+    "display": 27.52,
+    "asOf": "2026-10-08",
     "exact": true,
-    "pctile": 97.9058,
+    "pctile": 97.3822,
     "pace": {
       "minPct": 0.8,
       "label": "慢速",
@@ -2244,7 +2244,7 @@
     ],
     [
       "2026-10",
-      28.1664
+      27.5176
     ]
   ],
   "ddHistory": [
@@ -3734,7 +3734,7 @@
     ],
     [
       "2026-10",
-      -0.03
+      -1.02
     ]
   ],
   "sources": {
