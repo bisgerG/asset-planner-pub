@@ -1,6 +1,6 @@
 {
-  "updated": "2026-10-01",
-  "dataAsOf": "2026-10-01",
+  "updated": "2026-11-01",
+  "dataAsOf": "2026-10-30",
   "product": "00685L.TW",
   "applyToSlider": false,
   "measured": {
@@ -33,27 +33,27 @@
   "windows": {
     "1y": {
       "beta": 2.06,
-      "alphaVsPrice": -10.2,
-      "carry": 16.6,
+      "alphaVsPrice": -11.4,
+      "carry": 17.7,
       "days": 250
     },
     "2y": {
-      "beta": 2.03,
-      "alphaVsPrice": -3.6,
-      "carry": 10,
+      "beta": 2.02,
+      "alphaVsPrice": -4.1,
+      "carry": 10.4,
       "days": 502
     },
     "3y": {
       "beta": 2.03,
-      "alphaVsPrice": -2.9,
-      "carry": 9.2,
+      "alphaVsPrice": -3.4,
+      "carry": 9.7,
       "days": 754
     },
     "5y": {
-      "beta": 1.99,
-      "alphaVsPrice": 3.3,
-      "carry": 3,
-      "days": 1212
+      "beta": 2,
+      "alphaVsPrice": 2.7,
+      "carry": 3.6,
+      "days": 1210
     }
   },
   "method": "00685L.TW vs ^TWII 日報酬 OLS 迴歸;carry = 2×現金殖利率(假設 3.4%) − α − 內扣 0.48%",
