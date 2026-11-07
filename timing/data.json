@@ -1,6 +1,6 @@
 {
   "version": "V3.1",
-  "updated": "2026-11-07",
+  "updated": "2026-11-08",
   "product": {
     "ticker": "00685L",
     "name": "群益臺灣加權正2"
@@ -705,11 +705,11 @@
     "epsAsOf": "2026 Q1"
   },
   "pe": {
-    "value": 22.4326,
-    "display": 22.43,
+    "value": 22.1643,
+    "display": 22.16,
     "asOf": "2026-11-06",
     "exact": true,
-    "pctile": 87.9896,
+    "pctile": 87.4674,
     "pace": {
       "minPct": 0.8,
       "label": "慢速",
@@ -2248,7 +2248,7 @@
     ],
     [
       "2026-11",
-      22.4326
+      22.1643
     ]
   ],
   "ddHistory": [
